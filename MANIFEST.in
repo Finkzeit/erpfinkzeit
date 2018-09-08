@@ -1,0 +1,18 @@
+include MANIFEST.in
+include requirements.txt
+include *.json
+include *.md
+include *.py
+include *.txt
+recursive-include finkzeit *.css
+recursive-include finkzeit *.csv
+recursive-include finkzeit *.html
+recursive-include finkzeit *.ico
+recursive-include finkzeit *.js
+recursive-include finkzeit *.json
+recursive-include finkzeit *.md
+recursive-include finkzeit *.png
+recursive-include finkzeit *.py
+recursive-include finkzeit *.svg
+recursive-include finkzeit *.txt
+recursive-exclude finkzeit *.pyc
