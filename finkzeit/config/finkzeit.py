@@ -12,7 +12,7 @@ def get_data():
                        "doctype": "GL Entry",
                        "name": "Deckungsbeitrag",
                        "label": _("Deckungsbeitrag"),
-                       "description": _("Deckungsbeitrag")
+                       "description": _("Deckungsbeitrag"),
                        "is_query_report": True
                    },
                    {
