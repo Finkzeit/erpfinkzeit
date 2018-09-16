@@ -25,7 +25,20 @@ ADR_CITY = 7                    # address city
 ADR_COUNTRY = 8                 # country (code, e.g. AT)
 CUSTOMER_KST = 9                # customer cost center (999: FZV, ???: FZT, ???: FZW)
 CUSTOMER_DESCRIPTION = 46       # long description
-CUSTOMER_CONDITIONS = 16        # payment conditions
+CUSTOMER_CONDITIONS = 16        # payment conditions (TODO: clean up)
+CUSTOMER_VAT_REGION = 15        # Steuerregion (1, ...)
+CUSTOMER_CURRENCY = 14          # currency
+BRIEFCODE = 12                  # letter salutation (code 1301, ...)
+PHONE = 28                      # phone
+FAX = 29                        # fax
+HOMEPAGE = 37                   # homepage
+EMAIL = 38                      # email
+CUSTOMER_LSV = 40               # enable LSV
+CUSTOMER_LSV_CODE = 41          # LSV code
+CUSTOMER_LSV_DATE = 42          # LSV date (something like 46721)
+CUSTOMER_IBAN = 43              # IBAN
+CUSTOMER_BIC = 44               # BIC
+CUSTOMER_TAX_ID = 45            # UST ID
 
 def import_customers(filename, force_update=False):
     if force_update == "True" or force_update == 1:
@@ -55,16 +68,45 @@ def import_customers(filename, force_update=False):
                 create_customer(cells)
     return
 
-def get_country_from_dland(dland):
-    if not dland or dland == "":
+def get_country_from_code(code):
+    if not code or code == "":
         return "Schweiz"
     else:
-        countries = frappe.get_all('Country', filters={'code':dland.lower()}, fields=['name'])
+        countries = frappe.get_all('Country', filters={'code':code.lower()}, fields=['name'])
         if countries:
             return countries[0]['name']
         else:
             return "Schweiz"
 
+def get_kst_from_code(code):
+    if str(code) == "050":
+        return "FZW - FZAT"
+    elif str(code) == "060":
+        return "FZT - FZAT"
+    else:
+        return "FZV - FZAT"
+
+def get_steuerregion_from_code(code):
+    if (str(code) == "0" or str(code) == "C"):
+        # CH/LI
+        return "DRL"
+    elif if str(code) == "1":
+        # AT
+        return "AT"
+    elif if (str(code) == "2" or str(code) == "3" or str(code) == "A"):
+        # DE, IT, HU, ...
+        return "EU"                
+    else:
+        return "AT"
+
+def get_date_from_excel(excel_date):
+    if excel_date:
+        dt = datetime.fromordinal(datetime(1900, 1, 1).toordinal() + excel_date - 2)
+        return dt
+    else:
+        return None
+    
+print dt
 def create_customer(cells):
     # create record
     cus = frappe.get_doc(
@@ -77,7 +119,17 @@ def create_customer(cells):
             "customer_group": "All Customer Groups",
             "territory": "All Territories",
             "description": cells[CUSTOMER_DESCRIPTION].value,
-            "payment_terms": cells[CUSTOMER_CONDITIONS].value
+            "payment_terms": cells[CUSTOMER_CONDITIONS].value,
+            "kostenstelle": get_kst_from_code(cells[CUSTOMER_KST].value),
+            "steuerregion": get_steuerregion_from_code(cells[CUSTOMER_VAT_REGION].value),
+            "currency": cells[CUSTOMER_CURRENCY].value,
+            "website": cells[HOMEPAGE].value,
+            "enable_lsv": cells[CUSTOMER_LSV].value,
+            "lsv_code": cells[CUSTOMER_LSV_CODE].value,
+            "lsv_date": get_date_from_excel(cells[CUSTOMER_LSV_DATE].value),
+            "iban": cells[CUSTOMER_IBAN].value,
+            "bic": cells[CUSTOMER_BIC].value,
+            "tax_id": cells[CUSTOMER_TAX_ID].value,
         })
     try:
         new_customer = cus.insert()
@@ -86,8 +138,7 @@ def create_customer(cells):
             cells[CUSTOMER_ID].value, e))
     else:
         #create_contact(cells, new_customer.name)
-        #create_address(cells, new_customer.name)
-        pass
+        create_address(cells, new_customer.name)
     # write changes to db
     frappe.db.commit()
     return
@@ -127,18 +178,21 @@ def create_contact(cells, customer):
 
 def create_address(cells, customer):
     try:
-        fullname = get_full_name(cells)
         adr = frappe.get_doc(
             {
                 "doctype":"Address", 
-                "name": "{0} ({1})".format(fullname, customer),
-                "address_title": "{0} ({1})".format(fullname, customer),
-                "address_line1": get_address_line(cells),
-                "city": cells[ORTBZ].value,
-                "pincode": cells[PLZAL].value,
+                "name": "{0} ({1})".format(cells[CUSTOMER_NAME].value, customer),
+                "address_title": "{0} ({1})".format(cells[CUSTOMER_NAME].value, customer),
+                "address_line1": cells[ADR_LINE_1].value,
+                "address_line2": cells[ADR_LINE_2].value,
+                "city": cells[ADR_CITY].value,
+                "pincode": cells[ADR_PLZ].value,
+                "phone": cells[PHONE].value,
+                "fax": cells[FAX].value,
+                "email_id": cells[EMAIL].value,
                 "is_primary_address": 1,
                 "is_shipping_address": 1,
-                "country": get_country_from_dland(get_field(cells[DLAND])),
+                "country": get_country_from_code(cells[ADR_COUNTRY].value),
                 "links": [
                     {
                         "link_doctype": "Customer",
@@ -149,88 +203,81 @@ def create_address(cells, customer):
         new_adr = adr.insert()
         return new_adr
     except Exception as e:
-        print(_("Insert address failed"), _("Insert failed for address {0} {1} ({2}): {3}").format(
-            cells[VNAME].value, cells[NNAME].value, cells[CUSTOMER_ID].value, e))
+        print(_("Insert address failed"), _("Insert failed for address {0}: {1}").format(
+            cells[CUSTOMER_ID].value, e))
         return None
     
-def update_customer(name, cells, force=False):
+def update_customer(name, cells):
     # get customer record
     cus = frappe.get_doc("Customer", name)
-    # check last modification date
-    update = False
-    if force:
-        update = True
+    cus.customer_name = cells[CUSTOMER_NAME].value
+    #cus.customer_type = "Company"
+    #cus.customer_group = "All Customer Groups"
+    #cus.territory = "All Territories"
+    cus.description = cells[CUSTOMER_DESCRIPTION].value
+    cus.payment_terms = cells[CUSTOMER_CONDITIONS].value
+    cus.kostenstelle = get_kst_from_code(cells[CUSTOMER_KST].value)
+    cus.steuerregion = get_steuerregion_from_code(cells[CUSTOMER_VAT_REGION].value)
+    cus.currency = cells[CUSTOMER_CURRENCY].value
+    cus.website = cells[HOMEPAGE].value
+    cus.enable_lsv = cells[CUSTOMER_LSV].value
+    cus.lsv_code = cells[CUSTOMER_LSV_CODE].value
+    cus.lsv_date = get_date_from_excel(cells[CUSTOMER_LSV_DATE].value)
+    cus.iban = cells[CUSTOMER_IBAN].value
+    cus.bic = cells[CUSTOMER_BIC].value
+    cus.tax_id = cells[CUSTOMER_TAX_ID].value
+    try:
+        cus.save()
+    except Exception as e:
+        print(_("Update customer failed"), _("Update failed for customer {0}: {1}").format(
+            cells[CUSTOMER_ID].value, e))
     else:
-        try:
-            xl_mod_date = datetime.strptime(cells[MUTDT].value, '%d.%m.%Y')
-            erp_mod_date = datetime.strptime(str(cus.modified).split(' ')[0], '%Y-%m-%d')
-            if xl_mod_date >= erp_mod_date:
-                update = True
-        except Exception as e:
-            print(_("Invalid modification date"), _("Modification date of {0} ({1}) is invalid: {2}").format(
-                cells[CUSTOMER_ID].value, cells[MUTDT].value, e))
-            update = True
-    if update:
-        #print("perform update")
-        fullname = "{0} {1}".format(cells[VNAME].value, cells[NNAME].value)
-        cus.customer_name = fullname
-        cus.first_name = cells[VNAME].value
-        cus.last_name = cells[NNAME]
-        cus.description = cells[NBEZ1].value
-        cus.company = cells[NBEZ2].value
-        cus.language = get_erp_language(cells[SPRCD].value)
-        cus.payment_terms = cells[KONDI].value
-        try:
-            cus.save()
-        except Exception as e:
-            print(_("Update customer failed"), _("Update failed for customer {0} {1} ({2}): {3}").format(
-                cells[VNAME].value, cells[NNAME].value, cells[CUSTOMER_ID].value, e))
-        else:
-            con_id = frappe.get_all("Dynamic Link", 
-                filters={'link_doctype': 'Customer', 'link_name': cus.name, 'parenttype': 'Contact'},
+        #con_id = frappe.get_all("Dynamic Link", 
+        #    filters={'link_doctype': 'Customer', 'link_name': cus.name, 'parenttype': 'Contact'},
+        #    fields=['parent'])
+        #if con_id:
+        #    # update contact
+        #    con = frappe.get_doc("Contact", con_id[0]['parent'])
+        #    con.first_name = get_first_name(cells)
+        #    con.last_name = cells[NNAME].value or ''
+        #    con.email_id = cells[EMAILADR].value or ''
+        #    con.salutation = cells[ANRED].value or ''
+        #    con.letter_salutation = cells[BRANRED].value or ''
+        #    con.fax = cells[TELEF].value or ''
+        #    con.phone = cells[TELEP].value or ''
+        #    try:
+        #        con.save()
+        #    except Exception as e:
+        #        print(_("Update contact failed"), _("Update failed for contact {0}: {1}").format(
+        #            cells[CUSTOMER_ID].value, e))
+        #else:
+        #    # no contact available, create
+        #    create_contact(cells, cus.name)
+        adr_id = frappe.get_all("Dynamic Link", 
+                filters={'link_doctype': 'Customer', 'link_name': cus.name, 'parenttype': 'Address'},
                 fields=['parent'])
-            if con_id:
-                # update contact
-                con = frappe.get_doc("Contact", con_id[0]['parent'])
-                con.first_name = get_first_name(cells)
-                con.last_name = cells[NNAME].value or ''
-                con.email_id = cells[EMAILADR].value or ''
-                con.salutation = cells[ANRED].value or ''
-                con.letter_salutation = cells[BRANRED].value or ''
-                con.fax = cells[TELEF].value or ''
-                con.phone = cells[TELEP].value or ''
-                try:
-                    con.save()
-                except Exception as e:
-                    print(_("Update contact failed"), _("Update failed for contact {0} {1} ({2}): {3}").format(
-                        cells[VNAME].value, cells[NNAME].value, cells[CUSTOMER_ID].value, e))
-            else:
-                # no contact available, create
-                create_contact(cells, cus.name)
-            adr_id = frappe.get_all("Dynamic Link", 
-                    filters={'link_doctype': 'Customer', 'link_name': cus.name, 'parenttype': 'Address'},
-                    fields=['parent'])
-            if adr_id:
-                if get_field(cells[STRAS]) == "":
-                    address_line = "-"
-                else:
-                    address_line = "{0} {1}".format(cells[STRAS].value, cells[STRASNR].value)
-                adr = frappe.get_doc("Address", adr_id[0]['parent'])
-                adr.address_title = fullname
-                adr.address_line1 = get_address_line(cells) or ''
-                adr.city = cells[ORTBZ].value or ''
-                adr.pincode = cells[PLZAL].value or ''
-                adr.is_primary_address = 1
-                adr.is_shipping_address = 1
-                adr.country = get_country_from_dland(cells[DLAND].value)
-                try:
-                    adr.save()
-                except Exception as e:
-                    print(_("Update address failed"), _("Update address for contact {0} {1} ({2}): {3}").format(
-                        cells[VNAME].value, cells[NNAME].value, cells[CUSTOMER_ID].value, e))
-            else:
-                # address not found, create
-                create_address(cells, cus.name)
+        if adr_id:
+            adr = frappe.get_doc("Address", adr_id[0]['parent'])
+            adr.name = me = "{0} ({1})".format(cells[CUSTOMER_NAME].value, customer)
+            adr.address_title = "{0} ({1})".format(cells[CUSTOMER_NAME].value, customer)
+            adr.address_line1 = cells[ADR_LINE_1].value
+            adr.address_line2 = cells[ADR_LINE_2].value
+            adr.city = cells[ADR_CITY].value
+            adr.pincode = cells[ADR_PLZ].value
+            adr.phone = cells[PHONE].value
+            adr.fax = cells[FAX].value
+            adr.email_id = cells[EMAIL].value
+            adr.is_primary_address = 1
+            adr.is_shipping_address = 1
+            adr.country = get_country_from_code(cells[ADR_COUNTRY].value)
+            try:
+                adr.save()
+            except Exception as e:
+                print(_("Update address failed"), _("Update address for contact {0}: {1}").format(
+                    cells[CUSTOMER_ID].value, e))
+        else:
+            # address not found, create
+            create_address(cells, cus.name)
     # write changes to db
     frappe.db.commit()
     return
