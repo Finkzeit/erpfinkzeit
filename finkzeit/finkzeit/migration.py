@@ -90,10 +90,10 @@ def get_steuerregion_from_code(code):
     if (str(code) == "0" or str(code) == "C"):
         # CH/LI
         return "DRL"
-    elif if str(code) == "1":
+    elif str(code) == "1":
         # AT
         return "AT"
-    elif if (str(code) == "2" or str(code) == "3" or str(code) == "A"):
+    elif (str(code) == "2" or str(code) == "3" or str(code) == "A"):
         # DE, IT, HU, ...
         return "EU"                
     else:
@@ -106,14 +106,13 @@ def get_date_from_excel(excel_date):
     else:
         return None
     
-print dt
 def create_customer(cells):
     # create record
     cus = frappe.get_doc(
         {
             "doctype":"Customer", 
             "name": cells[CUSTOMER_ID].value,
-            "naming_series": "K-#####",
+            "naming_series": "K-.#####",
             "customer_name": cells[CUSTOMER_NAME].value,
             "customer_type": "Company",
             "customer_group": "All Customer Groups",
@@ -122,7 +121,7 @@ def create_customer(cells):
             "payment_terms": cells[CUSTOMER_CONDITIONS].value,
             "kostenstelle": get_kst_from_code(cells[CUSTOMER_KST].value),
             "steuerregion": get_steuerregion_from_code(cells[CUSTOMER_VAT_REGION].value),
-            "currency": cells[CUSTOMER_CURRENCY].value,
+            "default_currency": cells[CUSTOMER_CURRENCY].value,
             "website": cells[HOMEPAGE].value,
             "enable_lsv": cells[CUSTOMER_LSV].value,
             "lsv_code": cells[CUSTOMER_LSV_CODE].value,
@@ -133,6 +132,8 @@ def create_customer(cells):
         })
     try:
         new_customer = cus.insert()
+        new_customer.name = cells[CUSTOMER_ID].value
+        new_customer.save()
     except Exception as e:
         print(_("Insert customer failed"), _("Insert failed for customer {0}: {1}").format(
             cells[CUSTOMER_ID].value, e))
@@ -218,7 +219,7 @@ def update_customer(name, cells):
     cus.payment_terms = cells[CUSTOMER_CONDITIONS].value
     cus.kostenstelle = get_kst_from_code(cells[CUSTOMER_KST].value)
     cus.steuerregion = get_steuerregion_from_code(cells[CUSTOMER_VAT_REGION].value)
-    cus.currency = cells[CUSTOMER_CURRENCY].value
+    cus.default_currency = cells[CUSTOMER_CURRENCY].value
     cus.website = cells[HOMEPAGE].value
     cus.enable_lsv = cells[CUSTOMER_LSV].value
     cus.lsv_code = cells[CUSTOMER_LSV_CODE].value
