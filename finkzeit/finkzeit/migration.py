@@ -15,7 +15,15 @@ from datetime import datetime
 from openpyxl import load_workbook
 
 # column allocation
-CUSTOMER_NAME = 1                 # K-##### (column B)
+FIRST_DATA_ROW = 4				# first row containing data (after headers)
+CUSTOMER_ID = 1                 # K-##### (column B)
+CUSTOMER_NAME = 2				# customer name (column C)
+ADR_LINE_1 = 5					# first address line (clumn E)
+ADR_LINE_2 = 4					# additional address text (column E)
+ADR_PLZ = 6						# pincode for address
+ADR_CITY = 7					# address city
+ADR_COUNTRY = 8					# country (code, e.g. AT)
+CUSTOMER_KST = 9				# customer cost center (999: FZV, ???: FZT, ???: FZW)
 
 
 def import_customers(filename, force_update=False):
@@ -25,15 +33,15 @@ def import_customers(filename, force_update=False):
 		# open workbook
 		workbook = load_workbook(filename)
 		worksheet = workbook[0]
-        for row in worksheet.iter_rows('A{}:A{}'.format(ws.min_row,ws.max_row):
+        for row in worksheet.iter_rows('A{}:A{}'.format(FIRST_DATA_ROW, worksheet.max_row):
             # loop through all customers
             print(row)
             cells = row
             print("cells: {0}".format(len(cells)))
             if len(cells) >= 23:
                 # check if customer exists by ID
-                matches_by_id = frappe.get_all("Customer", filters={'name': get_field(cells[CUSTOMER_NAME])}, fields=['name'])
-                print("Customer: {0}".format(get_field(cells[ADRNR])))
+                matches_by_id = frappe.get_all("Customer", filters={'name': get_field(cells[CUSTOMER_ID])}, fields=['name'])
+                print("Customer: {0}".format(get_field(cells[CUSTOMER_ID])))
                 if matches_by_id:
                     # found customer, update
                     print("updating...")
@@ -43,23 +51,6 @@ def import_customers(filename, force_update=False):
 					print("creating...")
 					create_customer(cells)
     return
-
-def get_full_name(cells):
-    return "{0} {1}".format(get_field(cells[VNAME]), get_field(cells[NNAME]))
-
-def get_first_name(cells):
-    if get_field(cells[VNAME]) == "":
-        first_name = "-"
-    else:
-        first_name = get_field(cells[VNAME])
-    return first_name
-
-def get_address_line(cells):
-    if get_field(cells[STRAS]) == "":
-        address_line = "-"
-    else:
-        address_line = "{0} {1}".format(get_field(cells[STRAS]), get_field(cells[STRASNR]))
-    return address_line
 
 def get_country_from_dland(dland):
     if not dland or dland == "":
@@ -73,10 +64,11 @@ def get_country_from_dland(dland):
 
 def create_customer(cells):
     # create record
-    fullname = get_full_name(cells)
     cus = frappe.get_doc(
         {
             "doctype":"Customer", 
+			"name": get_fields(cells[CUSTOMER_ID]),
+			"naming_series": "K-#####"
             "customer_name": fullname,
             "customer_type": "Individual",
             "customer_group": "All Customer Groups",
@@ -91,8 +83,8 @@ def create_customer(cells):
     try:
         new_customer = cus.insert()
     except Exception as e:
-        print(_("Insert customer failed"), _("Insert failed for customer {0} {1} ({2}): {3}").format(
-            get_field(cells[VNAME]), get_field(cells[NNAME]), get_field(cells[ADRNR]), e))
+        print(_("Insert customer failed"), _("Insert failed for customer {0}: {1}").format(
+            get_field(cells[CUSTOMER_ID]), e))
     else:
         create_contact(cells, new_customer.name)
         create_address(cells, new_customer.name)
@@ -130,7 +122,7 @@ def create_contact(cells, customer):
         return new_contact
     except Exception as e:
         print(_("Insert contact failed"), _("Insert failed for contact {0} {1} ({2}): {3}").format(
-            get_field(cells[VNAME]), get_field(cells[NNAME]), get_field(cells[ADRNR]), e))
+            get_field(cells[VNAME]), get_field(cells[NNAME]), get_field(cells[CUSTOMER_ID]), e))
         return None
 
 def create_address(cells, customer):
@@ -158,7 +150,7 @@ def create_address(cells, customer):
         return new_adr
     except Exception as e:
         print(_("Insert address failed"), _("Insert failed for address {0} {1} ({2}): {3}").format(
-            get_field(cells[VNAME]), get_field(cells[NNAME]), get_field(cells[ADRNR]), e))
+            get_field(cells[VNAME]), get_field(cells[NNAME]), get_field(cells[CUSTOMER_ID]), e))
         return None
     
 def update_customer(name, cells, force=False):
@@ -176,7 +168,7 @@ def update_customer(name, cells, force=False):
                 update = True
         except Exception as e:
             print(_("Invalid modification date"), _("Modification date of {0} ({1}) is invalid: {2}").format(
-                get_field(cells[ADRNR]), get_field(cells[MUTDT]), get_field(cells[ADRNR]), e))
+                get_field(cells[CUSTOMER_ID]), get_field(cells[MUTDT]), e))
             update = True
     if update:
         #print("perform update")
@@ -192,7 +184,7 @@ def update_customer(name, cells, force=False):
             cus.save()
         except Exception as e:
             print(_("Update customer failed"), _("Update failed for customer {0} {1} ({2}): {3}").format(
-                get_field(cells[VNAME]), get_field(cells[NNAME]), get_field(cells[ADRNR]), e))
+                get_field(cells[VNAME]), get_field(cells[NNAME]), get_field(cells[CUSTOMER_ID]), e))
         else:
             con_id = frappe.get_all("Dynamic Link", 
                 filters={'link_doctype': 'Customer', 'link_name': cus.name, 'parenttype': 'Contact'},
@@ -211,7 +203,7 @@ def update_customer(name, cells, force=False):
                     con.save()
                 except Exception as e:
                     print(_("Update contact failed"), _("Update failed for contact {0} {1} ({2}): {3}").format(
-                        get_field(cells[VNAME]), get_field(cells[NNAME]), get_field(cells[ADRNR]), e))
+                        get_field(cells[VNAME]), get_field(cells[NNAME]), get_field(cells[CUSTOMER_ID]), e))
             else:
                 # no contact available, create
                 create_contact(cells, cus.name)
@@ -235,7 +227,7 @@ def update_customer(name, cells, force=False):
                     adr.save()
                 except Exception as e:
                     print(_("Update address failed"), _("Update address for contact {0} {1} ({2}): {3}").format(
-                        get_field(cells[VNAME]), get_field(cells[NNAME]), get_field(cells[ADRNR]), e))
+                        get_field(cells[VNAME]), get_field(cells[NNAME]), get_field(cells[CUSTOMER_ID]), e))
             else:
                 # address not found, create
                 create_address(cells, cus.name)
