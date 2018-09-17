@@ -40,6 +40,8 @@ CUSTOMER_IBAN = 43              # IBAN
 CUSTOMER_BIC = 44               # BIC
 CUSTOMER_TAX_ID = 45            # UST ID
 CUSTOMER_INVOICE_SEND = 47      # type of invoice sending
+WARTUNGSKUNDE = 49              # Wartungskunde
+REFERENZKUNDE = 54              # Referenzkunde
 
 def import_customers(filename, force_update=False):
     if force_update == "True" or force_update == 1:
@@ -229,6 +231,8 @@ def update_customer(name, cells):
     cus.bic = cells[CUSTOMER_BIC].value
     cus.tax_id = cells[CUSTOMER_TAX_ID].value
     cus.rechnungszustellung = cells[CUSTOMER_INVOICE_SEND].value
+    cus.referenzkunde = cells[REFERENZKUNDE].value
+    cus.wartungskunde = cells[WARTUNGSKUNDE].value
     try:
         cus.save()
     except Exception as e:
