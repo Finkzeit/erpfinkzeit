@@ -39,6 +39,7 @@ CUSTOMER_LSV_DATE = 42          # LSV date (something like 46721)
 CUSTOMER_IBAN = 43              # IBAN
 CUSTOMER_BIC = 44               # BIC
 CUSTOMER_TAX_ID = 45            # UST ID
+CUSTOMER_INVOICE_SEND = 47      # type of invoice sending
 
 def import_customers(filename, force_update=False):
     if force_update == "True" or force_update == 1:
@@ -227,6 +228,7 @@ def update_customer(name, cells):
     cus.iban = cells[CUSTOMER_IBAN].value
     cus.bic = cells[CUSTOMER_BIC].value
     cus.tax_id = cells[CUSTOMER_TAX_ID].value
+    cus.rechnungszustellung = cells[CUSTOMER_INVOICE_SEND].value
     try:
         cus.save()
     except Exception as e:
