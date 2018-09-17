@@ -218,7 +218,8 @@ def update_customer(name, cells):
     #cus.customer_type = "Company"
     #cus.customer_group = "All Customer Groups"
     #cus.territory = "All Territories"
-    cus.description = cells[CUSTOMER_DESCRIPTION].value
+    print("Description {1}".format(cells[CUSTOMER_DESCRIPTION].value)) # DEBUG
+    cus.custome_details = cells[CUSTOMER_DESCRIPTION].value
     cus.payment_terms = cells[CUSTOMER_CONDITIONS].value
     cus.kostenstelle = get_kst_from_code(cells[CUSTOMER_KST].value)
     cus.steuerregion = get_steuerregion_from_code(cells[CUSTOMER_VAT_REGION].value)
@@ -232,6 +233,7 @@ def update_customer(name, cells):
     cus.tax_id = cells[CUSTOMER_TAX_ID].value
     cus.rechnungszustellung = cells[CUSTOMER_INVOICE_SEND].value
     cus.referenzkunde = cells[REFERENZKUNDE].value
+    print("Wartungskunde: {0}".format(cells[WARTUNGSKUNDE].value))
     cus.wartungskunde = cells[WARTUNGSKUNDE].value
     try:
         cus.save()
