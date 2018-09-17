@@ -64,7 +64,7 @@ def import_customers(filename, force_update=False):
             if matches_by_id:
                 # found customer, update
                 print("updating...")
-                update_customer(matches_by_id[0]['name'], cells, force_update)
+                update_customer(matches_by_id[0]['name'], cells)
             else:
                 # no match found by ID, check name with 0 (ID not set)
                 print("creating...")
