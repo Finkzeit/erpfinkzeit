@@ -218,7 +218,7 @@ def update_customer(name, cells):
     #cus.customer_type = "Company"
     #cus.customer_group = "All Customer Groups"
     #cus.territory = "All Territories"
-    print("Description {1}".format(cells[CUSTOMER_DESCRIPTION].value)) # DEBUG
+    print("Description {0}".format(cells[CUSTOMER_DESCRIPTION].value)) # DEBUG
     cus.custome_details = cells[CUSTOMER_DESCRIPTION].value
     cus.payment_terms = cells[CUSTOMER_CONDITIONS].value
     cus.kostenstelle = get_kst_from_code(cells[CUSTOMER_KST].value)
