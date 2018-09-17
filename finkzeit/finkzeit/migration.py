@@ -265,7 +265,6 @@ def update_customer(name, cells):
                 fields=['parent'])
         if adr_id:
             adr = frappe.get_doc("Address", adr_id[0]['parent'])
-            adr.name = me = "{0} ({1})".format(cells[CUSTOMER_NAME].value, name)
             adr.address_title = "{0} ({1})".format(cells[CUSTOMER_NAME].value, name)
             adr.address_line1 = cells[ADR_LINE_1].value
             adr.address_line2 = cells[ADR_LINE_2].value
