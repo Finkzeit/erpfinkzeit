@@ -218,7 +218,8 @@ def update_customer(name, cells):
     #cus.customer_type = "Company"
     #cus.customer_group = "All Customer Groups"
     #cus.territory = "All Territories"
-    cus.customer_details = cells[CUSTOMER_DESCRIPTION].value
+    description = cells[CUSTOMER_DESCRIPTION].value or ""
+    cus.customer_details = description.replace("_x000D_", "")
     cus.payment_terms = cells[CUSTOMER_CONDITIONS].value
     cus.kostenstelle = get_kst_from_code(cells[CUSTOMER_KST].value)
     cus.steuerregion = get_steuerregion_from_code(cells[CUSTOMER_VAT_REGION].value)
