@@ -32,13 +32,16 @@ BRIEFCODE = 12                  # letter salutation (code 1301, ...)
 PHONE = 28                      # phone
 FAX = 29                        # fax
 HOMEPAGE = 37                   # homepage
-EMAIL = 38                      # email
+EMAIL = 39                      # email
 CUSTOMER_LSV = 40               # enable LSV
 CUSTOMER_LSV_CODE = 41          # LSV code
 CUSTOMER_LSV_DATE = 42          # LSV date (something like 46721)
 CUSTOMER_IBAN = 43              # IBAN
 CUSTOMER_BIC = 44               # BIC
 CUSTOMER_TAX_ID = 45            # UST ID
+CUSTOMER_INVOICE_SEND = 47      # type of invoice sending
+WARTUNGSKUNDE = 49              # Wartungskunde
+REFERENZKUNDE = 54              # Referenzkunde
 
 def import_customers(filename, force_update=False):
     if force_update == "True" or force_update == 1:
@@ -61,7 +64,7 @@ def import_customers(filename, force_update=False):
             if matches_by_id:
                 # found customer, update
                 print("updating...")
-                update_customer(matches_by_id[0]['name'], cells, force_update)
+                update_customer(matches_by_id[0]['name'], cells)
             else:
                 # no match found by ID, check name with 0 (ID not set)
                 print("creating...")
@@ -215,7 +218,8 @@ def update_customer(name, cells):
     #cus.customer_type = "Company"
     #cus.customer_group = "All Customer Groups"
     #cus.territory = "All Territories"
-    cus.description = cells[CUSTOMER_DESCRIPTION].value
+    description = cells[CUSTOMER_DESCRIPTION].value or ""
+    cus.customer_details = description.replace("_x000D_", "")
     cus.payment_terms = cells[CUSTOMER_CONDITIONS].value
     cus.kostenstelle = get_kst_from_code(cells[CUSTOMER_KST].value)
     cus.steuerregion = get_steuerregion_from_code(cells[CUSTOMER_VAT_REGION].value)
@@ -227,6 +231,9 @@ def update_customer(name, cells):
     cus.iban = cells[CUSTOMER_IBAN].value
     cus.bic = cells[CUSTOMER_BIC].value
     cus.tax_id = cells[CUSTOMER_TAX_ID].value
+    cus.rechnungszustellung = cells[CUSTOMER_INVOICE_SEND].value
+    cus.referenzkunde = cells[REFERENZKUNDE].value
+    cus.wartungskunde = cells[WARTUNGSKUNDE].value
     try:
         cus.save()
     except Exception as e:
@@ -259,8 +266,7 @@ def update_customer(name, cells):
                 fields=['parent'])
         if adr_id:
             adr = frappe.get_doc("Address", adr_id[0]['parent'])
-            adr.name = me = "{0} ({1})".format(cells[CUSTOMER_NAME].value, customer)
-            adr.address_title = "{0} ({1})".format(cells[CUSTOMER_NAME].value, customer)
+            adr.address_title = "{0} ({1})".format(cells[CUSTOMER_NAME].value, name)
             adr.address_line1 = cells[ADR_LINE_1].value
             adr.address_line2 = cells[ADR_LINE_2].value
             adr.city = cells[ADR_CITY].value
