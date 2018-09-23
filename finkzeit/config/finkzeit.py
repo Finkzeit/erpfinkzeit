@@ -29,9 +29,9 @@ def get_data():
             "items": [
                    {
                        "type": "doctype",
-                       "name": "Lizenz",
-                       "label": _("Lizenz"),
-                       "description": _("Lizenz")
+                       "name": "Licence",
+                       "label": _("Licence"),
+                       "description": _("Licence")
                    }
             ]
         }
