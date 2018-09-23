@@ -8,8 +8,30 @@ from frappe.model.document import Document
 from frappe.utils.background_jobs import enqueue
 
 class Licence(Document):
+    def generate_licence_file(self):
+        # create yaml header
+        content = make_line("<?xml version=\"1.0\" encoding=\"UTF-8\"?>")
+        return { 'content': content }
+    def before_save(self):
+        total_amount = 0
+        for item in self.invoice_items:
+            item.amount = float(item.qty) * float(item.rate * ((100.0 - float(item.discount or 0)) / 100.0))
+            total_amount += item.amount
+            frappe.msgprint("Amount: {0}, discount: {1}".format(item.amount, item.discount))
+        self.total_amount = total_amount
+        total_amount_special = 0
+        for item in self.special_invoice_items:
+            item.amount = float(item.qty) * float(item.rate * ((100.0 - float(item.discount or 0)) / 100.0))
+            total_amount_special += item.amount;
+        self.total_amount_special = total_amount_special
+        self.grand_total = total_amount + total_amount_special
+        return
     pass
 
+# adds Windows-compatible line endings (to make the xml look nice)    
+def make_line(line):
+    return line + "\r\n"
+    
 # function to create invoices based on licences
 @frappe.whitelist()
 def enqueue_invoice_cycle():
@@ -21,7 +43,6 @@ def enqueue_invoice_cycle():
         queue='long',
         timeout=15000,
         **kwargs)
-    frappe.msgprint( _("Queued for syncing. It may take a few minutes to an hour."))
     return
 
 def create_invoices():
@@ -37,18 +58,18 @@ def process_licence(licence_name):
     
     items = []
     if licence.invoice_separately:
-        for item in licence.invoice_items
-            items.append(get_item(item)
+        for item in licence.invoice_items:
+            items.append(get_item(item))
         create_invoice(licence.customer, items, licence.overall_discount)
         items = []
-        for item in licence.special_invoice_items
-            items.append(get_item(item)
+        for item in licence.special_invoice_items:
+            items.append(get_item(item))
         create_invoice(licence.customer, items, licence.overall_discount)
     else:
-        for item in licence.invoice_items
-            items.append(get_item(item)
-        for item in licence.special_invoice_items
-            items.append(get_item(item)
+        for item in licence.invoice_items:
+            items.append(get_item(item))
+        for item in licence.special_invoice_items:
+            items.append(get_item(item))
         create_invoice(licence.customer, items, licence.overall_discount)
     return
 
@@ -67,6 +88,6 @@ def create_invoice(customer, items, overall_discount):
         'customer': licence.customer,
         'items': items,
         'additional_discount_percentage': overall_discount
-    }
+    })
     new_record = mew_sales_invoice.insert()
     return new_record.name
