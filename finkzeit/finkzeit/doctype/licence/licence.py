@@ -11,14 +11,14 @@ class Licence(Document):
     def generate_licence_file(self):
         # create yaml header
         content = make_line("!licenseConf")
-		!licenseConf
+        !licenseConf
         content = make_line("id: {0} # Lizenz ID (kunde_ort) für Start URL http://zsw.finkzeit.at/leerlic".format(self.customer))
         content = make_line("description: {0}".format(self.customer_name))
         content = make_line("valid_until: {day}.{month}.{year}".format(day=self.valid_until.day, month=self.valid_until.month, year=self.valid_until.year) ) 
-		now = datetime.now()
-		content = make_line("creationDate: {day}.{month}.{year}".format(day=now.day, month=now.month, year=now.year) ) 
+        now = datetime.now()
+        content = make_line("creationDate: {day}.{month}.{year}".format(day=now.day, month=now.month, year=now.year) ) 
         content = make_line("runtime: at.finkzeit.zsw.server.runtime.StandardRuntime")
-		if self.retailer:
+        if self.retailer:
             content = make_line("retailer: {0}".format(self.retailer_image))
             content = make_line("retailerURL: {0}".format(self.retailer_url))
         content = make_line("")
@@ -54,40 +54,40 @@ class Licence(Document):
         content = make_line("bdeFzeMergeMode: {0}".format(self.bde_merge_mode))
         content = make_line("")
         content = make_line("#Partieerfassung")
-		if self.party_mode == 1:
-			content = make_line("partyMode: true")
-		else:
-			content = make_line("partyMode: false")
+        if self.party_mode == 1:
+            content = make_line("partyMode: true")
+        else:
+            content = make_line("partyMode: false")
         content = make_line("")
         content = make_line("#Position zur Buchung speichern (Mobil). Voreinstellung ist false.")
-		if self.store_booking_geolocation == 1:
-			content = make_line("storeBookingGeolocation: true")
-		else:
-			content = make_line("storeBookingGeolocation: true")
+        if self.store_booking_geolocation == 1:
+            content = make_line("storeBookingGeolocation: true")
+        else:
+            content = make_line("storeBookingGeolocation: true")
         content = make_line("")
         content = make_line("#Buchungspositionen auf Karte darstellen. Voreinstellung ist false.")
-		if self.show_bookings_on_map == 1:
-			content = make_line("#showBookingsOnMap: true")
-		else:
-			content = make_line("#showBookingsOnMap: true")
-		for right in rights:
-			content = make_line("")
-			content = make_line("---")
-			content = make_line("#Only one area allowed per right here!!")
-			content = make_line("!right")
-			content = make_line("id: {0}".format(right.id))
-			content = make_line("name: {0}".format(right.right_name))
-			if right.mandatory == 1:
-				content = make_line("mandatory: true")
-			else:
-				content = make_line("mandatory: false")
-			content = make_line("areas:")
-			content = make_line(" - area: {0}".format(right.area))
-			if right.grant == 1:
-				content = make_line("   grant: true")
-			else:
-				content = make_line("   grant: true")
-			content = make_line("   actions: {0}".format(right.actions))
+        if self.show_bookings_on_map == 1:
+            content = make_line("#showBookingsOnMap: true")
+        else:
+            content = make_line("#showBookingsOnMap: true")
+        for right in rights:
+            content = make_line("")
+            content = make_line("---")
+            content = make_line("#Only one area allowed per right here!!")
+            content = make_line("!right")
+            content = make_line("id: {0}".format(right.id))
+            content = make_line("name: {0}".format(right.right_name))
+            if right.mandatory == 1:
+                content = make_line("mandatory: true")
+            else:
+                content = make_line("mandatory: false")
+            content = make_line("areas:")
+            content = make_line(" - area: {0}".format(right.area))
+            if right.grant == 1:
+                content = make_line("   grant: true")
+            else:
+                content = make_line("   grant: true")
+            content = make_line("   actions: {0}".format(right.actions))
         return { 'content': content }
     def before_save(self):
         total_amount = 0
