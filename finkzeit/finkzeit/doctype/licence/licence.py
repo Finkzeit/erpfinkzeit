@@ -136,7 +136,7 @@ def create_invoices():
     enabled_licences = frappe.get_all('Licence', filters={'enabled': 1}, fields=['name'])
     # loop through enabled licences
     for licence in enabled_licences:
-        create_invoice(licence['name'])
+        process_licence(licence['name'])
     return
 
 def process_licence(licence_name):
@@ -163,17 +163,17 @@ def process_licence(licence_name):
 def get_item(licence_item):
     return {
         'item_code': licence_item.item_code,
-        'rate': licence_item.rate,
+        'rate': (float(licence_item.rate) * ((100.0 - float(licence_item.discount or 0)) / 100.0)),
         'qty': licence_item.qty,
-        'discount_precentage': licence_item.discount
+        'discount_percentage': licence_item.discount
     }
 
 def create_invoice(customer, items, overall_discount):
     new_sales_invoice = frappe.get_doc({
         'doctype': 'Sales Invoice',
-        'customer': licence.customer,
+        'customer': customer,
         'items': items,
         'additional_discount_percentage': overall_discount
     })
-    new_record = mew_sales_invoice.insert()
+    new_record = new_sales_invoice.insert()
     return new_record.name
