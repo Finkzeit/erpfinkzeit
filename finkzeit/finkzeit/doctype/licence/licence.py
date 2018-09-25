@@ -134,30 +134,42 @@ def enqueue_invoice_cycle():
 def create_invoices():
     # create invoices
     enabled_licences = frappe.get_all('Licence', filters={'enabled': 1}, fields=['name'])
+    sinv_items = []
     # loop through enabled licences
     for licence in enabled_licences:
-        process_licence(licence['name'])
+        new_sinvs = process_licence(licence['name'])
+        for sinv in new_sinvs:
+            sinv_items.append({'sales_invoice': sinv})
+    # create sinv_items log entry
+    now = datetime.now()
+    log = frappe.get_doc({
+        'doctype': 'Invoice Cycle Log',
+        'date': now.strftime("%Y-%m-%d"),
+        'sales_invoices': sinv_items
+    })
+    log.insert(ignore_permissions=True)
     return
 
 def process_licence(licence_name):
     licence = frappe.get_doc('Licence', licence_name)
     
+    sinv = []
     items = []
     if licence.invoice_separately:
         for item in licence.invoice_items:
             items.append(get_item(item))
-        create_invoice(licence.customer, items, licence.overall_discount)
+        sinv.append(create_invoice(licence.customer, items, licence.overall_discount))
         items = []
         for item in licence.special_invoice_items:
             items.append(get_item(item))
-        create_invoice(licence.customer, items, licence.overall_discount)
+        sinv.appned(create_invoice(licence.customer, items, licence.overall_discount))
     else:
         for item in licence.invoice_items:
             items.append(get_item(item))
         for item in licence.special_invoice_items:
             items.append(get_item(item))
-        create_invoice(licence.customer, items, licence.overall_discount)
-    return
+        sinv.append(create_invoice(licence.customer, items, licence.overall_discount))
+    return sinv
 
 # parse to sales invoice item structure    
 def get_item(licence_item):
