@@ -17,7 +17,7 @@ app_license = "GPL"
 # include js, css files in header of desk.html
 # app_include_css = "/assets/finkzeit/css/finkzeit.css"
 # app_include_js = "/assets/finkzeit/js/finkzeit.js"
-app_include_js = "/assets/erpnextswiss/js/fink_common.js"
+app_include_js = "/assets/finkzeit/js/fink_common.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/finkzeit/css/finkzeit.css"
