@@ -1,0 +1,5 @@
+{
+    "js/fink_common.js": [
+        "public/js/fink_common.js"
+    ]
+}
