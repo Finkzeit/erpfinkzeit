@@ -171,25 +171,25 @@ def process_licence(licence_name):
         multiplier = 1
     elif licence.invoices_per_year == 6:
         if current_month in (1, 3, 5, 7, 9, 11):
-            peridod = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 1))
+            period = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 1))
             multiplier = 2
         else:
             return None
     elif licence.invoices_per_year == 4:
         if current_month in (1, 4, 7, 10):
-            peridod = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 2))
+            period = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 2))
             multiplier = 3
         else:
             return None
     elif licence.invoices_per_year == 2:
         if current_month in (1, 7):
-            peridod = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 5))
+            period = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 5))
             multiplier = 6
         else:
             return None
     elif licence.invoices_per_year == 1:
         if current_month == 1:
-            peridod = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 11))
+            period = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 11))
             multiplier = 12
         else:
             return None
@@ -234,7 +234,7 @@ def month_in_words(month):
         9: _("September"),
         10: _("October"),
         11: _("November"),
-        1: _("December")
+        12: _("December")
     }
     return switcher.get(month, _("Invalid month"))
     
