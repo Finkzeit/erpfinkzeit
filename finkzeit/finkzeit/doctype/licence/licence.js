@@ -25,6 +25,12 @@ frappe.ui.form.on('Licence', {
         frm.set_value('total_amount_special', total_amount_special);
         frm.set_value('grand_total', total_amount + total_amount_special);
         cur_frm.refresh_field('total_amount', 'total_amount_special', 'grand_total');*/
+        // check valid invoices per year
+        if (!([1,2,4,6,12].includes(frm.doc.invoices_per_year))) {
+            // not valid invoice period
+            frappe.msgprint(__("Invalid invoice period. Should be 1, 2, 4, 6 or 12") );
+            frappe.validated = false;
+        }
     }
 });
 
