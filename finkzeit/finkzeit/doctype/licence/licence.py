@@ -158,17 +158,17 @@ def process_licence(licence_name):
     if licence.invoice_separately:
         for item in licence.invoice_items:
             items.append(get_item(item))
-        sinv.append(create_invoice(licence.customer, items, licence.overall_discount))
+        sinv.append(create_invoice(licence.customer, items, licence.overall_discount, 1))
         items = []
         for item in licence.special_invoice_items:
             items.append(get_item(item))
-        sinv.appned(create_invoice(licence.customer, items, licence.overall_discount))
+        sinv.append(create_invoice(licence.customer, items, licence.overall_discount, 2))
     else:
         for item in licence.invoice_items:
             items.append(get_item(item))
         for item in licence.special_invoice_items:
             items.append(get_item(item))
-        sinv.append(create_invoice(licence.customer, items, licence.overall_discount))
+        sinv.append(create_invoice(licence.customer, items, licence.overall_discount, 1))
     return sinv
 
 # parse to sales invoice item structure    
@@ -180,7 +180,8 @@ def get_item(licence_item):
         'discount_percentage': licence_item.discount
     }
 
-def create_invoice(customer, items, overall_discount):
+# from_invoice: 1=normal, 2=special
+def create_invoice(customer, items, overall_discount, from_invoice=1):
     new_sales_invoice = frappe.get_doc({
         'doctype': 'Sales Invoice',
         'customer': customer,
@@ -188,4 +189,18 @@ def create_invoice(customer, items, overall_discount):
         'additional_discount_percentage': overall_discount
     })
     new_record = new_sales_invoice.insert()
+    
+    # check auto-submit
+	sql_query = ("""SELECT `name`, `grand_total` 
+			FROM `tabSales Invoice` 
+			WHERE `customer` = '{customer}' 
+			  AND `docstatus` = 1 
+			  AND `from_invoice` = {form_invoice}
+			ORDER BY `posting_date` DESC
+			LIMIT 1;""".format(customer=customer, from_invoice=from_invoice))
+	last_invoice = frappe.db.sql(sql_query, as_dict=True)
+	if last_invoice:
+		if last_invoice[0]['grand_total'] == new_record.grand_total:
+			# last invoice has the same total, submit
+			new_record.submit()
     return new_record.name
