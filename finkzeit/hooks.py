@@ -121,3 +121,6 @@ app_include_js = "/assets/finkzeit/js/fink_common.js"
 # 	"frappe.desk.doctype.event.event.get_events": "finkzeit.event.get_events"
 # }
 
+# Fixtures (to import DocType customisations)
+# --------
+fixtures = ["Custom Field"]
