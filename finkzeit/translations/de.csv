@@ -16,3 +16,4 @@ DocType: Licence,October,Oktober
 DocType: Licence,November,November
 DocType: Licence,December,Dezember
 DocType: Licence,"Invalid invoice period. Should be 1, 2, 4, 6 or 12","Ungültige Rechnungsperiode. Sollte 1,2,4,6 oder 12 sein."
+Report: Quotation Overview,Quotation Overview,Angebotsübersicht
