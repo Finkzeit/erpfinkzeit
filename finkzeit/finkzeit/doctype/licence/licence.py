@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2018, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
+#
+# Debug async "create_invoices" using "bench execute finkzeit.finkzeit.doctype.licence.licence.create_invoices"
 
 from __future__ import unicode_literals
 import frappe
@@ -133,7 +135,11 @@ def enqueue_invoice_cycle():
 
 def create_invoices():
     # create invoices
-    enabled_licences = frappe.get_all('Licence', filters={'enabled': 1}, fields=['name'])
+    sql_query = ("""SELECT `name` 
+        FROM `tabLicence` 
+        WHERE `enabled` = 1 
+          AND `start_date` <= CURDATE();""")
+    enabled_licences = frappe.db.sql(sql_query, as_dict=True)
     sinv_items = []
     # loop through enabled licences
     for licence in enabled_licences:
@@ -145,7 +151,8 @@ def create_invoices():
     log = frappe.get_doc({
         'doctype': 'Invoice Cycle Log',
         'date': now.strftime("%Y-%m-%d"),
-        'sales_invoices': sinv_items
+        'sales_invoices': sinv_items,
+        'title': now.strftime("%Y-%m-%d")
     })
     log.insert(ignore_permissions=True)
     return
@@ -156,25 +163,25 @@ def process_licence(licence_name):
     sinv = []
     items = []
     customer = licence.customer
-    remarks = licence.remarks
+    remarks = licence.remarks or "<p></p>"
     if licence.retailer:
-		# this is a retailer licence: invoice to retailer
-		customer = licence.retailer
-		remarks = "<p><b>Lizenz {0}</b><br></p>".format(licence.customer) + remarks
+        # this is a retailer licence: invoice to retailer
+        customer = licence.retailer
+        remarks = "<p><b>Lizenz {0}</b><br></p>".format(licence.customer) + remarks
     if licence.invoice_separately:
         for item in licence.invoice_items:
             items.append(get_item(item))
-        sinv.append(create_invoice(customer, items, licence.overall_discount, 1))
+        sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, 1))
         items = []
         for item in licence.special_invoice_items:
             items.append(get_item(item))
-        sinv.append(create_invoice(customer, items, licence.overall_discount, 2))
+        sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, 2))
     else:
         for item in licence.invoice_items:
             items.append(get_item(item))
         for item in licence.special_invoice_items:
             items.append(get_item(item))
-        sinv.append(create_invoice(customer, items, licence.overall_discount, 1))
+        sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, 1))
     return sinv
 
 # parse to sales invoice item structure    
@@ -187,7 +194,7 @@ def get_item(licence_item):
     }
 
 # from_invoice: 1=normal, 2=special
-def create_invoice(customer, items, overall_discount, remarks, from_invoice=1):
+def create_invoice(customer, items, overall_discount, remarks, from_licence=1):
     new_sales_invoice = frappe.get_doc({
         'doctype': 'Sales Invoice',
         'customer': customer,
@@ -202,9 +209,9 @@ def create_invoice(customer, items, overall_discount, remarks, from_invoice=1):
             FROM `tabSales Invoice` 
             WHERE `customer` = '{customer}' 
               AND `docstatus` = 1 
-              AND `from_invoice` = {form_invoice}
+              AND `from_licence` = {from_licence}
             ORDER BY `posting_date` DESC
-            LIMIT 1;""".format(customer=customer, from_invoice=from_invoice))
+            LIMIT 1;""".format(customer=customer, from_licence=from_licence))
     last_invoice = frappe.db.sql(sql_query, as_dict=True)
     if last_invoice:
         if last_invoice[0]['grand_total'] == new_record.grand_total:
