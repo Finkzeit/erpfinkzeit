@@ -48,8 +48,8 @@ def get_data(from_date, to_date, owner):
         FROM `tabQuotation`
         LEFT JOIN `tabSales Order Item` ON `tabQuotation`.`name` = `tabSales Order Item`.`prevdoc_docname`
         WHERE `tabQuotation`.`docstatus` = 1
-          AND `tabQuotation`.`transaction_date` >= '{from_date}'
-          AND `tabQuotation`.`transaction_date` <= '{to_date}'
+          AND DATE(`tabQuotation`.`transaction_date`) >= '{from_date}'
+          AND DATE(`tabQuotation`.`transaction_date`) <= '{to_date}'
           AND `tabQuotation`.`owner` LIKE '{owner}'
         ;""".format(from_date=from_date, to_date=to_date, owner=owner)
 
