@@ -23,18 +23,18 @@ function checkiban(iban) {
 }
  
 // add in_array method to arrays
-Array.prototype.in_array = function(value) {
+function find_in_array(ar, value) {
 	var found = false;
-	for (var i=0; i<this.length; i++) {
-		if (this[i] == value) {
+	for (var i = 0; i < ar.length; i++) {
+		if (ar[i] == value) {
 			found = i;
 			break; }}
 	return found; 
 }
 
 // add ISO13616Prepare method to strings
-String.prototype.ISO13616Prepare = function() {
-	var isostr = this.toUpperCase();
+function ISO13616Prepare(s) {
+	var isostr = s.toUpperCase();
 	isostr = isostr.substr(4) + isostr.substr(0,4);
 	for (var i = 0; i <= 25; i++) {
 		while (isostr.search(String.fromCharCode(i+65)) != -1) {
@@ -45,11 +45,11 @@ String.prototype.ISO13616Prepare = function() {
 }
 
 // add ISO7064Mod97_10 method to strings
-String.prototype.ISO7064Mod97_10 = function() {
-	var parts = Math.ceil(this.length/7);
+function ISO7064Mod97_10(s) {
+	var parts = Math.ceil(s.length/7);
 	var remainer = "";
 	for (var i = 1; i <= parts; i++) {
-		remainer = String(parseFloat(remainer+this.substr((i-1)*7, 7))%97); 
+		remainer = String(parseFloat(remainer + s.substr((i-1)*7, 7))%97); 
 	}
 	return remainer; 
 }
@@ -279,7 +279,7 @@ function checkibancore(iban) {
 				if (illegal.test(iban) == false) { // fits sub structure to country
 					return "0"; }
 				else { // yes, continue
-					return iban.ISO13616Prepare().ISO7064Mod97_10(); 
+					return ISO7064Mod97_10(ISO13616Prepare(iban)); 
 				}
 			}
 		}
