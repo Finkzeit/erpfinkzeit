@@ -1,12 +1,15 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2018, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
+#
+# Debug async "create_invoices" using "bench execute finkzeit.finkzeit.doctype.licence.licence.create_invoices"
 
 from __future__ import unicode_literals
 import frappe
 from frappe.model.document import Document
 from frappe.utils.background_jobs import enqueue
 from datetime import datetime
+from frappe import _
 
 class Licence(Document):
     def generate_licence_file(self):
@@ -133,47 +136,153 @@ def enqueue_invoice_cycle():
 
 def create_invoices():
     # create invoices
-    enabled_licences = frappe.get_all('Licence', filters={'enabled': 1}, fields=['name'])
+    sql_query = ("""SELECT `name` 
+        FROM `tabLicence` 
+        WHERE `enabled` = 1 
+          AND `start_date` <= CURDATE();""")
+    enabled_licences = frappe.db.sql(sql_query, as_dict=True)
+    sinv_items = []
     # loop through enabled licences
     for licence in enabled_licences:
-        process_licence(licence['name'])
+        new_sinvs = process_licence(licence['name'])
+        if new_sinvs:
+            for sinv in new_sinvs:
+                sinv_items.append({'sales_invoice': sinv})
+    # create sinv_items log entry
+    now = datetime.now()
+    log = frappe.get_doc({
+        'doctype': 'Invoice Cycle Log',
+        'date': now.strftime("%Y-%m-%d"),
+        'sales_invoices': sinv_items,
+        'title': now.strftime("%Y-%m-%d")
+    })
+    log.insert(ignore_permissions=True)
     return
 
 def process_licence(licence_name):
     licence = frappe.get_doc('Licence', licence_name)
     
+    # check if licence is due according to invoices_per_year
+    current_month = datetime.now().month
+    period = ""
+    multiplier = 1
+    if licence.invoices_per_year == 12:
+        period = month_in_words(current_month)
+        multiplier = 1
+    elif licence.invoices_per_year == 6:
+        if current_month in (1, 3, 5, 7, 9, 11):
+            period = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 1))
+            multiplier = 2
+        else:
+            return None
+    elif licence.invoices_per_year == 4:
+        if current_month in (1, 4, 7, 10):
+            period = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 2))
+            multiplier = 3
+        else:
+            return None
+    elif licence.invoices_per_year == 2:
+        if current_month in (1, 7):
+            period = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 5))
+            multiplier = 6
+        else:
+            return None
+    elif licence.invoices_per_year == 1:
+        if current_month == 1:
+            period = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 11))
+            multiplier = 12
+        else:
+            return None
+            
+    # prepare arrays
+    sinv = []
     items = []
+    customer = licence.customer
+    remarks = licence.remarks or "<p></p>"
+    # add invoice period to remarks
+    remarks = _("<p>Invoice period: {period} {year}</p>").format(period=period, year=datetime.now().year) + remarks
+    if licence.retailer:
+        # this is a retailer licence: invoice to retailer
+        customer = licence.retailer
+        remarks = _("<p><b>Licence {0}</b><br></p>").format(licence.customer) + remarks
     if licence.invoice_separately:
         for item in licence.invoice_items:
-            items.append(get_item(item))
-        create_invoice(licence.customer, items, licence.overall_discount)
+            items.append(get_item(item, multiplier))
+        sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
         items = []
         for item in licence.special_invoice_items:
-            items.append(get_item(item))
-        create_invoice(licence.customer, items, licence.overall_discount)
+            items.append(get_item(item, multiplier))
+        sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 2))
     else:
         for item in licence.invoice_items:
-            items.append(get_item(item))
+            items.append(get_item(item, multiplier))
         for item in licence.special_invoice_items:
-            items.append(get_item(item))
-        create_invoice(licence.customer, items, licence.overall_discount)
-    return
+            items.append(get_item(item, multiplier))
+        sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
+    return sinv
 
+def month_in_words(month):
+    switcher = {
+        1: _("January"),
+        2: _("February"),
+        3: _("March"),
+        4: _("April"),
+        5: _("May"),
+        6: _("June"),
+        7: _("July"),
+        8: _("August"),
+        9: _("September"),
+        10: _("October"),
+        11: _("November"),
+        12: _("December")
+    }
+    return switcher.get(month, _("Invalid month"))
+    
 # parse to sales invoice item structure    
-def get_item(licence_item):
+def get_item(licence_item, multiplier):
     return {
         'item_code': licence_item.item_code,
         'rate': (float(licence_item.rate) * ((100.0 - float(licence_item.discount or 0)) / 100.0)),
-        'qty': licence_item.qty,
+        'qty': licence_item.qty * multiplier,
         'discount_percentage': licence_item.discount
     }
 
-def create_invoice(customer, items, overall_discount):
+# from_invoice: 1=normal, 2=special
+def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges, from_licence=1):
+    # get values from customer record
+    customer_record = frappe.get_doc("Customer", customer)
+    delivery_option = "Post"
+    try:
+        delivery_option = customer_record.rechnungszustellung
+    except:
+        pass
+    # prepare taxes and charges
+    taxes_and_charges_template = frappe.get_doc("Sales Taxes and Charges Template", taxes_and_charges)
+    
     new_sales_invoice = frappe.get_doc({
         'doctype': 'Sales Invoice',
         'customer': customer,
         'items': items,
-        'additional_discount_percentage': overall_discount
+        'additional_discount_percentage': overall_discount,
+        'terms': remarks,
+        'from_licence': from_licence,
+        'taxes_and_charges': taxes_and_charges,
+        'taxes': taxes_and_charges_template.taxes,
+        'rechnungszustellung': delivery_option
     })
     new_record = new_sales_invoice.insert()
+    
+    # check auto-submit
+    sql_query = ("""SELECT `name`, `grand_total` 
+            FROM `tabSales Invoice` 
+            WHERE `customer` = '{customer}' 
+              AND `docstatus` = 1 
+              AND `from_licence` = {from_licence}
+            ORDER BY `posting_date` DESC
+            LIMIT 1;""".format(customer=customer, from_licence=from_licence))
+    last_invoice = frappe.db.sql(sql_query, as_dict=True)
+    if last_invoice:
+        if last_invoice[0]['grand_total'] == new_record.grand_total:
+            # last invoice has the same total, submit
+            new_record.submit()
     return new_record.name
