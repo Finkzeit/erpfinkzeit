@@ -257,7 +257,7 @@ function checkibancore(iban) {
 				return "0"; 
 			}
 			else { // no, continue
-				lofi = ilbc.slice(0,ctcnt).in_array(iban.substr(0,2).toUpperCase()); // test if country respected
+				lofi = find_in_array(ilbc.slice(0,ctcnt), iban.substr(0,2).toUpperCase()); // test if country respected
 				if (is_ident(false,lofi)) { 
 					ctck=-1; lofi=6; 
 				}  // country not respected
