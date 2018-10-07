@@ -12,7 +12,7 @@
 
 // perform the check
 function checkiban(iban) {
-	iban = iban.relace(" ", "");
+	iban = iban.replace(" ", "");
     if (checkibancore(iban) == "1") { 
         frappe.msgprint("All good!"); 
 		return true;
