@@ -291,7 +291,7 @@ def update_customer(name, cells):
 
 # this function loops through all addresses and computes the customer matchcode
 def get_matchcode():
-    customers = frappe.get_all('Customer', filters=None, fields=['name')
+    customers = frappe.get_all('Customer', filters=None, fields=['name'])
     for customer in customers:
         adr_id = frappe.get_all("Dynamic Link", 
                 filters={'link_doctype': 'Customer', 'link_name': customer['name'], 'parenttype': 'Address'},
