@@ -288,3 +288,18 @@ def update_customer(name, cells):
     # write changes to db
     frappe.db.commit()
     return
+
+# this function loops through all addresses and computes the customer matchcode
+def get_matchcode():
+    customers = frappe.get_all('Customer', filters=None, fields=['name')
+    for customer in customers:
+        adr_id = frappe.get_all("Dynamic Link", 
+                filters={'link_doctype': 'Customer', 'link_name': customer['name'], 'parenttype': 'Address'},
+                fields=['parent'])
+        if adr_id:
+            adr = frappe.get_doc("Address", adr_id[0]['parent'])
+            cus = frappe.get_doc("Customer", customer['name'])
+            print("Matching {0}".format(customer.name))
+            cus.rechnungsadresse = "{plz} {city}, {adr}".format(plz=adr.pincode, city=adr.city, adr=adr.address_line1)
+            cus.save()
+    return
