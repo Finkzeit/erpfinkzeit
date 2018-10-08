@@ -17,6 +17,7 @@ app_license = "GPL"
 # include js, css files in header of desk.html
 # app_include_css = "/assets/finkzeit/css/finkzeit.css"
 # app_include_js = "/assets/finkzeit/js/finkzeit.js"
+app_include_js = "/assets/js/fink_common.js"
 
 # include js, css files in header of web template
 # web_include_css = "/assets/finkzeit/css/finkzeit.css"
@@ -120,3 +121,6 @@ app_license = "GPL"
 # 	"frappe.desk.doctype.event.event.get_events": "finkzeit.event.get_events"
 # }
 
+# Fixtures (to import DocType customisations)
+# --------
+fixtures = ["Custom Field"]

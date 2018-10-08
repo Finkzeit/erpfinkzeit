@@ -1,0 +1,289 @@
+# -*- coding: utf-8 -*-
+# Copyright (c) 2018, Fink Zeitsysteme/libracore and contributors
+# For license information, please see license.txt
+#
+# Debug async "create_invoices" using "bench execute finkzeit.finkzeit.doctype.licence.licence.create_invoices"
+
+from __future__ import unicode_literals
+import frappe
+from frappe.model.document import Document
+from frappe.utils.background_jobs import enqueue
+from datetime import datetime
+from frappe import _
+
+class Licence(Document):
+    def generate_licence_file(self):
+        # create yaml header
+        content = make_line("!licenseConf")
+        content += make_line("id: {0} # Lizenz ID (kunde_ort) für Start URL http://zsw.finkzeit.at/leerlic".format(self.customer))
+        content += make_line("description: {0}".format(self.customer_name))
+        valid = datetime.strptime(self.valid_until, "%Y-%m-%d")
+        content += make_line("valid_until: {day}.{month}.{year}".format(day=valid.day, month=valid.month, year=valid.year) ) 
+        now = datetime.now()
+        content += make_line("creationDate: {day}.{month}.{year}".format(day=now.day, month=now.month, year=now.year) ) 
+        content += make_line("runtime: at.finkzeit.zsw.server.runtime.StandardRuntime")
+        if self.retailer:
+            content += make_line("retailer: {0}".format(self.retailer_image))
+            content += make_line("retailerURL: {0}".format(self.retailer_url))
+        content += make_line("")
+        content += make_line("# Benutzerlimit (gekaufte User)")
+        content += make_line("concurrent_users: {0}".format(self.concurrent_users))
+        content += make_line("concurrent_ws_sessions: {0}".format(self.concurrent_ws_sessions)) 
+        content += make_line("")
+        content += make_line("# User die z.B. durch Workflow o.Ä. dazukommen, werden intern auf die gekauften aufaddiert")
+        content += make_line("# dieser Wert errechnet sich immer aus bestimmten MA-Zahlen")
+        content += make_line("# z.B. erhält der Kunde je Workflow-Paket (5 MA) 1/2 inkludierten User dazu")
+        content += make_line("# bei 3 Workflow-Paketen (15MA) sind es 2 inkludierte User")
+        content += make_line("# bei 2 Workflow-Paketen (10MA) ist es 1 inkludierter User ")
+        content += make_line("included_concurrent_users: {0}".format(self.included_concurrent_users)) 
+        content += make_line("")
+        content += make_line("# Anwenderkorrekturen")
+        content += make_line("concurrent_light_users: {0}".format(self.concurrent_light_users)) 
+        content += make_line("")
+        content += make_line("max_bde_employees: {0}".format(self.max_bde_employees))
+        content += make_line("max_pze_employees: {0}".format(self.max_pze_employees)) 
+        content += make_line("max_fze_employees: {0}".format(self.max_fze_employees))
+        content += make_line("")
+        content += make_line("# Limit für Workflow-user gilt als Limit für")
+        content += make_line("# Anwenderkorrekturen, wenn die Lizenz kein Workflow hat")
+        content += make_line("max_workflow_employees: {0}".format(self.max_workflow_employees))
+        content += make_line("")
+        content += make_line("max_zut_employees: {0}".format(self.max_zut_employees))   
+        content += make_line("max_webterm_employees: {0}".format(self.max_webterm_employees)) 
+        content += make_line("max_tasks_employees: {0}".format(self.max_tasks_employees))
+        content += make_line("")
+        content += make_line("#0: Deaktiviert")
+        content += make_line("#1: Fahrten können in der BDE eingeblendet werden")
+        content += make_line("#2: Fahrtenzuordnung für BDE")
+        content += make_line("#3: BDE-Abgleich")
+        content += make_line("bdeFzeMergeMode: {0}".format(self.bde_merge_mode[0]))
+        content += make_line("")
+        content += make_line("#Partieerfassung")
+        if self.party_mode == 1:
+            content += make_line("partyMode: true")
+        else:
+            content += make_line("partyMode: false")
+        content += make_line("")
+        content += make_line("#Position zur Buchung speichern (Mobil). Voreinstellung ist false.")
+        if self.store_booking_geolocation == 1:
+            content += make_line("storeBookingGeolocation: true")
+        else:
+            content += make_line("storeBookingGeolocation: false")
+        content += make_line("")
+        content += make_line("#Buchungspositionen auf Karte darstellen. Voreinstellung ist false.")
+        if self.show_bookings_on_map == 1:
+            content += make_line("showBookingsOnMap: true")
+        else:
+            content += make_line("showBookingsOnMap: false")
+        content += make_line("")
+        content += make_line("max_sms: {0}".format(self.max_sms))
+        content += make_line("max_sms_international: {0}".format(self.max_sms_international))
+        content += make_line("max_phone_calls: {0}".format(self.max_phone_calls))
+        content += make_line("max_phone_calls_international: {0}".format(self.max_phone_calls_international))
+        for right in self.rights:
+            content += make_line("")
+            content += make_line("---")
+            content += make_line("#Only one area allowed per right here!!")
+            content += make_line("!right")
+            content += make_line("id: {0}".format(right.id))
+            content += make_line("name: {0}".format(right.right_name))
+            if right.mandatory == 1:
+                content += make_line("mandatory: true")
+            else:
+                content += make_line("mandatory: false")
+            content += make_line("areas:")
+            content += make_line(" - area: {0}".format(right.area))
+            if right.grant == 1:
+                content += make_line("   grant: true")
+            else:
+                content += make_line("   grant: true")
+            content += make_line("   actions: {0}".format(right.actions))
+        return { 'content': content }
+        
+    def before_save(self):
+        total_amount = 0.0
+        for item in self.invoice_items:
+            item.amount = float(item.qty) * float(item.rate * ((100.0 - float(item.discount or 0)) / 100.0))
+            total_amount += item.amount
+        self.total_amount = total_amount
+        self.total_amount_with_discount = total_amount * ((100.0 - float(self.overall_discount or 0)) / 100.0)
+        total_amount_special = 0.0
+        for item in self.special_invoice_items:
+            item.amount = float(item.qty) * float(item.rate * ((100.0 - float(item.discount or 0)) / 100.0))
+            total_amount_special += item.amount;
+        self.total_amount_special = total_amount_special
+        self.total_amount_special_with_discount = total_amount_special * ((100.0 - float(self.overall_discount or 0)) / 100.0)
+        self.grand_total = total_amount + total_amount_special
+        self.grand_total_with_discount = self.total_amount_with_discount + self.total_amount_special_with_discount
+        return
+    pass
+
+# adds Windows-compatible line endings (to make the xml look nice)    
+def make_line(line):
+    return line + "\r\n"
+    
+# function to create invoices based on licences
+@frappe.whitelist()
+def enqueue_invoice_cycle():
+    # enqueue invoice creation (potential high workload)
+    kwargs={
+        }
+        
+    enqueue("finkzeit.finkzeit.doctype.licence.licence.create_invoices",
+        queue='long',
+        timeout=15000,
+        **kwargs)
+    return
+
+def create_invoices():
+    # create invoices
+    sql_query = ("""SELECT `name` 
+        FROM `tabLicence` 
+        WHERE `enabled` = 1 
+          AND `start_date` <= CURDATE();""")
+    enabled_licences = frappe.db.sql(sql_query, as_dict=True)
+    sinv_items = []
+    # loop through enabled licences
+    for licence in enabled_licences:
+        new_sinvs = process_licence(licence['name'])
+        if new_sinvs:
+            for sinv in new_sinvs:
+                sinv_items.append({'sales_invoice': sinv})
+    # create sinv_items log entry
+    now = datetime.now()
+    log = frappe.get_doc({
+        'doctype': 'Invoice Cycle Log',
+        'date': now.strftime("%Y-%m-%d"),
+        'sales_invoices': sinv_items,
+        'title': now.strftime("%Y-%m-%d")
+    })
+    log.insert(ignore_permissions=True)
+    return
+
+def process_licence(licence_name):
+    licence = frappe.get_doc('Licence', licence_name)
+    
+    # check if licence is due according to invoices_per_year
+    current_month = datetime.now().month
+    period = ""
+    multiplier = 1
+    if licence.invoices_per_year == 12:
+        period = month_in_words(current_month)
+        multiplier = 1
+    elif licence.invoices_per_year == 6:
+        if current_month in (1, 3, 5, 7, 9, 11):
+            period = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 1))
+            multiplier = 2
+        else:
+            return None
+    elif licence.invoices_per_year == 4:
+        if current_month in (1, 4, 7, 10):
+            period = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 2))
+            multiplier = 3
+        else:
+            return None
+    elif licence.invoices_per_year == 2:
+        if current_month in (1, 7):
+            period = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 5))
+            multiplier = 6
+        else:
+            return None
+    elif licence.invoices_per_year == 1:
+        if current_month == 1:
+            period = "{0} - {1}".format(month_in_words(current_month), month_in_words(current_month + 11))
+            multiplier = 12
+        else:
+            return None
+            
+    # prepare arrays
+    sinv = []
+    items = []
+    customer = licence.customer
+    remarks = licence.remarks or "<p></p>"
+    # add invoice period to remarks
+    remarks = _("<p>Invoice period: {period} {year}</p>").format(period=period, year=datetime.now().year) + remarks
+    if licence.retailer:
+        # this is a retailer licence: invoice to retailer
+        customer = licence.retailer
+        remarks = _("<p><b>Licence {0}</b><br></p>").format(licence.customer) + remarks
+    if licence.invoice_separately:
+        for item in licence.invoice_items:
+            items.append(get_item(item, multiplier))
+        sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
+        items = []
+        for item in licence.special_invoice_items:
+            items.append(get_item(item, multiplier))
+        sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 2))
+    else:
+        for item in licence.invoice_items:
+            items.append(get_item(item, multiplier))
+        for item in licence.special_invoice_items:
+            items.append(get_item(item, multiplier))
+        sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
+    return sinv
+
+def month_in_words(month):
+    switcher = {
+        1: _("January"),
+        2: _("February"),
+        3: _("March"),
+        4: _("April"),
+        5: _("May"),
+        6: _("June"),
+        7: _("July"),
+        8: _("August"),
+        9: _("September"),
+        10: _("October"),
+        11: _("November"),
+        12: _("December")
+    }
+    return switcher.get(month, _("Invalid month"))
+    
+# parse to sales invoice item structure    
+def get_item(licence_item, multiplier):
+    return {
+        'item_code': licence_item.item_code,
+        'rate': (float(licence_item.rate) * ((100.0 - float(licence_item.discount or 0)) / 100.0)),
+        'qty': licence_item.qty * multiplier,
+        'discount_percentage': licence_item.discount
+    }
+
+# from_invoice: 1=normal, 2=special
+def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges, from_licence=1):
+    # get values from customer record
+    customer_record = frappe.get_doc("Customer", customer)
+    delivery_option = "Post"
+    try:
+        delivery_option = customer_record.rechnungszustellung
+    except:
+        pass
+    # prepare taxes and charges
+    taxes_and_charges_template = frappe.get_doc("Sales Taxes and Charges Template", taxes_and_charges)
+    
+    new_sales_invoice = frappe.get_doc({
+        'doctype': 'Sales Invoice',
+        'customer': customer,
+        'items': items,
+        'additional_discount_percentage': overall_discount,
+        'terms': remarks,
+        'from_licence': from_licence,
+        'taxes_and_charges': taxes_and_charges,
+        'taxes': taxes_and_charges_template.taxes,
+        'rechnungszustellung': delivery_option
+    })
+    new_record = new_sales_invoice.insert()
+    
+    # check auto-submit
+    sql_query = ("""SELECT `name`, `grand_total` 
+            FROM `tabSales Invoice` 
+            WHERE `customer` = '{customer}' 
+              AND `docstatus` = 1 
+              AND `from_licence` = {from_licence}
+            ORDER BY `posting_date` DESC
+            LIMIT 1;""".format(customer=customer, from_licence=from_licence))
+    last_invoice = frappe.db.sql(sql_query, as_dict=True)
+    if last_invoice:
+        if last_invoice[0]['grand_total'] == new_record.grand_total:
+            # last invoice has the same total, submit
+            new_record.submit()
+    return new_record.name

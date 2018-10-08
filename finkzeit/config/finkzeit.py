@@ -29,10 +29,22 @@ def get_data():
             "items": [
                    {
                        "type": "doctype",
-                       "name": "Lizenz",
-                       "label": _("Lizenz"),
-                       "description": _("Lizenz")
-                   }
+                       "name": "Licence",
+                       "label": _("Licence"),
+                       "description": _("Licence")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Invoice Cycle Log",
+                       "label": _("Invoice Cycle Log"),
+                       "description": _("Invoice Cycle Log")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Retailer",
+                       "label": _("Retailer"),
+                       "description": _("Retailer")
+                   }                   
             ]
         }
     ]

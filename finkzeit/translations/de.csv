@@ -1,0 +1,19 @@
+DocType: Licence,Licence,Lizenz
+DocType: Licence,Create Invoice Cycle,Rechnungslauf durchführen
+DocType: Licence,Creation of Invoices started...,Erstellung von Rechnungen gestartet...
+DocType: Licence,<p>Invoice period: {period} {year}</p>,<p>Abrechnungszeitraum: {period} {year}</p>
+DocType: Licence,<p><b>Licence {0}</b><br></p>,<p><b>Lizenz {0}</b><br></p>
+DocType: Licence,January,Jänner
+DocType: Licence,February,Februar
+DocType: Licence,March,März
+DocType: Licence,April,April
+DocType: Licence,May,Mai
+DocType: Licence,June,Juni
+DocType: Licence,July,Juli
+DocType: Licence,August,August
+DocType: Licence,September,September
+DocType: Licence,October,Oktober
+DocType: Licence,November,November
+DocType: Licence,December,Dezember
+DocType: Licence,"Invalid invoice period. Should be 1, 2, 4, 6 or 12","Ungültige Rechnungsperiode. Sollte 1,2,4,6 oder 12 sein."
+Report: Quotation Overview,Quotation Overview,Angebotsübersicht
