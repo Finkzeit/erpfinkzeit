@@ -67,13 +67,13 @@ class Licence(Document):
         if self.store_booking_geolocation == 1:
             content += make_line("storeBookingGeolocation: true")
         else:
-            content += make_line("storeBookingGeolocation: true")
+            content += make_line("storeBookingGeolocation: false")
         content += make_line("")
         content += make_line("#Buchungspositionen auf Karte darstellen. Voreinstellung ist false.")
         if self.show_bookings_on_map == 1:
             content += make_line("showBookingsOnMap: true")
         else:
-            content += make_line("showBookingsOnMap: true")
+            content += make_line("showBookingsOnMap: false")
         content += make_line("")
         content += make_line("max_sms: {0}".format(self.max_sms))
         content += make_line("max_sms_international: {0}".format(self.max_sms_international))
