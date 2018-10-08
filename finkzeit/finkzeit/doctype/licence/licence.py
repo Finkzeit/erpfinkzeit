@@ -98,6 +98,11 @@ class Licence(Document):
             else:
                 content += make_line("   grant: true")
             content += make_line("   actions: {0}".format(right.actions))
+            if right.has_restrictions == 1:
+                content += make_line("   restrictions:")
+                content += make_line("   - restriction: {0}".format(right.restriction or ""))
+                content += make_line("     operator: {0}".format(right.restriction_operator or ""))
+                content += make_line("     value: {0}".format(right.restriction_value or ""))    
         return { 'content': content }
         
     def before_save(self):
