@@ -46,5 +46,29 @@ def get_data():
                        "description": _("Retailer")
                    }                   
             ]
+        },
+        {
+            "label": _("Lists"),
+            "icon": "octicon octicon-list-ordered",
+            "items": [
+                   {
+                       "type": "doctype",
+                       "name": "Licence",
+                       "label": _("Licence"),
+                       "description": _("Licence")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Invoice Cycle Log",
+                       "label": _("Invoice Cycle Log"),
+                       "description": _("Invoice Cycle Log")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Retailer",
+                       "label": _("Retailer"),
+                       "description": _("Retailer")
+                   }                   
+            ]
         }
     ]
