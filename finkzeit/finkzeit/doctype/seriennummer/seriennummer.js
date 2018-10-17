@@ -3,7 +3,15 @@
 
 frappe.ui.form.on('Seriennummer', {
     refresh: function(frm) {
-
+        if (frm.doc.kassa_nr == 0) { 
+            frm.add_custom_button(__("Kassa-Nummer lösen"), function() {
+                if (frm.doc.kassa_nr == 0) { 
+                    get_next_kassa_number(frm);
+                } else {
+                    frappe.msgprint( __("Bitte Formular speichern.") );
+                }
+            });
+		}
     },
     beschriftung: function(frm) {
         get_in_date(frm);
@@ -42,7 +50,7 @@ function find_beschriftung(frm) {
 }
 
 function get_in_date(frm) {
-        if ((!frm.doc.in_date) && (frm.doc.beschriftung)) {
+    if ((!frm.doc.in_date) && (frm.doc.beschriftung)) {
         frappe.call({
             "method": "frappe.client.get",
             "args": {
@@ -58,4 +66,16 @@ function get_in_date(frm) {
             }
         });
     }
+}
+
+function get_next_kassa_number(frm) {
+    frappe.call({
+        "method": 'get_next_kassa_number',
+        "doc": frm.doc,
+        "callback": function(response) {
+           if (response.message) {
+               frm.set_value('kassa_nr', response.message);
+           }
+        }
+    });
 }
