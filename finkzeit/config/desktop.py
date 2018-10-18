@@ -5,11 +5,11 @@ from frappe import _
 def get_data():
 	return [
 		{
-			"module_name": "FinkZeit",
+			"module_name": "Finkzeit",
 			"color": "#f1f1f1",
 			"reverse": 1,
 			"icon": "octicon octicon-clock",
 			"type": "module",
-			"label": _("FinkZeit")
+			"label": _("Finkzeit")
 		}
 	]

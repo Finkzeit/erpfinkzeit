@@ -56,7 +56,13 @@ def get_data():
                        "name": "Beschriftung",
                        "label": _("Beschriftung"),
                        "description": _("Beschriftung")
-                   }                  
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Seriennummer",
+                       "label": _("Seriennummer"),
+                       "description": _("Seriennummer")
+                   }				   
             ]
         }
     ]

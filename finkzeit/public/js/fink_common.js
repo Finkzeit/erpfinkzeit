@@ -1,5 +1,5 @@
 // Fink Zeit script global script inserts
-//console.log("Welcome to FinkZeit");
+//console.log("Welcome to Finkzeit");
 
 // mark navbar in specific colour
 window.onload = function () {

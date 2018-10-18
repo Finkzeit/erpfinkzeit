@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from . import __version__ as app_version
 
 app_name = "finkzeit"
-app_title = "FinkZeit"
+app_title = "Finkzeit"
 app_publisher = "Fink Zeitsysteme/libracore"
 app_description = "ERPNext Extensions for Fink Zeitsysteme"
 app_icon = "octicon octicon-clock"
