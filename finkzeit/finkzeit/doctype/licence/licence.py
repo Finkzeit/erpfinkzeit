@@ -23,7 +23,7 @@ class Licence(Document):
         content += make_line("creationDate: {day}.{month}.{year}".format(day=now.day, month=now.month, year=now.year) ) 
         content += make_line("runtime: at.finkzeit.zsw.server.runtime.StandardRuntime")
         if self.retailer:
-            content += make_line("retailer: {0}".format(self.retailer_key)
+            content += make_line("retailer: {0}".format(self.retailer_key))
             content += make_line("retailer_code: {0}".format(self.retailer))
         content += make_line("")
         content += make_line("# Benutzerlimit (gekaufte User)")
