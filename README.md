@@ -1,4 +1,4 @@
-## FinkZeit
+## Finkzeit
 
 ERPNext Extensions for Fink Zeitsysteme
 
