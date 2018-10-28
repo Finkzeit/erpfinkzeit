@@ -64,5 +64,23 @@ def get_data():
                        "description": _("Seriennummer")
                    }				   
             ]
+        },
+        {
+            "label": _("Finanzbuchhaltung"),
+            "icon": "octicon octicon-repo",
+            "items": [
+                   {
+                       "type": "doctype",
+                       "name": "Kassa",
+                       "label": _("Kassa"),
+                       "description": _("Kassa")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Buchhaltungsperiode",
+                       "label": _("Buchhaltungsperiode"),
+                       "description": _("Buchhaltungsperiode")
+                   }				   
+            ]
         }
     ]
