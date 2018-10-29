@@ -167,7 +167,7 @@ def create_invoices():
 
 def process_licence(licence_name):
     licence = frappe.get_doc('Licence', licence_name)
-    
+    print("Processing licence {0}".format(licence.name))
     # check if licence is due according to invoices_per_year
     current_month = datetime.now().month
     period = ""
@@ -214,17 +214,20 @@ def process_licence(licence_name):
     if licence.invoice_separately:
         for item in licence.invoice_items:
             items.append(get_item(item, multiplier))
-        sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
+        if items:
+            sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
         items = []
         for item in licence.special_invoice_items:
             items.append(get_item(item, multiplier))
-        sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 2))
+        if items:
+            sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 2))
     else:
         for item in licence.invoice_items:
             items.append(get_item(item, multiplier))
         for item in licence.special_invoice_items:
             items.append(get_item(item, multiplier))
-        sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
+        if items:
+            sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
     return sinv
 
 def month_in_words(month):
@@ -274,7 +277,8 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'from_licence': from_licence,
         'taxes_and_charges': taxes_and_charges,
         'taxes': taxes_and_charges_template.taxes,
-        'rechnungszustellung': delivery_option
+        'rechnungszustellung': delivery_option,
+        'tax_id': customer_record.tax_id
     })
     new_record = new_sales_invoice.insert()
     
@@ -291,4 +295,5 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         if last_invoice[0]['grand_total'] == new_record.grand_total:
             # last invoice has the same total, submit
             new_record.submit()
+    frappe.db.commit()
     return new_record.name
