@@ -303,3 +303,20 @@ def get_matchcode():
             cus.rechnungsadresse = "{plz} {city}, {adr}".format(plz=adr.pincode, city=adr.city, adr=adr.address_line1)
             cus.save()
     return
+
+# load taxes from customer record
+def licence_add_taxes():
+    licences = frappe.get_all('Licence', filters={'enabled': 1}, fields=['name'])
+    for lic in licences:
+        licence = frappe.get_doc('Licence', lic['name'])
+        customer = frappe.get_doc('Customer', licence.customer)
+        if customer:
+            if customer.steuerregion == "AT":
+                licence.taxes_and_charges = "Verkaufssteuern Inland 20p (022) - FZAT"
+            else:
+                licence.taxes_and_charges = "Verkaufssteuern Leistungen EU,DRL (021) - FZAT"
+            licence.save()
+            print("{0}: {2} updated ({1})".format(customer.name, customer.steuerregion, licence.name))
+        else:
+            print("{0} has no customer".format(licence.name))
+    return
