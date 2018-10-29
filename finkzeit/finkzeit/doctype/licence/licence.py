@@ -206,11 +206,11 @@ def process_licence(licence_name):
     customer = licence.customer
     remarks = licence.remarks or "<p></p>"
     # add invoice period to remarks
-    remarks = _("<p>Invoice period: {period} {year}</p>").format(period=period, year=datetime.now().year) + remarks
+    remarks = _("<p>Abrechnungsperiode: {period} {year}</p>").format(period=period, year=datetime.now().year) + remarks
     if licence.retailer:
         # this is a retailer licence: invoice to retailer
         customer = licence.retailer
-        remarks = _("<p><b>Licence {0}</b><br></p>").format(licence.customer) + remarks
+        remarks = _("<p><b>Lizenz {0}</b><br></p>").format(licence.customer) + remarks
     if licence.invoice_separately:
         for item in licence.invoice_items:
             items.append(get_item(item, multiplier))
@@ -231,19 +231,20 @@ def process_licence(licence_name):
     return sinv
 
 def month_in_words(month):
+    # translation does not work (started from de user)
     switcher = {
-        1: _("January"),
-        2: _("February"),
-        3: _("March"),
+        1: _("Jänner"),
+        2: _("Februar"),
+        3: _("März"),
         4: _("April"),
-        5: _("May"),
-        6: _("June"),
-        7: _("July"),
+        5: _("Mai"),
+        6: _("Juni"),
+        7: _("Juli"),
         8: _("August"),
         9: _("September"),
-        10: _("October"),
+        10: _("Oktober"),
         11: _("November"),
-        12: _("December")
+        12: _("Dezember")
     }
     return switcher.get(month, _("Invalid month"))
     
