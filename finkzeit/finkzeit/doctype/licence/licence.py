@@ -211,21 +211,23 @@ def process_licence(licence_name):
         # this is a retailer licence: invoice to retailer
         customer = licence.retailer
         remarks = _("<p><b>Lizenz {0}</b><br></p>").format(licence.customer) + remarks
+    customer_record = frappe.get_doc("Customer", customer)
+    kst = customer_record.kostenstelle
     if licence.invoice_separately:
         for item in licence.invoice_items:
-            items.append(get_item(item, multiplier))
+            items.append(get_item(item, multiplier, kst))
         if items:
             sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
         items = []
         for item in licence.special_invoice_items:
-            items.append(get_item(item, multiplier))
+            items.append(get_item(item, multiplier, kst))
         if items:
             sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 2))
     else:
         for item in licence.invoice_items:
-            items.append(get_item(item, multiplier))
+            items.append(get_item(item, multiplier, kst))
         for item in licence.special_invoice_items:
-            items.append(get_item(item, multiplier))
+            items.append(get_item(item, multiplier, kst))
         if items:
             sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
     return sinv
@@ -249,12 +251,13 @@ def month_in_words(month):
     return switcher.get(month, _("Invalid month"))
     
 # parse to sales invoice item structure    
-def get_item(licence_item, multiplier):
+def get_item(licence_item, multiplier, kst):
     return {
         'item_code': licence_item.item_code,
         'rate': (float(licence_item.rate) * ((100.0 - float(licence_item.discount or 0)) / 100.0)),
         'qty': licence_item.qty * multiplier,
-        'discount_percentage': licence_item.discount
+        'discount_percentage': licence_item.discount,
+        'cost_center': kst
     }
 
 # from_invoice: 1=normal, 2=special
@@ -279,7 +282,8 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'taxes_and_charges': taxes_and_charges,
         'taxes': taxes_and_charges_template.taxes,
         'rechnungszustellung': delivery_option,
-        'tax_id': customer_record.tax_id
+        'tax_id': customer_record.tax_id,
+        'kostenstelle': customer_record.kostenstelle
     })
     new_record = new_sales_invoice.insert()
     
