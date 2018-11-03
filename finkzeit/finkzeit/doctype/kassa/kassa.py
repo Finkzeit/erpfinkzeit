@@ -10,13 +10,21 @@ class Kassa(Document):
     def validate(self):
         total_in = 0.0
         for cash_in in self.cash_ins:
-            if (cash_in.gross_amount != cash_in.net_amount + cash_in.tax_amount):
-                cash_in.net_amount = cash_in.gross_amount - cash_in.tax_amount
+            if (cash_in.tax_amount):
+                if (cash_in.gross_amount != cash_in.net_amount + cash_in.tax_amount):
+                    cash_in.net_amount = cash_in.gross_amount - cash_in.tax_amount
+            else:
+                if (cash_in.gross_amount != cash_in.net_amount):
+                    cash_in.net_amount = cash_in.gross_amount
             total_in += cash_in.gross_amount
         total_out = 0.0
         for cash_out in self.cash_outs:
-            if (cash_out.gross_amount != cash_out.net_amount + cash_out.tax_amount):
-                cash_out.net_amount = cash_out.gross_amount - cash_out.tax_amount
+            if (cash_out.tax_amount):
+                if (cash_out.gross_amount != cash_out.net_amount + cash_out.tax_amount):
+                    cash_out.net_amount = cash_out.gross_amount - cash_out.tax_amount
+            else:
+                if (cash_out.gross_amount != cash_out.net_amount):
+                    cash_out.net_amount = cash_out.gross_amount
             total_out += cash_out.gross_amount
         self.endsaldo = self.anfangssaldo + total_in - total_out
         return
