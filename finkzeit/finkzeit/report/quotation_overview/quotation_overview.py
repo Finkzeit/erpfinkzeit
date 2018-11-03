@@ -41,12 +41,11 @@ def get_data(from_date, to_date, owner):
           `tabQuotation`.`name`,
           `tabQuotation`.`customer`,
           `tabQuotation`.`customer_name`,
-          `tabSales Order Item`.`parent`,
+          (SELECT `tabSales Order Item`.`parent` FROM `tabSales Order Item` WHERE `tabSales Order Item`.`prevdoc_docname` = `tabQuotation`.`name` LIMIT 1),
           `tabQuotation`.`net_total`,
           `tabQuotation`.`probability`,
           `tabQuotation`.`weighted_volume`
         FROM `tabQuotation`
-        LEFT JOIN `tabSales Order Item` ON `tabQuotation`.`name` = `tabSales Order Item`.`prevdoc_docname`
         WHERE `tabQuotation`.`docstatus` = 1
           AND DATE(`tabQuotation`.`transaction_date`) >= '{from_date}'
           AND DATE(`tabQuotation`.`transaction_date`) <= '{to_date}'
