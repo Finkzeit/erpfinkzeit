@@ -302,3 +302,22 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
             new_record.submit()
     frappe.db.commit()
     return new_record.name
+
+# this function will bind a pdf from all provided sales invoices (list of names)
+def print_bind(sales_invoices, format=None, dest=None):
+    # Concatenating pdf files
+    output = PdfFileWriter()
+    for sales_invoice in sales_invoices:
+        output = frappe.get_print("Sales Invoice", sales_invoice, format, as_pdf = True, output = output)
+    if dest != None:
+        if isinstance(dest, str): # when dest is a file path
+            destdir = os.path.dirname(dest)
+            if destdir != '' and not os.path.isdir(destdir):
+                os.makedirs(destdir)
+            with open(dest, "wb") as w:
+                output.write(w)
+        else: # when dest is io.IOBase
+            output.write(dest)
+		return
+	else:
+	    return output
