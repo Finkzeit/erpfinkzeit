@@ -29,10 +29,11 @@ def send_mail(recipient):
     return
     
 def test_bind():
-    sinvs = frappe.get_all("Sales Invoice", filters={'docstatus': 1}, fields=['name'])
-    sinv_list = []
-    for s in sinvs:
-        sinv_list.append(s['name'])
-    now = datetime.now()
-    licence.print_bind(sinv_list, format=None, dest="/home/frappe/test_bind_{year}-{month}-{day}.pdf".format(day=now.day, month=now.month, year=now.year) )
+    #sinvs = frappe.get_all("Sales Invoice", filters={'docstatus': 1}, fields=['name'])
+    sinv_list = ["SINV-00038"]
+    #for s in sinvs:
+    #    sinv_list.append(s['name'])
+    #now = datetime.now()
+    #licence.print_bind(sinv_list, format="QR Sales Invoice", dest=str("/home/frappe/test_bind_{year}-{month}-{day}.pdf".format(day=now.day, month=now.month, year=now.year)) )
+    print(frappe.get_print("Sales Invoice", "SINV-00038", None))
     return

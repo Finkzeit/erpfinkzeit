@@ -11,6 +11,7 @@ from frappe.utils.background_jobs import enqueue
 from datetime import datetime
 from frappe import _
 from PyPDF2 import PdfFileWriter
+import os
 
 class Licence(Document):
     def generate_licence_file(self):
@@ -111,16 +112,10 @@ class Licence(Document):
         for item in self.invoice_items:
             item.amount = float(item.qty) * float(item.rate * ((100.0 - float(item.discount or 0)) / 100.0))
             total_amount += item.amount
+            if not item.group:
+                item.group = "empty"
         self.total_amount = total_amount
         self.total_amount_with_discount = total_amount * ((100.0 - float(self.overall_discount or 0)) / 100.0)
-        total_amount_special = 0.0
-        for item in self.special_invoice_items:
-            item.amount = float(item.qty) * float(item.rate * ((100.0 - float(item.discount or 0)) / 100.0))
-            total_amount_special += item.amount;
-        self.total_amount_special = total_amount_special
-        self.total_amount_special_with_discount = total_amount_special * ((100.0 - float(self.overall_discount or 0)) / 100.0)
-        self.grand_total = total_amount + total_amount_special
-        self.grand_total_with_discount = self.total_amount_with_discount + self.total_amount_special_with_discount
         return
     pass
 
@@ -171,7 +166,7 @@ def create_invoices():
                 now = datetime.now()
                 bind_source = "/assets/sales_invoice_print_{year}-{month}-{day}.pdf".format(day=now.day, month=now.month, year=now.year)
                 physical_path = "/home/frappe/frappe-bench/sites" + bind_source
-                print_bind(print_siv, format=None, dest=physical_path)
+                print_bind(print_siv, format=None, dest=str(physical_path))
                 
     # create sinv_items log entry
     now = datetime.now()
@@ -234,19 +229,20 @@ def process_licence(licence_name):
     customer_record = frappe.get_doc("Customer", customer)
     kst = customer_record.kostenstelle
     if licence.invoice_separately:
+        # find groups
+        groups = []
         for item in licence.invoice_items:
-            items.append(get_item(item, multiplier, kst))
-        if items:
-            sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
-        items = []
-        for item in licence.special_invoice_items:
-            items.append(get_item(item, multiplier, kst))
-        if items:
-            sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 2))
+            if item.group not in groups:
+                groups.append(item.group)
+        # loop through groups and create invoices
+        for group in groups:
+            for item in licence.invoice_items:
+                items.append(get_item(item, multiplier, kst))
+            if items:
+                sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
+            items = []
     else:
         for item in licence.invoice_items:
-            items.append(get_item(item, multiplier, kst))
-        for item in licence.special_invoice_items:
             items.append(get_item(item, multiplier, kst))
         if items:
             sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
@@ -277,7 +273,8 @@ def get_item(licence_item, multiplier, kst):
         'rate': (float(licence_item.rate) * ((100.0 - float(licence_item.discount or 0)) / 100.0)),
         'qty': licence_item.qty * multiplier,
         'discount_percentage': licence_item.discount,
-        'cost_center': kst
+        'cost_center': kst,
+        'group': licence_item.group
     }
 
 # from_invoice: 1=normal, 2=special
