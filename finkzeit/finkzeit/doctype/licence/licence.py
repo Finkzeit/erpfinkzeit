@@ -10,6 +10,7 @@ from frappe.model.document import Document
 from frappe.utils.background_jobs import enqueue
 from datetime import datetime
 from frappe import _
+from PyPDF2 import PdfFileWriter
 
 class Licence(Document):
     def generate_licence_file(self):
@@ -148,19 +149,38 @@ def create_invoices():
           AND `start_date` <= CURDATE();""")
     enabled_licences = frappe.db.sql(sql_query, as_dict=True)
     sinv_items = []
+    bind_source = None
     # loop through enabled licences
     for licence in enabled_licences:
         new_sinvs = process_licence(licence['name'])
         if new_sinvs:
+            print_sinv = []
+            # loop through all processed sales invoices
             for sinv in new_sinvs:
-                sinv_items.append({'sales_invoice': sinv})
+                # get sales invoice record
+                sinv_record = frappe.get_doc("Sales Invoice", sinv)
+                if sinv_record:
+                    if sinv.record.rechnungszustellung == "Post":
+                        # append for bind job
+                        print_sinv.appned(sinv)
+                    # attach to log list
+                    sinv_items.append({'sales_invoice': sinv, 'type': sinv_record.rechnungszustellung})
+           
+            # run bind job
+            if len(print_siv) > 0:
+                now = datetime.now()
+                bind_source = "/assets/sales_invoice_print_{year}-{month}-{day}.pdf".format(day=now.day, month=now.month, year=now.year)
+                physical_path = "/home/frappe/frappe-bench/sites" + bind_source
+                print_bind(print_siv, format=None, dest=physical_path)
+                
     # create sinv_items log entry
     now = datetime.now()
     log = frappe.get_doc({
         'doctype': 'Invoice Cycle Log',
         'date': now.strftime("%Y-%m-%d"),
         'sales_invoices': sinv_items,
-        'title': now.strftime("%Y-%m-%d")
+        'title': now.strftime("%Y-%m-%d"),
+        'bind_source': bind_source
     })
     log.insert(ignore_permissions=True)
     return
@@ -318,6 +338,6 @@ def print_bind(sales_invoices, format=None, dest=None):
                 output.write(w)
         else: # when dest is io.IOBase
             output.write(dest)
-		return
-	else:
-	    return output
+        return
+    else:
+        return output
