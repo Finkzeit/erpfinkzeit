@@ -8,6 +8,8 @@ from frappe.model.document import Document
 
 class Kassa(Document):
     def validate(self):
+        if not self.anfangssaldo:
+            self.anfangssaldo = 0.0
         total_in = 0.0
         for cash_in in self.cash_ins:
             if (cash_in.tax_amount):

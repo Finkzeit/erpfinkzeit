@@ -149,24 +149,13 @@ def create_invoices():
     for licence in enabled_licences:
         new_sinvs = process_licence(licence['name'])
         if new_sinvs:
-            print_sinv = []
             # loop through all processed sales invoices
             for sinv in new_sinvs:
                 # get sales invoice record
                 sinv_record = frappe.get_doc("Sales Invoice", sinv)
                 if sinv_record:
-                    if sinv.record.rechnungszustellung == "Post":
-                        # append for bind job
-                        print_sinv.appned(sinv)
                     # attach to log list
                     sinv_items.append({'sales_invoice': sinv, 'type': sinv_record.rechnungszustellung})
-           
-            # run bind job
-            if len(print_siv) > 0:
-                now = datetime.now()
-                bind_source = "/assets/sales_invoice_print_{year}-{month}-{day}.pdf".format(day=now.day, month=now.month, year=now.year)
-                physical_path = "/home/frappe/frappe-bench/sites" + bind_source
-                print_bind(print_siv, format=None, dest=str(physical_path))
                 
     # create sinv_items log entry
     now = datetime.now()
@@ -319,22 +308,3 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
             new_record.submit()
     frappe.db.commit()
     return new_record.name
-
-# this function will bind a pdf from all provided sales invoices (list of names)
-def print_bind(sales_invoices, format=None, dest=None):
-    # Concatenating pdf files
-    output = PdfFileWriter()
-    for sales_invoice in sales_invoices:
-        output = frappe.get_print("Sales Invoice", sales_invoice, format, as_pdf = True, output = output)
-    if dest != None:
-        if isinstance(dest, str): # when dest is a file path
-            destdir = os.path.dirname(dest)
-            if destdir != '' and not os.path.isdir(destdir):
-                os.makedirs(destdir)
-            with open(dest, "wb") as w:
-                output.write(w)
-        else: # when dest is io.IOBase
-            output.write(dest)
-        return
-    else:
-        return output
