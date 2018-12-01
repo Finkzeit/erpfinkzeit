@@ -217,12 +217,12 @@ def process_licence(licence_name):
         remarks = _("<p><b>Lizenz {0}</b><br></p>").format(licence.customer) + remarks
     customer_record = frappe.get_doc("Customer", customer)
     kst = customer_record.kostenstelle
+    # find groups
+    groups = []
+    for item in licence.invoice_items:
+        if item.group not in groups:
+            groups.append(item.group)
     if licence.invoice_separately:
-        # find groups
-        groups = []
-        for item in licence.invoice_items:
-            if item.group not in groups:
-                groups.append(item.group)
         # loop through groups and create invoices
         for group in groups:
             for item in licence.invoice_items:
@@ -267,7 +267,7 @@ def get_item(licence_item, multiplier, kst):
     }
 
 # from_invoice: 1=normal, 2=special
-def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges, from_licence=1):
+def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges, from_licence=1, groups=None):
     # get values from customer record
     customer_record = frappe.get_doc("Customer", customer)
     delivery_option = "Post"
@@ -277,7 +277,20 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         pass
     # prepare taxes and charges
     taxes_and_charges_template = frappe.get_doc("Sales Taxes and Charges Template", taxes_and_charges)
-    
+    # define group child table
+    group_items = []
+    if groups:
+        for group in groups:
+            group_sum = 0
+            for item in items:
+                if item.group == group:
+                    group_sum += item.qty * item.rate
+            group_items.append({
+                'group': group,
+                'title': group,
+                'sum_caption': group,
+                'amount': group_sum
+            })
     new_sales_invoice = frappe.get_doc({
         'doctype': 'Sales Invoice',
         'customer': customer,
@@ -289,7 +302,8 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'taxes': taxes_and_charges_template.taxes,
         'rechnungszustellung': delivery_option,
         'tax_id': customer_record.tax_id,
-        'kostenstelle': customer_record.kostenstelle
+        'kostenstelle': customer_record.kostenstelle,
+        'groups': group_items
     })
     new_record = new_sales_invoice.insert()
     
