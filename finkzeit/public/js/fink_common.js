@@ -13,3 +13,26 @@ window.onload = function () {
 		}
 	}
 }
+
+// check if the accounting period is active
+function check_period(date) {
+    frappe.call({
+        method: "frappe.client.get_list",
+        args: {
+ 	        doctype: "Buchhaltungsperiode",
+ 	        filters: [
+ 	            ["start_date","<=", date],
+ 	            ["end_date",">=", date],
+ 	            ["status","=", "Active"],
+ 	        ],
+            fields: ["title"]
+        },
+        async: false,
+        callback: function (response) {
+            if (!response.message) {
+                frappe.msgprint( __("Buchhaltungsperiode gesperrt.") );
+                frappe.validated = false;
+            }
+        }
+    });
+}
