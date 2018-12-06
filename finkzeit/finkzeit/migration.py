@@ -320,3 +320,28 @@ def licence_add_taxes():
         else:
             print("{0} has no customer".format(licence.name))
     return
+
+# import HS codes
+def import_hs_codes(filename):
+    # open workbook
+    print("Loading {0}...".format(filename))
+    workbook = load_workbook(filename)
+    worksheet = workbook["Data Import Template"]
+    for row in worksheet.iter_rows('A{}:E{}'.format(21, worksheet.max_row)):
+        # loop through all customers
+        cells = row
+        print("cells: {0}".format(len(cells)))
+        if len(cells) >= 4:
+            # check if item exists
+            matches_by_id = frappe.get_all("Item", filters={'name': cells[2].value}, fields=['name'])
+            print("Item: {0}".format(cells[2].value))
+            if matches_by_id:
+                # found item, update
+                print("updating... ({0}, {1}, {2}".format(matches_by_id[0]['name'],cells[3].value,cells[4].value))
+                item = frappe.get_doc("Item", matches_by_id[0]['name'])
+                item.country_of_origin = unicode(cells[3].value)
+                item.customs_tariff_number = unicode(cells[4].value)
+                item.save()
+    print("List completed")
+    return
+
