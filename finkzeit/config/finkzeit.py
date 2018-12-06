@@ -46,5 +46,65 @@ def get_data():
                        "description": _("Retailer")
                    }                   
             ]
+        },
+        {
+            "label": _("Lists"),
+            "icon": "octicon octicon-list-ordered",
+            "items": [
+                   {
+                       "type": "doctype",
+                       "name": "Beschriftung",
+                       "label": _("Beschriftung"),
+                       "description": _("Beschriftung")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Seriennummer",
+                       "label": _("Seriennummer"),
+                       "description": _("Seriennummer")
+                   }				   
+            ]
+        },
+        {
+            "label": _("Finanzbuchhaltung"),
+            "icon": "octicon octicon-repo",
+            "items": [
+                   {
+                       "type": "doctype",
+                       "name": "Kassa",
+                       "label": _("Kassa"),
+                       "description": _("Kassa")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Buchhaltungsperiode",
+                       "label": _("Buchhaltungsperiode"),
+                       "description": _("Buchhaltungsperiode")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Payment Reminder",
+                       "label": _("Payment Reminder"),
+                       "description": _("Payment Reminder")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Direct Debit Proposal",
+                       "label": _("Direct Debit Proposal"),
+                       "description": _("Direct Debit Proposal")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Payment Proposal",
+                       "label": _("Payment Proposal"),
+                       "description": _("Payment Proposal")
+                   },
+                   {
+                       "type": "page",
+                       "name": "bank_wizard",
+                       "label": _("Bank Wizard"),
+                       "description": _("Bank Wizard")
+                   }
+            ]
         }
     ]

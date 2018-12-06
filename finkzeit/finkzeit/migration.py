@@ -288,3 +288,60 @@ def update_customer(name, cells):
     # write changes to db
     frappe.db.commit()
     return
+
+# this function loops through all addresses and computes the customer matchcode
+def get_matchcode():
+    customers = frappe.get_all('Customer', filters=None, fields=['name'])
+    for customer in customers:
+        adr_id = frappe.get_all("Dynamic Link", 
+                filters={'link_doctype': 'Customer', 'link_name': customer['name'], 'parenttype': 'Address'},
+                fields=['parent'])
+        if adr_id:
+            adr = frappe.get_doc("Address", adr_id[0]['parent'])
+            cus = frappe.get_doc("Customer", customer['name'])
+            print("Matching {0}".format(customer.name))
+            cus.rechnungsadresse = "{plz} {city}, {adr}".format(plz=adr.pincode, city=adr.city, adr=adr.address_line1)
+            cus.save()
+    return
+
+# load taxes from customer record
+def licence_add_taxes():
+    licences = frappe.get_all('Licence', filters={'enabled': 1}, fields=['name'])
+    for lic in licences:
+        licence = frappe.get_doc('Licence', lic['name'])
+        customer = frappe.get_doc('Customer', licence.customer)
+        if customer:
+            if customer.steuerregion == "AT":
+                licence.taxes_and_charges = "Verkaufssteuern Inland 20p (022) - FZAT"
+            else:
+                licence.taxes_and_charges = "Verkaufssteuern Leistungen EU,DRL (021) - FZAT"
+            licence.save()
+            print("{0}: {2} updated ({1})".format(customer.name, customer.steuerregion, licence.name))
+        else:
+            print("{0} has no customer".format(licence.name))
+    return
+
+# import HS codes
+def import_hs_codes(filename):
+    # open workbook
+    print("Loading {0}...".format(filename))
+    workbook = load_workbook(filename)
+    worksheet = workbook["Data Import Template"]
+    for row in worksheet.iter_rows('A{}:E{}'.format(21, worksheet.max_row)):
+        # loop through all customers
+        cells = row
+        print("cells: {0}".format(len(cells)))
+        if len(cells) >= 4:
+            # check if item exists
+            matches_by_id = frappe.get_all("Item", filters={'name': cells[2].value}, fields=['name'])
+            print("Item: {0}".format(cells[2].value))
+            if matches_by_id:
+                # found item, update
+                print("updating... ({0}, {1}, {2}".format(matches_by_id[0]['name'],cells[3].value,cells[4].value))
+                item = frappe.get_doc("Item", matches_by_id[0]['name'])
+                item.country_of_origin = unicode(cells[3].value)
+                item.customs_tariff_number = unicode(cells[4].value)
+                item.save()
+    print("List completed")
+    return
+
