@@ -18,16 +18,16 @@ def run_calculation(quotation, buying_pricelist, currency="EUR"):
             buying_price = buying_prices[0]['price_list_rate']
         else:
             buying_price = 0
-        cost = (item.qty * buying_price)
+        cost = float(item.qty * buying_price)
         margin = item.amount - cost
         relative_margin = 100 * (margin / item.amount)
         calc_items.append({
             'item_code': item.item_code,
             'item_name': item.item_name,
             'qty': item.qty,
-            'cost': cost,
-            'revenue': item.amount,
-            'margin': margin,
+            'cost': round(cost, 2),
+            'revenue': round(item.amount, 2),
+            'margin': round(margin, 2),
             'relative_margin': int(relative_margin)
         })
         
