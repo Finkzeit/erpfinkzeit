@@ -225,16 +225,18 @@ def process_licence(licence_name):
     if licence.invoice_separately:
         # loop through groups and create invoices
         for group in groups:
+            items = []
             for item in licence.invoice_items:
-                items.append(get_item(item, multiplier, kst))
-            if items:
-                sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
+                if item.group == group:
+                    items.append(get_item(item, multiplier, kst))
+            if items.len > 0:
+                sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1, [group]))
             items = []
     else:
         for item in licence.invoice_items:
             items.append(get_item(item, multiplier, kst))
         if items:
-            sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
+            sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1, groups))
     return sinv
 
 def month_in_words(month):
@@ -283,8 +285,8 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         for group in groups:
             group_sum = 0
             for item in items:
-                if item.group == group:
-                    group_sum += item.qty * item.rate
+                if item['group'] == group:
+                    group_sum += float(item['qty']) * float(item['rate'])
             group_items.append({
                 'group': group,
                 'title': group,
