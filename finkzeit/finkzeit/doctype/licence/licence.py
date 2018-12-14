@@ -229,7 +229,7 @@ def process_licence(licence_name):
             for item in licence.invoice_items:
                 if item.group == group:
                     items.append(get_item(item, multiplier, kst))
-            if items.len > 0:
+            if items.len() > 0:
                 sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1, [group]))
             items = []
     else:
