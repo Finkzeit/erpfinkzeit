@@ -214,7 +214,7 @@ def process_licence(licence_name):
     if licence.retailer:
         # this is a retailer licence: invoice to retailer
         customer = licence.retailer
-        remarks = _("<p><b>Lizenz {0}</b><br></p>").format(licence.customer) + remarks
+        remarks = _("<p><b>Lizenz {0}</b><br></p>").format(licence.customer_name) + remarks
     customer_record = frappe.get_doc("Customer", customer)
     kst = customer_record.kostenstelle
     # find groups
