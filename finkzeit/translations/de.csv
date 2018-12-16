@@ -16,6 +16,37 @@ DocType: Licence,October,Oktober
 DocType: Licence,November,November
 DocType: Licence,December,Dezember
 DocType: Licence,"Invalid invoice period. Should be 1, 2, 4, 6 or 12","Ungültige Rechnungsperiode. Sollte 1,2,4,6 oder 12 sein."
+DocType: Licence,Invoices per Year,Rechnungen pro Jahr
+DocType: Licence,Invoice Items,Rechnungspositionen
+DocType: Licence,Invoicing Options,Rechnungsoptionen
+DocType: Licence,Overall Discount,Rabatt über alles
+DocType: Licence,Total Amount with Discount,Gesamtbetrag mit Rabatt
+DocType: Licence,Invoice Separately,Einzelne Rechnungen stellen
+DocType: Licence,Licencing,Lizenzierung
+DocType: Licence,Valid Until,Gültig bis
+DocType: Licence,Concurrent Users,Gleichzeitige Benutzer
+DocType: Licence,Concurrent WS Sessions,Gleichzeitige WS-Sessionen
+DocType: Licence,Included Concurrent Users,Inbegrifffene gleichzeitige Benutzer
+DocType: Licence,Concurrent Light Users,Gleichzeitige einfache Benutzer
+DocType: Licence,Max BDE Employees,BDE Mitarbeiterlimite
+DocType: Licence,Max PZE Employees,PZE Mitarbeiterlimite
+DocType: Licence,Max FZE Employees,FZE Mitarbeiterlimite
+DocType: Licence,Max Workflow Employees,Workflow-Mitarbeiterlimite
+DocType: Licence,Max Zut Employees,Zutritts-Mitarbeiterlimite
+DocType: Licence,Max Webterm Employees,Webterm Mitarbeiterlimite
+DocType: Licence,Max Tasks Employees,Aufgaben-Mitarbeiterlimite
+DocType: Licence,BDE Merge Mode,BDE-Zusammenführungsmodus
+DocType: Licence,Max SMS,SMS-Limite
+DocType: Licence,Max SMS International,Internationale SMS-Limite
+DocType: Licence,Max Phone Calls,Anruf-Limite
+DocType: Licence,Max Phone Calls International,Internationale Anruf-Limite
+DocType: Licence,Party Mode,Party Modus
+DocType: Licence,Store Booking Geolocation,Geotracking auf Buchung speichern
+DocType: Licence,Show Bookings on Map,Buchungen auf der Karte anzeigen
+DocType: Licence,Access Rights,Zugriffsrechte
+DocType: Licence,Grant,Erlauben
+DocType: Licence,Restrictions,Einschränkungen
+DocType: Licence,Has Restrictions,Hat Einschränkungen
 Report: Quotation Overview,Quotation Overview,Angebotsübersicht
 DocType: Invoice Cycle Log,Invoice Cycle Log,Rechnungslauf-Protokoll
 DocType: Invoice Cycle Log,Download Post PDF,Post-PDF herunterladen
