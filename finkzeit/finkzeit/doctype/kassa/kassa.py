@@ -32,6 +32,22 @@ class Kassa(Document):
         return
         
     def on_submit(self):
+        # assemble the kassa transaction view
+        transactions = {}
+        # collect all entries
+        for cash_in in self.cash_ins:
+            transactions[cash_in.name] = str(cash_in.date)
+        for cash_out in self.cash_outs:
+            transactions[cash_out.name] = str(cash_out.date)
+        # sort by date
+        transaction_records = []
+        no = self.get_next_no()
+        for key, value in sorted(transactions.iteritems(), key=lambda (k,v): (v,k)):
+            transaction_records.append({'no': no, 'date': value, 'description': key})
+            no += 1
+            
+        frappe.throw(transaction_records)
+        
         # create journal entries for each entry
         for cash_in in self.cash_ins:
             accounts = [
@@ -86,5 +102,15 @@ class Kassa(Document):
             journal_entry_record.submit()
         
         return
+    
+    def get_next_no(self):
+        # return the next available number for transactions
+        sql_query = """SELECT MAX(`no`) AS `no` FROM `tabKassa Transaction`"""
+        no = frappe.db.sql(sql_query, as_dict=True)
+        if no[0]['no']:
+            return int(no[0]['no']) + 1
+        else:
+            return 1
+        
 	pass
 
