@@ -43,10 +43,32 @@ class Kassa(Document):
         transaction_records = []
         no = self.get_next_no()
         for key, value in sorted(transactions.iteritems(), key=lambda (k,v): (v,k)):
-            transaction_records.append({'no': no, 'date': value, 'description': key})
+            transaction_records.append({'no': no, 'date': value, 'key': key})
             no += 1
-            
-        frappe.throw(transaction_records)
+        
+        # create the transaction records
+        balance = self.anfangssaldo
+        for record in transaction_records:
+            # try to fetch expense
+            is_out = frappe.get_all('Kassa Out', filters={'name': record['key']}, fields=['name'])
+            if is_out:
+                entry = frappe.get_doc('Kassa Out', record['key'])
+                balance -= entry.gross_amount
+                self.create_transaction(no = record['no'], 
+                    date = entry.date, 
+                    description = entry.description, 
+                    cash_out = entry.gross_amount, 
+                    balance = balance)
+            else:
+                # fetch income
+                entry = frappe.get_doc('Kassa In', record['key'])
+                balance += entry.gross_amount
+                self.create_transaction(no = record['no'], 
+                    date = entry.date, 
+                    description = entry.description, 
+                    cash_in = entry.gross_amount, 
+                    balance = balance)
+        frappe.db.commit()
         
         # create journal entries for each entry
         for cash_in in self.cash_ins:
@@ -111,6 +133,22 @@ class Kassa(Document):
             return int(no[0]['no']) + 1
         else:
             return 1
+        
+    def create_transaction(self, no, date, description, cash_in = 0.0, cash_out = 0.0, balance = 0.0):
+        child = frappe.get_doc({
+            'doctype': 'Kassa Transaction',
+            'no': no,
+            'date': date,
+            'description': description,
+            'cash_in': cash_in,
+            'cash_out': cash_out,
+            'balance': balance,
+            'parent': self.name,
+            'parenttype': 'Kassa',
+            'parentfield': 'transactions'
+        })
+        child_record = child.insert()
+        return
         
 	pass
 

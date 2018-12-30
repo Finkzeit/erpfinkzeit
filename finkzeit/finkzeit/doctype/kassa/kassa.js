@@ -19,5 +19,11 @@ frappe.ui.form.on('Kassa', {
             }
         });
         
+    },
+    on_submit: function(frm) {
+        if (frm.doc.docstatus == 1) {
+            // reload to force loading transactions
+            location.reload();
+        }
     }
 });
