@@ -5,6 +5,7 @@
 from __future__ import unicode_literals
 import frappe
 from frappe.model.document import Document
+from collections import OrderedDict
 
 class Kassa(Document):
     def validate(self):
@@ -40,34 +41,37 @@ class Kassa(Document):
         for cash_out in self.cash_outs:
             transactions[cash_out.name] = str(cash_out.date)
         # sort by date
-        transaction_records = []
         no = self.get_next_no()
-        for key, value in sorted(transactions.iteritems(), key=lambda (k,v): (v,k)):
-            transaction_records.append({'no': no, 'date': value, 'key': key})
-            no += 1
-        
+        transaction_records = OrderedDict(sorted(transactions.items(), key=lambda t:t[1]))
+
         # create the transaction records
         balance = self.anfangssaldo
-        for record in transaction_records:
+        idx = 1
+        for key, value in transaction_records.items():
             # try to fetch expense
-            is_out = frappe.get_all('Kassa Out', filters={'name': record['key']}, fields=['name'])
+            is_out = frappe.get_all('Kassa Out', filters={'name': key}, fields=['name'])
             if is_out:
-                entry = frappe.get_doc('Kassa Out', record['key'])
+                entry = frappe.get_doc('Kassa Out', key)
                 balance -= entry.gross_amount
-                self.create_transaction(no = record['no'], 
+                self.create_transaction(no = no, 
                     date = entry.date, 
                     description = entry.description, 
                     cash_out = entry.gross_amount, 
-                    balance = balance)
+                    balance = balance,
+                    idx = idx)
             else:
                 # fetch income
-                entry = frappe.get_doc('Kassa In', record['key'])
+                entry = frappe.get_doc('Kassa In', key)
                 balance += entry.gross_amount
-                self.create_transaction(no = record['no'], 
+                self.create_transaction(no = no, 
                     date = entry.date, 
                     description = entry.description, 
                     cash_in = entry.gross_amount, 
-                    balance = balance)
+                    balance = balance,
+                    idx = idx)
+            no += 1
+            idx += 1
+            
         frappe.db.commit()
         
         # create journal entries for each entry
@@ -134,7 +138,7 @@ class Kassa(Document):
         else:
             return 1
         
-    def create_transaction(self, no, date, description, cash_in = 0.0, cash_out = 0.0, balance = 0.0):
+    def create_transaction(self, no, date, description, cash_in = 0.0, cash_out = 0.0, balance = 0.0, idx = 0):
         child = frappe.get_doc({
             'doctype': 'Kassa Transaction',
             'no': no,
@@ -145,7 +149,8 @@ class Kassa(Document):
             'balance': balance,
             'parent': self.name,
             'parenttype': 'Kassa',
-            'parentfield': 'transactions'
+            'parentfield': 'transactions',
+            'idx': idx
         })
         child_record = child.insert()
         return
