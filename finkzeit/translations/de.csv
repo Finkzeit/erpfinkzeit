@@ -50,3 +50,7 @@ DocType: Licence,Has Restrictions,Hat Einschränkungen
 Report: Quotation Overview,Quotation Overview,Angebotsübersicht
 DocType: Invoice Cycle Log,Invoice Cycle Log,Rechnungslauf-Protokoll
 DocType: Invoice Cycle Log,Download Post PDF,Post-PDF herunterladen
+DocType: Kasse,Cash in,Eingang
+DocType: Kasse,Cash out,Ausgang
+DocType: Kasse,Opening Balance,Anfangssaldo
+DocType: Kasse,Ending Balance,Endsaldo
