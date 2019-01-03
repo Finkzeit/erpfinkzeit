@@ -154,6 +154,3 @@ class Kassa(Document):
         })
         child_record = child.insert()
         return
-        
-	pass
-
