@@ -307,7 +307,12 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'kostenstelle': customer_record.kostenstelle,
         'groups': group_items
     })
-    new_record = new_sales_invoice.insert()
+    # robust insert sales invoice
+    try:
+        new_record = new_sales_invoice.insert()
+    except Exception as err:
+        frappe.log_error( _("Error inserting sales invoice from customer {0}: {1}").format(
+            customer, err.message) )
     
     # check auto-submit
     sql_query = ("""SELECT `name`, `grand_total` 
