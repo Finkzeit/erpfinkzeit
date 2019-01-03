@@ -214,7 +214,7 @@ def process_licence(licence_name):
     if licence.retailer:
         # this is a retailer licence: invoice to retailer
         customer = licence.retailer
-        remarks = _("<p><b>Lizenz {0}</b><br></p>").format(licence.customer) + remarks
+        remarks = _("<p><b>Lizenz {0}</b><br></p>").format(licence.customer_name) + remarks
     customer_record = frappe.get_doc("Customer", customer)
     kst = customer_record.kostenstelle
     # find groups
@@ -225,16 +225,18 @@ def process_licence(licence_name):
     if licence.invoice_separately:
         # loop through groups and create invoices
         for group in groups:
+            items = []
             for item in licence.invoice_items:
-                items.append(get_item(item, multiplier, kst))
-            if items:
-                sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
+                if item.group == group:
+                    items.append(get_item(item, multiplier, kst))
+            if len(items) > 0:
+                sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1, [group]))
             items = []
     else:
         for item in licence.invoice_items:
             items.append(get_item(item, multiplier, kst))
         if items:
-            sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1))
+            sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1, groups))
     return sinv
 
 def month_in_words(month):
@@ -283,8 +285,8 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         for group in groups:
             group_sum = 0
             for item in items:
-                if item.group == group:
-                    group_sum += item.qty * item.rate
+                if item['group'] == group:
+                    group_sum += float(item['qty']) * float(item['rate'])
             group_items.append({
                 'group': group,
                 'title': group,
@@ -305,7 +307,12 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'kostenstelle': customer_record.kostenstelle,
         'groups': group_items
     })
-    new_record = new_sales_invoice.insert()
+    # robust insert sales invoice
+    try:
+        new_record = new_sales_invoice.insert()
+    except Exception as err:
+        frappe.log_error( _("Error inserting sales invoice from customer {0}: {1}").format(
+            customer, err.message) )
     
     # check auto-submit
     sql_query = ("""SELECT `name`, `grand_total` 
