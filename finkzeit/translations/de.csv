@@ -54,3 +54,5 @@ DocType: Kasse,Cash in,Eingang
 DocType: Kasse,Cash out,Ausgang
 DocType: Kasse,Opening Balance,Anfangssaldo
 DocType: Kasse,Ending Balance,Endsaldo
+DocType: Licence,Invoice(s) created: ,"Rechnung(en) erstellt: "
+DocType: Licence,Are you sure that you want to create the invoice(s) for the current period?,"Möchten Sie wirklich die Rechnung(en) für diese Periode erstellen?"

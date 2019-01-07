@@ -1,30 +1,18 @@
-// Copyright (c) 2018, Fink Zeitsysteme/libracore and contributors
+// Copyright (c) 2018-2019, Fink Zeitsysteme/libracore and contributors
 // For license information, please see license.txt
 
 frappe.ui.form.on('Licence', {
-	refresh: function(frm) {
-        frm.add_custom_button(__("Create Licence File"), function() {
-			generate_licence_file(frm);
-		});
-	},
+    refresh: function(frm) {
+        if (!frm.doc.__islocal) {
+            frm.add_custom_button(__("Create Licence File"), function() {
+                generate_licence_file(frm);
+            });
+            frm.add_custom_button(__("Create Invoice"), function() {
+                create_invoice(frm);
+            });
+        }
+    },
     validate: function(frm) {
-        // apply total per item row
-        /*var total_amount = 0;
-        frm.doc.invoice_items.forEach(function (item) {
-            amount = (item.qty) * (item.rate * ((100 - item.discount) / 100));
-            frappe.model.set_value(item.doctype, item.name, 'amount', amount);
-            total_amount += amount;
-        });
-        cur_frm.set_value('total_amount', total_amount);
-        var total_amount_special = 0;
-        frm.doc.special_invoice_items.forEach(function (item) {
-            amount = (item.qty) * (item.rate * ((100 - item.discount) / 100));
-            frappe.model.set_value(item.doctype, item.name, 'amount', amount);
-            total_amount_special += amount;
-        });
-        frm.set_value('total_amount_special', total_amount_special);
-        frm.set_value('grand_total', total_amount + total_amount_special);
-        cur_frm.refresh_field('total_amount', 'total_amount_special', 'grand_total');*/
         // check valid invoices per year
         if (!([1,2,4,6,12].includes(frm.doc.invoices_per_year))) {
             // not valid invoice period
@@ -58,4 +46,28 @@ function download(filename, content) {
   element.click();
 
   document.body.removeChild(element);
+}
+
+// this function will manually trigger the invoice creation for the selected licence
+function create_invoice(frm) {
+    frappe.confirm(
+        'Are you sure that you want to create the invoice(s) for the current period?',
+        function(){
+            // yes
+            frappe.call({
+	        method: 'finkzeit.finkzeit.doctype.licence.licence.process_licence',
+	        args: {
+                    licence_name: frm.doc.name
+	        },
+	        callback: function(r) {
+		    if (r.message) {
+                        frappe.msgprint( __("Invoice(s) created: ") + r.message);
+                    }
+                }
+            });
+        },
+        function(){
+            // no
+        }
+    )
 }

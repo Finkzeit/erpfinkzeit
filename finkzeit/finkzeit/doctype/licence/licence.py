@@ -169,6 +169,7 @@ def create_invoices():
     log.insert(ignore_permissions=True)
     return
 
+@frappe.whitelist()
 def process_licence(licence_name):
     licence = frappe.get_doc('Licence', licence_name)
     print("Processing licence {0}".format(licence.name))
@@ -238,7 +239,10 @@ def process_licence(licence_name):
         for item in licence.invoice_items:
             items.append(get_item(item, multiplier, kst))
         if items:
-            sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1, groups))
+            new_invoice = create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1, groups)
+            if new_invoice:
+                sinv.append(new_invoice)
+
     return sinv
 
 def month_in_words(month):
@@ -312,25 +316,23 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
     # robust insert sales invoice
     try:
         new_record = new_sales_invoice.insert()
+        # check auto-submit
+        sql_query = ("""SELECT `name`, `grand_total` 
+                FROM `tabSales Invoice` 
+                WHERE `customer` = '{customer}' 
+                  AND `docstatus` = 1 
+                  AND `from_licence` = {from_licence}
+                ORDER BY `posting_date` DESC
+                LIMIT 1;""".format(customer=customer, from_licence=from_licence))
+        last_invoice = frappe.db.sql(sql_query, as_dict=True)
+        if last_invoice:
+            if last_invoice[0]['grand_total'] == new_record.grand_total:
+                # last invoice has the same total, submit
+                new_record.submit()
+        frappe.db.commit()
+        return new_record.name
+
     except Exception as err:
         frappe.log_error( _("Error inserting sales invoice from customer {0}: {1}").format(
             customer, err.message) )
-    
-    # check auto-submit
-    sql_query = ("""SELECT `name`, `grand_total` 
-            FROM `tabSales Invoice` 
-            WHERE `customer` = '{customer}' 
-              AND `docstatus` = 1 
-              AND `from_licence` = {from_licence}
-            ORDER BY `posting_date` DESC
-            LIMIT 1;""".format(customer=customer, from_licence=from_licence))
-    last_invoice = frappe.db.sql(sql_query, as_dict=True)
-    if last_invoice:
-        if last_invoice[0]['grand_total'] == new_record.grand_total:
-            # last invoice has the same total, submit
-            new_record.submit()
-    frappe.db.commit()
-    if new_record:
-        return new_record.name
-    else:
         return None
