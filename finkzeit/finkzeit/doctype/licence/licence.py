@@ -230,7 +230,9 @@ def process_licence(licence_name):
                 if item.group == group:
                     items.append(get_item(item, multiplier, kst))
             if len(items) > 0:
-                sinv.append(create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1, [group]))
+                new_invoice = create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1, [group])
+                if new_invoice:
+                    sinv.append(new_invoice)
             items = []
     else:
         for item in licence.invoice_items:
@@ -328,4 +330,7 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
             # last invoice has the same total, submit
             new_record.submit()
     frappe.db.commit()
-    return new_record.name
+    if new_record:
+        return new_record.name
+    else:
+        return None
