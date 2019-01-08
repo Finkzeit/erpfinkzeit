@@ -32,3 +32,10 @@ def run_calculation(quotation, buying_pricelist, currency="EUR"):
         })
         
     return calc_items
+
+# this function will directly cancel a draft sales invoice
+@frappe.whitelist()
+def direct_cancel_sinv(sinv):
+    sql_query = ("""UPDATE `tabSales Invoice` SET `docstatus` = 2 WHERE `docstatus` = 0 AND `name` = "{0}";""".format(sinv))
+    frappe.db.sql(sql_query, as_dict=True)
+    return
