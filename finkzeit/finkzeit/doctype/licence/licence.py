@@ -306,7 +306,8 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'tax_id': customer_record.tax_id,
         'kostenstelle': customer_record.kostenstelle,
         'groups': group_items,
-        'enable_lsv': customer_record.enable_lsv
+        'enable_lsv': customer_record.enable_lsv,
+        'ignore_pricing_rule': 1
     })
     # robust insert sales invoice
     try:
