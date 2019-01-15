@@ -42,3 +42,21 @@ def direct_cancel_sinv(sinv):
     sql_query = ("""UPDATE `tabSales Invoice` SET `docstatus` = 2 WHERE `docstatus` = 0 AND `name` = "{0}";""".format(sinv))
     frappe.db.sql(sql_query, as_dict=True)
     return
+
+# this funtion will update primary contacts
+def update_primary():
+    sql_query = ("""SELECT `name` FROM `tabCustomer` WHERE `customer_primary_contact` IS NULL;""")
+    customers = frappe.db.sql(sql_query, as_dict=True)
+    print("{0}".format(customers))
+    for c in customers:
+        customer = frappe.get_doc("Customer", c['name'])
+        links = frappe.get_all("Dynamic Link", filters={'link_name': customer.name, 'parenttype': 'Contact'}, fields=['parent'])
+        if links:
+            contact = frappe.get_doc("Contact", links[0]['parent'])
+            customer.customer_primary_contact = contact.name
+            customer.save()
+            frappe.db.commit()
+            print("{0} updated".format(customer.customer_name))
+        # print("{0}".format(customer.customer_name))
+
+    return
