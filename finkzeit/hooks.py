@@ -91,6 +91,14 @@ app_include_js = "/assets/js/fink_common.js"
 # Scheduled Tasks
 # ---------------
 
+# speed up email queue
+scheduler_events = {
+    "cron": {
+        "* * * * *": [
+            "frappe.email.queue.flush"
+        ]
+    }
+}
 # scheduler_events = {
 # 	"all": [
 # 		"finkzeit.tasks.all"
