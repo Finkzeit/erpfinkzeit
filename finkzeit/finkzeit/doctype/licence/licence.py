@@ -304,7 +304,7 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'customer': customer,
         'items': items,
         'additional_discount_percentage': overall_discount,
-        'terms': remarks,
+        'eingangstext': remarks,
         'from_licence': from_licence,
         'taxes_and_charges': taxes_and_charges,
         'taxes': taxes_and_charges_template.taxes,
