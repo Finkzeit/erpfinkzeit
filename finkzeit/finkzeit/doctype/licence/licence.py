@@ -218,6 +218,13 @@ def process_licence(licence_name):
         remarks = _("<p><b>Lizenz {0}</b><br></p>").format(licence.customer_name) + remarks
     customer_record = frappe.get_doc("Customer", customer)
     kst = customer_record.kostenstelle
+    # find income account
+    if customer_record.steuerregion == "EU":
+        income_account = u"4250 - Leistungserlöse EU-Ausland (in ZM) - FZAT"
+    elif customer_record.steuerregion == "DRL":
+        income_account = u"4200 - Leistungserlöse Export - FZAT"
+    else:
+        income_account = u"4220 - Leistungserlöse 20 % USt - FZAT"
     # find groups
     groups = []
     for item in licence.invoice_items:
@@ -229,7 +236,7 @@ def process_licence(licence_name):
             items = []
             for item in licence.invoice_items:
                 if item.group == group:
-                    items.append(get_item(item, multiplier, kst))
+                    items.append(get_item(item, multiplier, kst, income_account))
             if len(items) > 0:
                 new_invoice = create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1, [group])
                 if new_invoice:
@@ -237,7 +244,7 @@ def process_licence(licence_name):
             items = []
     else:
         for item in licence.invoice_items:
-            items.append(get_item(item, multiplier, kst))
+            items.append(get_item(item, multiplier, kst, income_account))
         if items:
             new_invoice = create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1, groups)
             if new_invoice:
@@ -264,14 +271,15 @@ def month_in_words(month):
     return switcher.get(month, _("Invalid month"))
     
 # parse to sales invoice item structure    
-def get_item(licence_item, multiplier, kst):
+def get_item(licence_item, multiplier, kst, income_account):
     return {
         'item_code': licence_item.item_code,
         'rate': (float(licence_item.rate) * ((100.0 - float(licence_item.discount or 0)) / 100.0)),
         'qty': licence_item.qty * multiplier,
         'discount_percentage': licence_item.discount,
         'cost_center': kst,
-        'group': licence_item.group
+        'group': licence_item.group,
+        'income_account': income_account
     }
 
 # from_invoice: 1=normal, 2=special
