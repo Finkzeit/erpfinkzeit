@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2018-2019, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 #
 # Run with
@@ -345,3 +345,44 @@ def import_hs_codes(filename):
     print("List completed")
     return
 
+def enable_vr():
+    doctypes = frappe.get_all("DocType", fields=['name'])
+    for doctype in doctypes:
+        print("Adding {0}...".format(doctype['name']))
+        new_access = frappe.get_doc({
+          'doctype': 'Custom DocPerm',
+          'parenttype': 'DocType',
+          'parentfield': 'permissions',
+          'parent': doctype['name'],
+          'role': "Verwaltungsrat",
+          'create': 0,
+          'share': 0,
+          'export': 0,
+          'cancel': 0,
+          'submit': 0,
+          'write': 0,
+          'print': 1,
+          'import': 0,
+          'read': 1,
+          'report': 1,
+          'set_user_permission': 0,
+          'amend': 0,
+          'email': 1,
+          'delete': 0
+        })
+        new_access.insert()
+    return
+
+def correct_dl_kst():
+    gl_entries = frappe.get_all("GL Entry", filters=[['voucher_no', 'LIKE', 'LS-%']], fields=['name',  'voucher_no'])
+    for gl_entry in gl_entries:
+        if gl_entry['voucher_no']:
+            dl = frappe.get_doc("Delivery Note", gl_entry['voucher_no'])
+            customer = frappe.get_doc("Customer", dl.customer)
+            #gl_record = frappe.get_doc("GL Entry", gl_entry['name'])
+            print("Updating {0} ({3}) from {1} to {2}".format(gl_entry['name'], customer.name, customer.kostenstelle, gl_entry['voucher_no']))
+            #gl_record.cost_center = customer.kostenstelle
+            #gl_record.save(ignore_permissions=True)
+            sql_query = """UPDATE `tabGL Entry` SET `cost_center` = "{kst}" WHERE `name` = "{name}";""".format(name=gl_entry['name'], kst=customer.kostenstelle)
+            frappe.db.sql(sql_query, as_dict=True)
+    return
