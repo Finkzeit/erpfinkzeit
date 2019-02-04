@@ -238,7 +238,7 @@ def process_licence(licence_name):
                 if item.group == group:
                     items.append(get_item(item, multiplier, kst, income_account))
             if len(items) > 0:
-                new_invoice = create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1, [group])
+                new_invoice = create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, from_licence=licence.name, groups=[group], commission=licence.customer)
                 if new_invoice:
                     sinv.append(new_invoice)
             items = []
@@ -246,7 +246,7 @@ def process_licence(licence_name):
         for item in licence.invoice_items:
             items.append(get_item(item, multiplier, kst, income_account))
         if items:
-            new_invoice = create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1, groups)
+            new_invoice = create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, from_licence=licence.name, groups=groups, commission=licence.customer)
             if new_invoice:
                 sinv.append(new_invoice)
 
@@ -283,7 +283,7 @@ def get_item(licence_item, multiplier, kst, income_account):
     }
 
 # from_invoice: 1=normal, 2=special
-def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges, from_licence=1, groups=None):
+def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges, from_licence=1, groups=None, commission=None):
     # get values from customer record
     customer_record = frappe.get_doc("Customer", customer)
     delivery_option = "Post"
@@ -321,16 +321,20 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'kostenstelle': customer_record.kostenstelle,
         'groups': group_items,
         'enable_lsv': customer_record.enable_lsv,
-        'ignore_pricing_rule': 1
+        'ignore_pricing_rule': 1,
+        'kommission': commission
     })
     # robust insert sales invoice
+    # FEBRUARY TRANSITION: HC to one, remove after
+    from_licence = 1
+
     try:
         new_record = new_sales_invoice.insert()
         # check auto-submit
-        sql_query = ("""SELECT `name`, `grand_total` 
-                FROM `tabSales Invoice` 
-                WHERE `customer` = '{customer}' 
-                  AND `docstatus` = 1 
+        sql_query = ("""SELECT `name`, `grand_total`
+                FROM `tabSales Invoice`
+                WHERE `customer` = '{customer}'
+                  AND `docstatus` = 1
                   AND `from_licence` = {from_licence}
                 ORDER BY `posting_date` DESC
                 LIMIT 1;""".format(customer=customer, from_licence=from_licence))
