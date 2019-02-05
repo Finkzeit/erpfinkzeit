@@ -219,12 +219,16 @@ def process_licence(licence_name):
     customer_record = frappe.get_doc("Customer", customer)
     kst = customer_record.kostenstelle
     # find income account
-    if customer_record.steuerregion == "EU":
-        income_account = u"4250 - Leistungserlöse EU-Ausland (in ZM) - FZAT"
-    elif customer_record.steuerregion == "DRL":
-        income_account = u"4200 - Leistungserlöse Export - FZAT"
+    if "FZCH" in kst:
+        income_account = u"3400 - Dienstleistungsertrag - FZCH"
     else:
-        income_account = u"4220 - Leistungserlöse 20 % USt - FZAT"
+        if customer_record.steuerregion == "EU":
+            income_account = u"4250 - Leistungserlöse EU-Ausland (in ZM) - FZAT"
+        elif customer_record.steuerregion == "DRL":
+            income_account = u"4200 - Leistungserlöse Export - FZAT"
+        else:
+            income_account = u"4220 - Leistungserlöse 20 % USt - FZAT"
+        
     # find groups
     groups = []
     for item in licence.invoice_items:
@@ -282,7 +286,7 @@ def get_item(licence_item, multiplier, kst, income_account):
         'income_account': income_account
     }
 
-# from_invoice: 1=normal, 2=special
+# from_invoice: licence key
 def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges, from_licence=1, groups=None, commission=None):
     # get values from customer record
     customer_record = frappe.get_doc("Customer", customer)
