@@ -106,5 +106,17 @@ def get_data():
                        "description": _("Bank Wizard")
                    }
             ]
+        },
+        {
+            "label": _("ZSW"),
+            "icon": "octicon octicon-broadcast",
+            "items": [
+                   {
+                       "type": "doctype",
+                       "name": "ZSW",
+                       "label": _("ZSW"),
+                       "description": _("ZSW")
+                   }			   
+            ]
         }
     ]
