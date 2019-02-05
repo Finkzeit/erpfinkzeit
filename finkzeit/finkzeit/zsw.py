@@ -138,6 +138,7 @@ def create_invoices(tenant="AT"):
     # get bookings
     bookings = get_bookings(start_time)
     collected_bookings = []
+    invoice_count = 0
     if bookings:
         print("Got {0} bookings.".format(len(bookings)))
         # collect customers
@@ -211,7 +212,7 @@ def create_invoices(tenant="AT"):
                                     item_code.append("3033")
                             elif p['key'] == 12:
                                 item_code.append("3026")
-                                qty.append(round(float(p['val']) / 60, 2)) # in h
+                                qty.append(round(float(p['val']) / 60, 1)) # in h
                             elif p['key'] == 13:
                                 qty.append(float(p['val']))
                                 if "FZT" in kst:
@@ -220,7 +221,7 @@ def create_invoices(tenant="AT"):
                                     item_code.append("3007")
                         # add item to list
                         booking_id = booking['fromBookingID']
-                        duration = round(float(booking['duration']) / 60, 2) # in h
+                        duration = round(float(booking['duration']) / 60, 1) # in h
                         description = "{0} {1}<br>{2}".format(
                             booking['from']['timestamp'].split(" ")[0],
                             employees[booking['person']],
@@ -274,7 +275,10 @@ def create_invoices(tenant="AT"):
                         taxes_and_charges = tax_rule, 
                         from_licence = 0, 
                         groups=None, 
-                        commission=None)
+                        commission=None,
+                        print_descriptions=1,
+                        update_stock=1)
+                    invoice_count += 1
                 if len(items_onsite) > 0:
                     create_invoice(
                         customer = customer_record.name, 
@@ -284,13 +288,24 @@ def create_invoices(tenant="AT"):
                         taxes_and_charges = tax_rule, 
                         from_licence = 0, 
                         groups=None, 
-                        commission=None)
+                        commission=None,
+                        print_descriptions=1,
+                        update_stock=1)
+                    invoice_count += 1
             else:
                 err = "Customer not found in ERP: {0}".format(erp_customer)
                 print(err)
                 frappe.log_error(err, "ZSW customer not found")          
         # finished, mark bookings as invoices
         # mark_bookings(collected_bookings)
+        # update last status
+        config = frappe.get_doc("ZSW", "ZSW")
+        try:
+            config.last_status = "{0} {1} invoices created".format(
+                datetime.now(), invoice_count)
+            config.save()
+        except Exception as err:
+            frappe.log_error( "Unable to set status. ({0})".format(err), "ZSW create_invoices")
     else:
         print("No bookings found.")
     return
