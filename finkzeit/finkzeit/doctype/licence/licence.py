@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2018-2019, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 #
 # Debug async "create_invoices" using "bench execute finkzeit.finkzeit.doctype.licence.licence.create_invoices"
@@ -218,6 +218,13 @@ def process_licence(licence_name):
         remarks = _("<p><b>Lizenz {0}</b><br></p>").format(licence.customer_name) + remarks
     customer_record = frappe.get_doc("Customer", customer)
     kst = customer_record.kostenstelle
+    # find income account
+    if customer_record.steuerregion == "EU":
+        income_account = u"4250 - Leistungserlöse EU-Ausland (in ZM) - FZAT"
+    elif customer_record.steuerregion == "DRL":
+        income_account = u"4200 - Leistungserlöse Export - FZAT"
+    else:
+        income_account = u"4220 - Leistungserlöse 20 % USt - FZAT"
     # find groups
     groups = []
     for item in licence.invoice_items:
@@ -229,17 +236,17 @@ def process_licence(licence_name):
             items = []
             for item in licence.invoice_items:
                 if item.group == group:
-                    items.append(get_item(item, multiplier, kst))
+                    items.append(get_item(item, multiplier, kst, income_account))
             if len(items) > 0:
-                new_invoice = create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1, [group])
+                new_invoice = create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, from_licence=licence.name, groups=[group], commission=licence.customer)
                 if new_invoice:
                     sinv.append(new_invoice)
             items = []
     else:
         for item in licence.invoice_items:
-            items.append(get_item(item, multiplier, kst))
+            items.append(get_item(item, multiplier, kst, income_account))
         if items:
-            new_invoice = create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, 1, groups)
+            new_invoice = create_invoice(customer, items, licence.overall_discount, remarks, licence.taxes_and_charges, from_licence=licence.name, groups=groups, commission=licence.customer)
             if new_invoice:
                 sinv.append(new_invoice)
 
@@ -264,18 +271,19 @@ def month_in_words(month):
     return switcher.get(month, _("Invalid month"))
     
 # parse to sales invoice item structure    
-def get_item(licence_item, multiplier, kst):
+def get_item(licence_item, multiplier, kst, income_account):
     return {
         'item_code': licence_item.item_code,
         'rate': (float(licence_item.rate) * ((100.0 - float(licence_item.discount or 0)) / 100.0)),
         'qty': licence_item.qty * multiplier,
         'discount_percentage': licence_item.discount,
         'cost_center': kst,
-        'group': licence_item.group
+        'group': licence_item.group,
+        'income_account': income_account
     }
 
 # from_invoice: 1=normal, 2=special
-def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges, from_licence=1, groups=None):
+def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges, from_licence=1, groups=None, commission=None):
     # get values from customer record
     customer_record = frappe.get_doc("Customer", customer)
     delivery_option = "Post"
@@ -304,7 +312,7 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'customer': customer,
         'items': items,
         'additional_discount_percentage': overall_discount,
-        'terms': remarks,
+        'eingangstext': remarks,
         'from_licence': from_licence,
         'taxes_and_charges': taxes_and_charges,
         'taxes': taxes_and_charges_template.taxes,
@@ -313,16 +321,20 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'kostenstelle': customer_record.kostenstelle,
         'groups': group_items,
         'enable_lsv': customer_record.enable_lsv,
-        'ignore_pricing_rule': 1
+        'ignore_pricing_rule': 1,
+        'kommission': commission
     })
     # robust insert sales invoice
+    # FEBRUARY TRANSITION: HC to one, remove after
+    from_licence = 1
+
     try:
         new_record = new_sales_invoice.insert()
         # check auto-submit
-        sql_query = ("""SELECT `name`, `grand_total` 
-                FROM `tabSales Invoice` 
-                WHERE `customer` = '{customer}' 
-                  AND `docstatus` = 1 
+        sql_query = ("""SELECT `name`, `grand_total`
+                FROM `tabSales Invoice`
+                WHERE `customer` = '{customer}'
+                  AND `docstatus` = 1
                   AND `from_licence` = {from_licence}
                 ORDER BY `posting_date` DESC
                 LIMIT 1;""".format(customer=customer, from_licence=from_licence))

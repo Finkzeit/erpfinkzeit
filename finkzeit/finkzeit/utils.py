@@ -60,3 +60,8 @@ def update_primary():
         # print("{0}".format(customer.customer_name))
 
     return
+
+@frappe.whitelist()
+def wall(message):
+    frappe.publish_realtime(event='msgprint',message=message)
+    return
