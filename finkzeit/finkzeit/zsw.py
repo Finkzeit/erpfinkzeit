@@ -13,17 +13,22 @@ from time import time
 from datetime import datetime
 from frappe.utils.background_jobs import enqueue
 from finkzeit.finkzeit.doctype.licence.licence import create_invoice
+from frappe.utils.password import get_decrypted_password
 
 """ Low-level connect/disconnect """
 def connect():
     # read configuration
     config = frappe.get_doc("ZSW", "ZSW")
+    pw = get_decrypted_password("ZSW", "ZSW", 'password', False)
     # create client
     client = Client(config.endpoint)
+    print("Client created")
     # open session
     session = client.service.openSession('finkzeit')
+    print("Session opened")
     # log in
-    loginResult = client.service.login(session, config.user, config.password)
+    login_result = client.service.login(session, config.user, pw)
+    print("Login: {0}".format(login_result))
     # return session
     return client, session
 
@@ -37,16 +42,29 @@ def disconnect(client, session):
 """ abstracted ZSW functions """
 def get_employees():
     # connect
+    print("Connecting...")
     client, session = connect()
+    print("Session: {0}".format(session))
     # read employees
+    print("Read employees...")
     employees = client.service.getAllEmployees(session, 0)
+    # clean up employees
+    employee_dict = {}
+    for employee in employees:
+        # reformat employees to indexed dict
+        employee_dict[employee['id']] = "{0} {1}".format(employee['firstname'], employee['lastname'])
+    print("Employees: {0}".format(employee_dict))
     # close connection
+    print("Disconnecting...")
     disconnect(client, session)
-    return employees
+    return employee_dict
     
 def get_bookings(start_time):
     # current time as end time
     end_time = int(time())
+    start_time = int(start_time)
+    print("Start {0} (type: {1})".format(start_time, type(start_time)))
+    print("End {0} (type: {1})".format(end_time, type(end_time)))
     # timestamp dicts
     fromTS = {'timeInSeconds': start_time}
     toTS = {'timeInSeconds': end_time}
@@ -60,10 +78,13 @@ def get_bookings(start_time):
     config = frappe.get_doc("ZSW", "ZSW")
     try:
         config.last_sync_sec = end_time
-        config.last_sync = datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')
+        config.last_sync_date = datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')
         config.save()
     except Exception as err:
         frappe.log_error( "Unable to set end time. ({0})".format(err), "ZSW get_booking")
+    print("Bookings: {0}".format(bookings))
+    if bookings:
+        print("Total {0} bookings".format(len(bookings)))
     return bookings
 
 def mark_bookings(bookings):
@@ -108,19 +129,19 @@ def update_customer(customer):
         active=active)
     return
 
-@frappe.whitelist(tenant="AT")
-def enqueue_create_invoices():
+@frappe.whitelist()
+def enqueue_create_invoices(tenant="AT"):
     # enqueue invoice creation (potential high workload)
     kwargs={
         'tenant': tenant
     }
-        
+
     enqueue("finkzeit.finkzeit.zsw.create_invoices",
         queue='long',
         timeout=15000,
         **kwargs)
     return
-    
+
 def create_invoices(tenant="AT"):
     # get start timestamp
     print("Reading config...")
@@ -130,10 +151,7 @@ def create_invoices(tenant="AT"):
         # fallback: get last two months
         start_time = int(time()) - 5270400000
     # read employee information
-    employees = {}
-    for employee in get_employees():
-        # reformat employees to indexed dict
-        employees[employee['id']] = "{0} {1}".format(employee['firstname'], employee['lastname'])
+    employees = get_employees()
     print("Got {0} employees.".format(len(employees)))
     # get bookings
     bookings = get_bookings(start_time)
@@ -333,13 +351,44 @@ def get_short_item(item_code, qty, kst, income_account):
     
 def set_last_sync(date):
     dt = datetime.strptime(date, "%Y-%m-%d")
-    timestamp = (dt - datetime(1970, 1, 1)).total_seconds() * 1000
+    timestamp = (dt - datetime(1970, 1, 1)).total_seconds()
+    date_str = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+    print("Timestamp: {0} / {1}".format(timestamp, date_str))
     # update end_time in ZSW record
     config = frappe.get_doc("ZSW", "ZSW")
     try:
         config.last_sync_sec = timestamp
-        config.last_sync = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
+        config.last_sync_date = date_str
         config.save()
     except Exception as err:
         frappe.log_error( "Unable to set end time. ({0})".format(err), "ZSW set_last_sync")
-    return bookings
+    return
+
+def test_connect():
+    # read configuration
+    config = frappe.get_doc("ZSW", "ZSW")
+    # create client
+    client = Client(config.endpoint)
+    print("Client created: {0}".format(config.endpoint))
+    # open session
+    session = client.service.openSession('finkzeit')
+    print("Session opened")
+    # log in
+    pw = get_decrypted_password("ZSW", "ZSW", 'password', False)
+    login_result = client.service.login(session, config.user, pw)
+    print("Login: {0}".format(login_result))
+
+    print("Session: {0}".format(session))
+    # read employees
+    print("Read employees...")
+    employees = client.service.getAllEmployees(session, 0)
+    # close connection
+    print("Disconnecting...")
+
+    # log out
+    logoutResult = client.service.logout(session)
+    # close session
+    client.service.closeSession(session)
+    print("Connection closed")
+    return
+
