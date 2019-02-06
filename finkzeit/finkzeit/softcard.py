@@ -11,6 +11,18 @@ from frappe.utils.background_jobs import enqueue
 from datetime import datetime
 
 @frappe.whitelist()
+def enqueue_create_export(customer):
+    # enqueue export creation (potential high workload)
+    kwargs={
+        'customer': customer
+    }
+
+    enqueue("finkzeit.finkzeit.softcard.create_export",
+        queue='long',
+        timeout=15000,
+        **kwargs)
+    return
+    
 def create_export(customer):
     # check if there are any 
     sql_query = """SELECT `name`, `outstanding_amount` 
