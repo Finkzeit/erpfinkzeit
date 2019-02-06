@@ -341,7 +341,7 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
                 FROM `tabSales Invoice`
                 WHERE `customer` = '{customer}'
                   AND `docstatus` = 1
-                  AND `from_licence` = {from_licence}
+                  AND `from_licence` = '{from_licence}'
                 ORDER BY `posting_date` DESC
                 LIMIT 1;""".format(customer=customer, from_licence=from_licence))
         last_invoice = frappe.db.sql(sql_query, as_dict=True)
