@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2018-2019, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 #
 
@@ -240,7 +240,7 @@ def create_invoices(tenant="AT"):
                                         item_code.append("3033")
                                 elif p['key'] == 12:
                                     item_code.append("3026")
-                                    qty.append(round(float(p['val']) / 60, 1)) # in h
+                                    qty.append((round(float(p['val']) / 60.0) + 0.04, 1)) # in h
                                 elif p['key'] == 13:
                                     qty.append(float(p['val']))
                                     if "FZT" in kst:
@@ -251,7 +251,7 @@ def create_invoices(tenant="AT"):
                             print("...no properties... ({0})".format(err))
                         # add item to list
                         booking_id = booking['fromBookingID']
-                        duration = round(float(booking['duration']) / 60, 1) # in h
+                        duration = round((float(booking['duration']) / 60.0) + 0.04, 1) # in h
                         description = "{0} {1}<br>{2}".format(
                             booking['from']['timestamp'].split(" ")[0],
                             employees[booking['person']],

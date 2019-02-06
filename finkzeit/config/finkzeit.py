@@ -108,7 +108,7 @@ def get_data():
             ]
         },
         {
-            "label": _("ZSW"),
+            "label": _("Integration"),
             "icon": "octicon octicon-broadcast",
             "items": [
                    {
@@ -116,6 +116,12 @@ def get_data():
                        "name": "ZSW",
                        "label": _("ZSW"),
                        "description": _("ZSW")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "SoftCard File",
+                       "label": _("SoftCard File"),
+                       "description": _("SoftCard File")
                    }			   
             ]
         }
