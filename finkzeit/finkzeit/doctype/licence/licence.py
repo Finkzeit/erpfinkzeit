@@ -327,7 +327,7 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'enable_lsv': customer_record.enable_lsv,
         'ignore_pricing_rule': 1,
         'kommission': commission,
-        'drucken_mit_beschriftung': print_descriptions,
+        'drucken_mit_beschreibung': print_descriptions,
         'update_stock': update_stock
     })
     # robust insert sales invoice

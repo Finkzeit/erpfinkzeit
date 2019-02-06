@@ -173,6 +173,10 @@ def create_invoices(tenant="AT"):
             if tenant != "AT":
                 # crop country digits
                 erp_customer = erp_customer[2:]
+            else:
+                if erp_customer.lower().startswith("ch"):
+                    # customer outside tenant range, skip
+                    continue
             # create ERP-type customer key
             erp_customer = "K-{0}".format(erp_customer)
             # find customer record
@@ -201,42 +205,49 @@ def create_invoices(tenant="AT"):
                 # loop through all bookings
                 for booking in bookings:
                     use_booking = False
-                    for level in booking['levels']['WSLevelIdentification']:
-                        if level['levelID'] == 1 and level['code'] == customer:
-                            use_booking = True
-                        if level['levelID'] == 3:
-                            service_type = level['code']
+                    try:
+                        for level in booking['levels']['WSLevelIdentification']:
+                            if level['levelID'] == 1 and level['code'] == customer:
+                                use_booking = True
+                            if level['levelID'] == 3:
+                                service_type = level['code']
+                    except Exception as err:
+                        print("...no levels... ({0})".format(err))
                     if use_booking:
                         # collect properties
                         item_code = []
                         qty = []
-                        for p in booking['property']['WSProperty']:
-                            if p['key'] == 2:
-                                customer_contact = p['val']
-                            elif p['key'] == 14:
-                                content = p['val']
-                                # "qty level/item_code"
-                                qty.append(float(content.split(" ")[0]))
-                                item_code.append(content.split("/")[1])
-                            elif p['key'] == 11:
-                                qty.append(1.0)
-                                if p['val'] == "5/0":
-                                    item_code.append("3048")
-                                elif p['val'] == "5/1":
-                                    item_code.append("3031")
-                                elif p['val'] == "5/2":
-                                    item_code.append("3032")
-                                elif p['val'] == "5/3":
-                                    item_code.append("3033")
-                            elif p['key'] == 12:
-                                item_code.append("3026")
-                                qty.append(round(float(p['val']) / 60, 1)) # in h
-                            elif p['key'] == 13:
-                                qty.append(float(p['val']))
-                                if "FZT" in kst:
-                                    item_code.append("3008")
-                                else:
-                                    item_code.append("3007")
+                        customer_contact = None
+                        try:
+                            for p in booking['property']['WSProperty']:
+                                if p['key'] == 2:
+                                    customer_contact = p['val']
+                                elif p['key'] == 14:
+                                    content = p['val']
+                                    # "qty level/item_code"
+                                    qty.append(float(content.split(" ")[0]))
+                                    item_code.append(content.split("/")[1])
+                                elif p['key'] == 11:
+                                    qty.append(1.0)
+                                    if p['val'] == "5/0":
+                                        item_code.append("3048")
+                                    elif p['val'] == "5/1":
+                                        item_code.append("3031")
+                                    elif p['val'] == "5/2":
+                                        item_code.append("3032")
+                                    elif p['val'] == "5/3":
+                                        item_code.append("3033")
+                                elif p['key'] == 12:
+                                    item_code.append("3026")
+                                    qty.append(round(float(p['val']) / 60, 1)) # in h
+                                elif p['key'] == 13:
+                                    qty.append(float(p['val']))
+                                    if "FZT" in kst:
+                                        item_code.append("3008")
+                                    else:
+                                        item_code.append("3007")
+                        except Exception as err:
+                            print("...no properties... ({0})".format(err))
                         # add item to list
                         booking_id = booking['fromBookingID']
                         duration = round(float(booking['duration']) / 60, 1) # in h
