@@ -165,7 +165,7 @@ def create_invoices(tenant="AT", to_date=None, filter_kst=None):
         print("Invalid end time (before last sync)")
         return
     # get bookings
-    bookings = get_bookings(start_time)
+    bookings = get_bookings(start_time, end_time)
     collected_bookings = []
     invoice_count = 0
     if bookings:
