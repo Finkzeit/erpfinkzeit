@@ -59,9 +59,9 @@ def get_employees():
     disconnect(client, session)
     return employee_dict
     
-def get_bookings(start_time):
+def get_bookings(start_time, end_time):
     # current time as end time
-    end_time = int(time())
+    end_time = int(end_time)
     start_time = int(start_time)
     print("Start {0} (type: {1})".format(start_time, type(start_time)))
     print("End {0} (type: {1})".format(end_time, type(end_time)))
@@ -130,10 +130,12 @@ def update_customer(customer):
     return
 
 @frappe.whitelist()
-def enqueue_create_invoices(tenant="AT"):
+def enqueue_create_invoices(tenant="AT", to_date=None, kst=None):
     # enqueue invoice creation (potential high workload)
     kwargs={
-        'tenant': tenant
+        'tenant': tenant,
+        'to_date': to_date,
+        'filter_kst': kst
     }
 
     enqueue("finkzeit.finkzeit.zsw.create_invoices",
@@ -142,7 +144,7 @@ def enqueue_create_invoices(tenant="AT"):
         **kwargs)
     return
 
-def create_invoices(tenant="AT"):
+def create_invoices(tenant="AT", to_date=None, filter_kst=None):
     # get start timestamp
     print("Reading config...")
     config = frappe.get_doc("ZSW", "ZSW")
@@ -153,6 +155,15 @@ def create_invoices(tenant="AT"):
     # read employee information
     employees = get_employees()
     print("Got {0} employees.".format(len(employees)))
+    # get end time
+    if to_date:
+        end_time = int((datetime.strptime(to_date, "%Y-%m-%d") - datetime(1970,1,1)).total_seconds())
+    else:
+        end_time = int(time())
+    if end_time < start_time:
+        frappe.log_error( "Invalid end time (before last sync)", "ZSW invalid end time" )
+        print("Invalid end time (before last sync)")
+        return
     # get bookings
     bookings = get_bookings(start_time)
     collected_bookings = []
@@ -189,6 +200,9 @@ def create_invoices(tenant="AT"):
             if customer_record:
                 # prepare customer settings
                 kst = customer_record.kostenstelle
+                # skip if filter_kst is set and not matching this customer
+                if filter_kst and kst != filter_kst:
+                    continue
                 # find income account
                 if "FZCH" in kst:
                     income_account = u"3400 - Dienstleistungsertrag - FZCH"
