@@ -52,7 +52,7 @@ def get_employees():
     employee_dict = {}
     for employee in employees:
         # reformat employees to indexed dict
-        employee_dict[employee['id']] = "{0} {1}".format(employee['firstname'], employee['lastname'])
+        employee_dict[employee['personID']] = "{0} {1}".format(employee['firstname'], employee['lastname'])
     print("Employees: {0}".format(employee_dict))
     # close connection
     print("Disconnecting...")
