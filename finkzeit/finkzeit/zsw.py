@@ -202,6 +202,7 @@ def create_invoices(tenant="AT"):
                 # create lists to collect invoice items
                 items_remote = []
                 items_onsite = []
+                do_invoice = False
                 # loop through all bookings
                 for booking in bookings:
                     use_booking = False
@@ -268,6 +269,7 @@ def create_invoices(tenant="AT"):
                                 income_account=income_account))
                         elif service_type == "J":
                             # remote, normal
+                            do_invoice = True
                             items_remote.append(get_item(
                                 item_code="3014", 
                                 description=description,
@@ -277,6 +279,7 @@ def create_invoices(tenant="AT"):
                                 income_account=income_account))
                         elif service_type == "V":
                             # onsite, normal
+                            do_invoice = True
                             items_onsite.append(get_item(
                                 item_code="3014", 
                                 description=description,
@@ -295,7 +298,7 @@ def create_invoices(tenant="AT"):
                         # mark as collected 
                         collected_bookings.append(booking_id)        
                 # collected all items, create invoices
-                if len(items_remote) > 0:
+                if do_invoice and len(items_remote) > 0:
                     create_invoice(
                         customer = customer_record.name, 
                         items = items_remote, 
@@ -308,10 +311,10 @@ def create_invoices(tenant="AT"):
                         print_descriptions=1,
                         update_stock=1)
                     invoice_count += 1
-                if len(items_onsite) > 0:
+                if do_invoice and len(items_onsite) > 0:
                     create_invoice(
                         customer = customer_record.name, 
-                        items = items_remote, 
+                        items = items_onsite, 
                         overall_discount = 0, 
                         remarks = "Support vor Ort", 
                         taxes_and_charges = tax_rule, 
