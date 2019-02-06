@@ -180,7 +180,12 @@ def create_invoices(tenant="AT"):
             # create ERP-type customer key
             erp_customer = "K-{0}".format(erp_customer)
             # find customer record
-            customer_record = frappe.get_doc("Customer", erp_customer)
+            try:
+                customer_record = frappe.get_doc("Customer", erp_customer)
+            except:
+                # customer not found
+                frappe.log_error( "Customer {0} not found in ERPNext.".format(erp_customer), "ZSW customer not found" )
+                continue
             if customer_record:
                 # prepare customer settings
                 kst = customer_record.kostenstelle
