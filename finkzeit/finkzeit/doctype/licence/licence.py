@@ -315,6 +315,7 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'doctype': 'Sales Invoice',
         'customer': customer,
         'items': items,
+        'apply_discount_on': 'Net Total',
         'additional_discount_percentage': overall_discount,
         'eingangstext': remarks,
         'from_licence': from_licence,
