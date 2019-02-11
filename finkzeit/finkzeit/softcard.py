@@ -29,6 +29,7 @@ def create_export(customer):
     sql_query = """SELECT `name`, `outstanding_amount` 
         FROM `tabSales Invoice`
         WHERE `customer` = '{customer}'
+          AND `docstatus` = 1
           AND `outstanding_amount` != 0
           AND `is_proposed` = 0
        """.format(customer=customer)
