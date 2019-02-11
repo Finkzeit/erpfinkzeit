@@ -96,19 +96,35 @@ def mark_bookings(bookings):
     disconnect(client, session)
     return
     
-def create_update_customer(customer, customer_name, active):
+def create_update_customer(customer, customer_name, active, kst="FZV"):
     # create customer (=level) information
-    level ={'WSLevel':[{
+    level = {'WSLevel':[{
           'active': active,
           'code': customer,
           'levelID': 1,
           'text': customer_name
         }]
     }
+    # create link information (for cost center groups)
+    link = {
+        'NaturalID': customer,
+        'NaturalInfo': 1,
+        'LinkType': 3,
+        'Action': 4
+    }
+    # map cost center
+    if "FZW" in kst:
+        kst_code = 86
+    elif "FZT" in kst:
+        kst_code = 87
+    else:
+        kst_code = 13
     # connect to ZSW
     client, session = connect()
     # create or update customer
     client.service.createLevels(session, level, True)
+    # add link (or ignore if it exists already)
+    client.service.quickAddGroupMember(session, kst_code, link)
     # close connection
     disconnect(client, session)
     return
@@ -126,7 +142,9 @@ def update_customer(customer, zsw_reference):
     create_update_customer(
         customer=zsw_reference, 
         customer_name=record.customer_name, 
-        active=active)
+        active=active,
+        kst=record.kostenstelle
+    )
     return
 
 @frappe.whitelist()
