@@ -115,7 +115,7 @@ def create_update_customer(customer, customer_name, active):
 
 """ interaction mechanisms """
 @frappe.whitelist()
-def update_customer(customer):
+def update_customer(customer, zsw_reference):
     # get customer record
     record = frappe.get_doc("Customer", customer)
     # update values in ZSW
@@ -124,7 +124,7 @@ def update_customer(customer):
     else:
         active = False
     create_update_customer(
-        customer=record.name, 
+        customer=zsw_reference, 
         customer_name=record.customer_name, 
         active=active)
     return
