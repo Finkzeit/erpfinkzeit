@@ -71,7 +71,7 @@ def get_bookings(start_time, end_time):
     # connect
     client, session = connect()
     # get bookings
-    bookings = client.service.getChangedBDEBookingPairs(session, fromTS, toTS, 0)
+    bookings = client.service.getBookingPairs(session, fromTS, toTS, false, 0)
     # close connection
     disconnect(client, session)
     # update end_time in ZSW record
