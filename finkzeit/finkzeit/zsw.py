@@ -124,7 +124,7 @@ def create_update_customer(customer, customer_name, active, kst="FZV"):
     # create or update customer
     client.service.createLevels(session, level, True)
     # add link (or ignore if it exists already)
-    client.service.quickAddGroupMember(session, kst_code, link)
+    # client.service.quickAddGroupMember(session, kst_code, link)
     # close connection
     disconnect(client, session)
     return
