@@ -41,7 +41,10 @@ def post_invoice(**kwargs):
         'terms': invoice['terms'],
         'currency': invoice['currency'],
         'taxes_and_charges': supplier_record.default_purchase_tax_template,
-        'taxes': taxes
+        'taxes': taxes,
+        'apply_discount_on': invoice['apply_discount_on'],
+        'additional_discount_percentage': invoice['additional_discount_percentage'],
+        'discount_amount': invoice['discount_amount']
     })
     new_pinv = pinv.insert(ignore_permissions=True)
     if new_pinv.grand_total == invoice['grand_total']:
@@ -64,11 +67,14 @@ def send_invoice(host, sales_invoice):
         'items': items, 
         'posting_date': "{0}".format(sinv.posting_date),
         'due_date': "{0}".format(sinv.due_date),
-        'terms': sinv.terms,
+        'terms': sinv.eingangstext or "" + "<br>" + sinv.terms or "",
         'grand_total': sinv.grand_total,
         'company': sinv.company,
         'name': sinv.name,
-        'currency': sinv.currency
+        'currency': sinv.currency,
+        'apply_discount_on': sinv.apply_discount_on,
+        'additional_discount_percentage': sinv.additional_discount_percentage,
+        'discount_amount': sinv.discount_amount
     }
     # convert data to string for transmission
     text = json.dumps(data)
@@ -76,9 +82,8 @@ def send_invoice(host, sales_invoice):
     r = requests.get("{host}/api/method/finkzeit.finkzeit.erpnext.post_invoice".format(host=host), params=payload)
     if r.status_code == requests.codes.ok:
         try:
-            sinv.is_proposed = 1
-            sinv.save()
-            frappe.db.commit()
+            sql_query = """UPDATE `tabSales Invoice` SET `is_proposed` = 1 WHERE `name` = '{name}';""".format(name=sales_invoice)
+            frappe.db.sql(sql_query)
         except Exception as err:
             frappe.log_error( "Unable to mark invoice {0} as sent: {1}".format(sales_invoice, err), "erpnext send_invoice" )
     else:

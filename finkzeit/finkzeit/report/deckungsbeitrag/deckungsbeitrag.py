@@ -161,7 +161,7 @@ def execute(filters=None):
     data.append(["Aufwendungen", "{0}".format(expenses)])
     data.append(["Overheads", "{0}".format(costs_overhead)])
     data.append(["", ""])
-    data.append(["Marge", "{0}".format(revenue - expenses - costs_overhead)])
+    data.append(["Marge", "{0}".format(revenue + expenses + costs_overhead)])
     
     # return data
     return columns, data
