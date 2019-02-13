@@ -82,7 +82,7 @@ def send_invoice(host, sales_invoice):
         except Exception as err:
             frappe.log_error( "Unable to mark invoice {0} as sent: {1}".format(sales_invoice, err), "erpnext send_invoice" )
     else:
-        frappe.log_error( "An error occured when sending invoice {0} to {1}: {2}".format(sales_invoice, host, err), "erpnext send_invoice" )
+        frappe.log_error( "An error occured when sending invoice {0} to {1}: {2}".format(sales_invoice, host, r.status_code), "erpnext send_invoice" )
     return
 
 # function to send invoices to an ERPNext customer
