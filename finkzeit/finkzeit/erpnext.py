@@ -44,15 +44,20 @@ def post_invoice(**kwargs):
         'taxes': taxes,
         'apply_discount_on': invoice['apply_discount_on'],
         'additional_discount_percentage': invoice['additional_discount_percentage'],
-        'discount_amount': invoice['discount_amount']
+        'discount_amount': invoice['discount_amount'],
+        'payment_terms_template': supplier_record.payment_terms
     })
-    new_pinv = pinv.insert(ignore_permissions=True)
-    if new_pinv.grand_total == invoice['grand_total']:
-        # grand total matches, auto submit
-        new_pinv.submit()
-    frappe.db.commit()
+    #frappe.log_error("pinv for {0} created".format(invoice['name']), "debug pinv import")
+    try:
+        new_pinv = pinv.insert(ignore_permissions=True)
+        if new_pinv.grand_total == invoice['grand_total']:
+            # grand total matches, auto submit
+            new_pinv.submit()
+        frappe.db.commit()
+    except Exception as err:
+        frappe.log_error("Unable to insert {0}: {1}".format(invoice['name'], err), "ERPNext PINV API insert error" )
     return result
-    
+
 def send_invoice(host, sales_invoice):
     sinv = frappe.get_doc("Sales Invoice", sales_invoice)
     items = []
@@ -62,12 +67,12 @@ def send_invoice(host, sales_invoice):
             'qty': item.qty,
             'rate': item.rate
         })
-        
+
     data = {
         'items': items, 
         'posting_date': "{0}".format(sinv.posting_date),
         'due_date': "{0}".format(sinv.due_date),
-        'terms': sinv.eingangstext or "" + "<br>" + sinv.terms or "",
+        'terms': (sinv.eingangstext or "") + "<br>" + (sinv.terms or ""),
         'grand_total': sinv.grand_total,
         'company': sinv.company,
         'name': sinv.name,
@@ -84,6 +89,7 @@ def send_invoice(host, sales_invoice):
         try:
             sql_query = """UPDATE `tabSales Invoice` SET `is_proposed` = 1 WHERE `name` = '{name}';""".format(name=sales_invoice)
             frappe.db.sql(sql_query)
+            frappe.db.commit()
         except Exception as err:
             frappe.log_error( "Unable to mark invoice {0} as sent: {1}".format(sales_invoice, err), "erpnext send_invoice" )
     else:
@@ -98,13 +104,13 @@ def enqueue_send_invoices(customer, host):
         'customer': customer,
         'host': host
     }
-        
+
     enqueue("finkzeit.finkzeit.erpnext.send_invoices",
         queue='long',
         timeout=15000,
         **kwargs)
     return
-    
+
 def send_invoices(customer, host):
     open_invoices = frappe.get_all("Sales Invoice",
         filters=[
