@@ -332,9 +332,6 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'update_stock': update_stock
     })
     # robust insert sales invoice
-    # FEBRUARY TRANSITION: HC to one, remove after
-    from_licence = 1
-
     try:
         new_record = new_sales_invoice.insert()
         # check auto-submit
