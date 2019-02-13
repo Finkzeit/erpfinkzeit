@@ -82,9 +82,8 @@ def send_invoice(host, sales_invoice):
     r = requests.get("{host}/api/method/finkzeit.finkzeit.erpnext.post_invoice".format(host=host), params=payload)
     if r.status_code == requests.codes.ok:
         try:
-            sinv.is_proposed = 1
-            sinv.save()
-            frappe.db.commit()
+            sql_query = """UPDATE `tabSales Invoice` SET `is_proposed` = 1 WHERE `name` = '{name}';""".format(name=sales_invoice)
+            frappe.db.sql(sql_query)
         except Exception as err:
             frappe.log_error( "Unable to mark invoice {0} as sent: {1}".format(sales_invoice, err), "erpnext send_invoice" )
     else:
