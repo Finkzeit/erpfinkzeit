@@ -41,7 +41,10 @@ def post_invoice(**kwargs):
         'terms': invoice['terms'],
         'currency': invoice['currency'],
         'taxes_and_charges': supplier_record.default_purchase_tax_template,
-        'taxes': taxes
+        'taxes': taxes,
+        'apply_discount_on': invoice['apply_discount_on'],
+        'additional_discount_percentage': invoice['additional_discount_percentage'],
+        'discount_amount': invoice['discount_amount']
     })
     new_pinv = pinv.insert(ignore_permissions=True)
     if new_pinv.grand_total == invoice['grand_total']:
@@ -68,7 +71,10 @@ def send_invoice(host, sales_invoice):
         'grand_total': sinv.grand_total,
         'company': sinv.company,
         'name': sinv.name,
-        'currency': sinv.currency
+        'currency': sinv.currency,
+        'apply_discount_on': sinv.apply_discount_on,
+        'additional_discount_percentage': sinv.additional_discount_percentage,
+        'discount_amount': sinv.discount_amount
     }
     # convert data to string for transmission
     text = json.dumps(data)
