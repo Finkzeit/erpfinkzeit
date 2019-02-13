@@ -67,7 +67,7 @@ def send_invoice(host, sales_invoice):
         'items': items, 
         'posting_date': "{0}".format(sinv.posting_date),
         'due_date': "{0}".format(sinv.due_date),
-        'terms': sinv.terms,
+        'terms': sinv.eingangstext or "" + "<br>" + sinv.terms or "",
         'grand_total': sinv.grand_total,
         'company': sinv.company,
         'name': sinv.name,
