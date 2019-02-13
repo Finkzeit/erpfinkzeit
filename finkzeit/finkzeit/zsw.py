@@ -106,11 +106,12 @@ def create_update_customer(customer, customer_name, active, kst="FZV"):
         }]
     }
     # create link information (for cost center groups)
-    link = {
+    link = {'WSLink':[{
         'NaturalID': customer,
         'NaturalInfo': 1,
         'LinkType': 3,
         'Action': 4
+      }]
     }
     # map cost center
     if "FZW" in kst:
@@ -124,7 +125,11 @@ def create_update_customer(customer, customer_name, active, kst="FZV"):
     # create or update customer
     client.service.createLevels(session, level, True)
     # add link (or ignore if it exists already)
-    # client.service.quickAddGroupMember(session, kst_code, link)
+    try:
+        client.service.quickAddGroupMember(session, kst_code, link)
+    except Eception as err:
+        frappe.log_error( "Unable to add link ({0})<br>Session: {1}, kst: {2}, link: {3}".format(
+            err, session, kst_code, link), "ZSW update customer" )
     # close connection
     disconnect(client, session)
     return
