@@ -127,7 +127,7 @@ def create_update_customer(customer, customer_name, active, kst="FZV"):
     # add link (or ignore if it exists already)
     try:
         client.service.quickAddGroupMember(session, kst_code, link)
-    except Eception as err:
+    except Exception as err:
         frappe.log_error( "Unable to add link ({0})<br>Session: {1}, kst: {2}, link: {3}".format(
             err, session, kst_code, link), "ZSW update customer" )
     # close connection
