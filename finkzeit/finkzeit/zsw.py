@@ -106,18 +106,19 @@ def create_update_customer(customer, customer_name, active, kst="FZV"):
         }]
     }
     # create link information (for cost center groups)
-    link = {'WSLink':[{
-        'NaturalID': customer,
-        'NaturalInfo': 1,
-        'LinkType': 3,
-        'Action': 4
-      }]
-    }
+    link = {
+        'naturalID': customer,
+        'naturalInfo': 1,
+        'linkType': 3,
+        'action': 4
+      }
     # map cost center
     if "FZW" in kst:
         kst_code = 86
     elif "FZT" in kst:
         kst_code = 87
+    elif "FZCH" in kst:
+        kst_code = 114
     else:
         kst_code = 13
     # connect to ZSW
