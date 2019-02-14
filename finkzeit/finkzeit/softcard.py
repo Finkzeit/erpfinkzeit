@@ -85,7 +85,7 @@ def export_file(softcard_file):
         # collect tax rate
         try:
             if sinv.taxes:
-                tax_rate = ("{0}".format(sinx.taxes[0].rate)).replace(".", ",")
+                tax_rate = ("{0}".format(sinv.taxes[0].rate)).replace(".", ",")
             else:
                 tax_rate = "0"
         except:
