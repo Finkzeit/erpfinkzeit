@@ -397,10 +397,10 @@ def send_customers_to_zsw(tenant):
             zsw_ref = "CH" + customer_number[2:]
         else:
             zsw_ref = customer_number[2:]
-        if not customer.disabled and customer.is_checked:
-            active = True
-        else:
+        if customer.disabled:
             active = False
+        else:
+            active = True
         print("Updating {0} > {1} (active: {2}, kst: {2}".format(customer_number, zsw_ref, active, customer.kostenstelle))
         create_update_customer(zsw_ref, customer.customer_name, active=active, kst=customer.kostenstelle)
     print("Done. Please check the ERP error log for potential errors.")
