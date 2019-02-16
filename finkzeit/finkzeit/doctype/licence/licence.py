@@ -334,19 +334,20 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
     # robust insert sales invoice
     try:
         new_record = new_sales_invoice.insert()
-        # check auto-submit
-        sql_query = ("""SELECT `name`, `grand_total`
-                FROM `tabSales Invoice`
-                WHERE `customer` = '{customer}'
-                  AND `docstatus` = 1
-                  AND `from_licence` = '{from_licence}'
-                ORDER BY `posting_date` DESC
-                LIMIT 1;""".format(customer=customer, from_licence=from_licence))
-        last_invoice = frappe.db.sql(sql_query, as_dict=True)
-        if last_invoice:
-            if last_invoice[0]['grand_total'] == new_record.grand_total:
-                # last invoice has the same total, submit
-                new_record.submit()
+        # check auto-submit (only if customer is checked)
+        if customer_record.is_checked == 1:
+            sql_query = ("""SELECT `name`, `grand_total`
+                    FROM `tabSales Invoice`
+                    WHERE `customer` = '{customer}'
+                      AND `docstatus` = 1
+                      AND `from_licence` = '{from_licence}'
+                    ORDER BY `posting_date` DESC
+                    LIMIT 1;""".format(customer=customer, from_licence=from_licence))
+            last_invoice = frappe.db.sql(sql_query, as_dict=True)
+            if last_invoice:
+                if last_invoice[0]['grand_total'] == new_record.grand_total:
+                    # last invoice has the same total, submit
+                    new_record.submit()
         frappe.db.commit()
         return new_record.name
 
