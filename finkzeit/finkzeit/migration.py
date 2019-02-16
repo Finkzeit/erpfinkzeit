@@ -391,17 +391,17 @@ def correct_dl_kst():
 def send_customers_to_zsw(tenant):
     print("Sending all customers to ZSW...")
     customers = frappe.get_all("Customer", fields=['name'])
-    for customer_nummber in customers:
-        customer = frappe.get_doc("Customer", customer_number)
+    for customer_number in customers:
+        customer = frappe.get_doc("Customer", customer_number['name'])
         if tenant.lower() == "ch":
-            zsw_ref = "CH" + customer_number[2:]
+            zsw_ref = "CH" + customer.name[2:]
         else:
-            zsw_ref = customer_number[2:]
-        if not customer.disabled and customer.is_checked:
-            active = True
-        else:
+            zsw_ref = customer.name[2:]
+        if customer.disabled:
             active = False
-        print("Updating {0} > {1} (active: {2}, kst: {2}".format(customer_number, zsw_ref, active, customer.kostenstelle))
+        else:
+            active = True
+        print("Updating {0} > {1} (active: {2}, kst: {3}".format(customer.name, zsw_ref, active, customer.kostenstelle))
         create_update_customer(zsw_ref, customer.customer_name, active=active, kst=customer.kostenstelle)
     print("Done. Please check the ERP error log for potential errors.")
     return
