@@ -71,7 +71,7 @@ def get_bookings(start_time, end_time):
     # connect
     client, session = connect()
     # get bookings
-    bookings = client.service.getBookingPairs(session, fromTS, toTS, false, 0)
+    bookings = client.service.getBookingPairs(session, fromTS, toTS, False, 1)
     # close connection
     disconnect(client, session)
     # update end_time in ZSW record
@@ -137,29 +137,24 @@ def create_update_customer(customer, customer_name, active, kst="FZV"):
 
 """ interaction mechanisms """
 @frappe.whitelist()
-def update_customer(customer, zsw_reference):
-    # get customer record
-    record = frappe.get_doc("Customer", customer)
-    # update values in ZSW
-    if not record.disabled and record.is_checked:
-        active = True
-    else:
-        active = False
+def update_customer(customer_name, kst, zsw_reference, active=True):
     create_update_customer(
         customer=zsw_reference, 
-        customer_name=record.customer_name, 
+        customer_name=customer_name, 
         active=active,
-        kst=record.kostenstelle
+        kst=kst
     )
     return
 
 @frappe.whitelist()
-def enqueue_create_invoices(tenant="AT", to_date=None, kst=None):
+def enqueue_create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, service_filter=None):
     # enqueue invoice creation (potential high workload)
     kwargs={
         'tenant': tenant,
+        'from_date': from_date,
         'to_date': to_date,
-        'filter_kst': kst
+        'kst_filter': kst_filter,
+        'service_filter': service_filter
     }
 
     enqueue("finkzeit.finkzeit.zsw.create_invoices",
@@ -168,25 +163,33 @@ def enqueue_create_invoices(tenant="AT", to_date=None, kst=None):
         **kwargs)
     return
 
-def create_invoices(tenant="AT", to_date=None, filter_kst=None):
+def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, service_filter=None):
     # get start timestamp
     print("Reading config...")
     config = frappe.get_doc("ZSW", "ZSW")
-    start_time = config.last_sync_sec
-    if start_time == 0:
-        # fallback: get last two months
-        start_time = int(time()) - 5270400000
+    #start_time = config.last_sync_sec
+    #if start_time == 0:
+    #    # fallback: get last two months
+    #    start_time = int(time()) - 5270400000
     # read employee information
     employees = get_employees()
     print("Got {0} employees.".format(len(employees)))
-    # get end time
+    # get start time (at 0:00:00)
+    if from_date:
+        start_time = int((datetime.strptime(from_date, "%Y-%m-%d") - datetime(1970,1,1)).total_seconds())
+    else:
+        start_time = int(time())
+    # get end time (at 23:59:59)
     if to_date:
         end_time = int((datetime.strptime(to_date, "%Y-%m-%d") - datetime(1970,1,1)).total_seconds())
     else:
         end_time = int(time())
+    # shift times to find bookings (all booking pairs ar found on 0:00:00 on getBookingPairs
+    end_time += (20 * 60 * 60)
+    start_time -= (2 * 60 * 60)
     if end_time < start_time:
-        frappe.log_error( "Invalid end time (before last sync)", "ZSW invalid end time" )
-        print("Invalid end time (before last sync)")
+        frappe.log_error( "Invalid end time (before start time)", "ZSW invalid end time" )
+        print("Invalid end time (before start time)")
         return
     # get bookings
     bookings = get_bookings(start_time, end_time)
@@ -202,15 +205,18 @@ def create_invoices(tenant="AT", to_date=None, filter_kst=None):
                     customer = level['code']
                     if customer not in customers:
                         customers.append(customer)
+                        print("Found customer: ({0})".format(customer))
         # loop through customers to create invoices
+        print("Has {0} customers with bookings".format(len(customers)))
         for customer in customers:
             erp_customer = customer
-            if tenant != "AT":
+            if tenant.lower() != "at":
                 # crop country digits
                 erp_customer = erp_customer[2:]
             else:
                 if erp_customer.lower().startswith("ch"):
                     # customer outside tenant range, skip
+                    print("Skip customer {0} (out of range)".format(customer))
                     continue
             # create ERP-type customer key
             erp_customer = "K-{0}".format(erp_customer)
@@ -225,7 +231,8 @@ def create_invoices(tenant="AT", to_date=None, filter_kst=None):
                 # prepare customer settings
                 kst = customer_record.kostenstelle
                 # skip if filter_kst is set and not matching this customer
-                if filter_kst and kst != filter_kst:
+                if kst_filter and kst != kst_filter:
+                    print("Customer {0} dropped by KST filter".format(customer))
                     continue
                 # find income account
                 if "FZCH" in kst:
@@ -245,16 +252,22 @@ def create_invoices(tenant="AT", to_date=None, filter_kst=None):
                 # create lists to collect invoice items
                 items_remote = []
                 items_onsite = []
-                do_invoice = False
+                do_invoice_remote = False
+                do_invoice_onsite = False
                 # loop through all bookings
                 for booking in bookings:
                     use_booking = False
+                    override_duration = False
                     try:
                         for level in booking['levels']['WSLevelIdentification']:
                             if level['levelID'] == 1 and level['code'] == customer:
                                 use_booking = True
-                            if level['levelID'] == 3:
+                            if level['levelID'] == 2:
+                                # sevrice type, e.g. "T01" (remote), "T03" (onsite), "AB-#####" (project)
                                 service_type = level['code']
+                            if level['levelID'] == 3:
+                                # invoicing_type, e.g. "J": invoice, "N"/"W": free of charge
+                                invoice_type = level['code']
                     except Exception as err:
                         print("...no levels... ({0})".format(err))
                     if use_booking:
@@ -262,15 +275,25 @@ def create_invoices(tenant="AT", to_date=None, filter_kst=None):
                         item_code = []
                         qty = []
                         customer_contact = None
+                        #print("Booking: {0}".format(booking))
                         try:
-                            for p in booking['property']['WSProperty']:
+                        #if True:
+                            try:
+                                print("Properties: {0}".format(len(booking['properties']['WSProperty'])))
+                            except:
+                                print("No properties")
+                            #print("Property details: {0}".format(booking['properties']))
+                            for p in booking['properties']['WSProperty']:
+                                print("Reading properties...")
                                 if p['key'] == 2:
                                     customer_contact = p['val']
                                 elif p['key'] == 14:
                                     content = p['val']
                                     # "qty level/item_code"
-                                    qty.append(float(content.split(" ")[0]))
-                                    item_code.append(content.split("/")[1])
+                                    _item = content.split("/")[1]
+                                    if _item != "0001":
+                                        item_code.append(_item)
+                                        qty.append(float(content.split(" ")[0]))
                                 elif p['key'] == 11:
                                     qty.append(1.0)
                                     if p['val'] == "5/0":
@@ -290,58 +313,86 @@ def create_invoices(tenant="AT", to_date=None, filter_kst=None):
                                         item_code.append("3008")
                                     else:
                                         item_code.append("3007")
+                                elif p['key'] == 15:
+                                    override_duration = True
+                                    # field is stored as 01:30 (hh:mm)
+                                    print("Fetching custom duration...")
+                                    duration_fields = "{0}".format(p['val']).split(":")
+                                    duration = (float(duration_fields[0])) + (float(duration_fields[1]) / 60)
+                                    duration = round(duration, 2)
+                                    print("Duration override: {0}".format(duration))
                         except Exception as err:
                             print("...no properties... ({0})".format(err))
                         # add item to list
                         booking_id = booking['fromBookingID']
-                        duration = round((float(booking['duration']) / 60.0) + 0.04, 1) # in h
+                        if not override_duration:
+                            duration = round((float(booking['duration']) / 60.0) + 0.04, 1) # in h
                         description = "{0} {1}<br>{2}".format(
                             booking['from']['timestamp'].split(" ")[0],
                             employees[booking['person']],
                             booking['notice'] or "")
                         if customer_contact:
                             description += "<br>{0}".format(customer_contact)
-                        if service_type in ["W", "N"]:
-                            # remote, free of charge
-                            items_remote.append(get_item(
-                                item_code="3014", 
-                                description=description,
-                                qty=duration,
-                                discount=100,
-                                kst=kst,
-                                income_account=income_account))
-                        elif service_type == "J":
-                            # remote, normal
-                            do_invoice = True
-                            items_remote.append(get_item(
-                                item_code="3014", 
-                                description=description,
-                                qty=duration,
-                                discount=0,
-                                kst=kst,
-                                income_account=income_account))
-                        elif service_type == "V":
-                            # onsite, normal
-                            do_invoice = True
-                            items_onsite.append(get_item(
-                                item_code="3014", 
-                                description=description,
-                                qty=duration,
-                                discount=0,
-                                kst=kst,
-                                income_account=income_account))
-                        # add material items
-                        if len(item_code) > 0:
-                            for i in range(0, len(item_code)):
-                                items_onsite.append(get_short_item(
-                                    item_code="3014", 
+                        # check for service type filter
+                        if service_filter and service_filter != service_type:
+                            print("Dropped {0} ({1}) by not matching service level filter".format(booking_id, service_type))
+                            continue
+                        if service_type == "T01":
+                            if invoice_type in ["W", "N"]:
+                                # remote, free of charge
+                                items_remote.append(get_item(
+                                    item_code="3014",
+                                    description=description,
                                     qty=duration,
+                                    discount=100,
                                     kst=kst,
                                     income_account=income_account))
-                        # mark as collected 
-                        collected_bookings.append(booking_id)        
+                            elif invoice_type == "J":
+                                # remote, normal
+                                do_invoice_remote = True
+                                items_remote.append(get_item(
+                                    item_code="3014",
+                                    description=description,
+                                    qty=duration,
+                                    discount=0,
+                                    kst=kst,
+                                    income_account=income_account))
+                        elif service_type == "T03":
+                            if invoice_type in ["V", "J"]:
+                                # onsite, normal
+                                do_invoice_onsite = True
+                                items_onsite.append(get_item(
+                                    item_code="3001",
+                                    description=description,
+                                    qty=duration,
+                                    discount=0,
+                                    kst=kst,
+                                    income_account=income_account))
+                            elif invoice_type == "N":
+                                # onsite, free of charge
+                                items_onsite.append(get_item(
+                                    item_code="3001",
+                                    description=description,
+                                    qty=duration,
+                                    discount=100,
+                                    kst=kst,
+                                    income_account=income_account))
+
+                        # add material items
+                        if (len(item_code) > 0) and (len(item_code) == len(qty)):
+                            for i in range(0, len(item_code)):
+                                items_onsite.append(get_short_item(
+                                    item_code=item_code[i],
+                                    qty=qty[i],
+                                    kst=kst,
+                                    income_account=income_account))
+                        else:
+                            print("No invoicable items ({0}, {1}).".format(item_code, qty))
+                        # mark as collected
+                        collected_bookings.append(booking_id)
                 # collected all items, create invoices
-                if do_invoice and len(items_remote) > 0:
+                print("Customer {0} aggregated, {1} items remote, {2} items onsite.".format(customer, len(items_remote), len(items_onsite)))
+                if do_invoice_remote and len(items_remote) > 0:
                     create_invoice(
                         customer = customer_record.name, 
                         items = items_remote, 
@@ -354,7 +405,7 @@ def create_invoices(tenant="AT", to_date=None, filter_kst=None):
                         print_descriptions=1,
                         update_stock=1)
                     invoice_count += 1
-                if do_invoice and len(items_onsite) > 0:
+                if do_invoice_onsite and len(items_onsite) > 0:
                     create_invoice(
                         customer = customer_record.name, 
                         items = items_onsite, 
@@ -372,13 +423,14 @@ def create_invoices(tenant="AT", to_date=None, filter_kst=None):
                 print(err)
                 frappe.log_error(err, "ZSW customer not found")          
         # finished, mark bookings as invoices
-        # mark_bookings(collected_bookings)
+        mark_bookings(collected_bookings)
         # update last status
         config = frappe.get_doc("ZSW", "ZSW")
         try:
             config.last_status = "{0} {1} invoices created".format(
                 datetime.now(), invoice_count)
             config.save()
+            add_comment(text="{0} invoices created".format(invoice_count), from_time=start_time, to_time=end_time, kst=kst_filter, service_filter=service_filter)
         except Exception as err:
             frappe.log_error( "Unable to set status. ({0})".format(err), "ZSW create_invoices")
     else:
@@ -449,3 +501,16 @@ def test_connect():
     print("Connection closed")
     return
 
+def add_comment(text, from_time, to_time, kst, service_filter):
+    # this function will reset the submit status
+    new_comment = frappe.get_doc({
+        'doctype': 'Communication',
+        'comment_type': "Comment",
+        'content': "Created invoices between {from_time} and {to_time} on cost center {kst} and service type {service_filter}: {text}".format(
+            from_time=from_time, to_time=to_time, kst=kst, service_filter=service_filter, text=text),
+        'reference_doctype': "ZSW",
+        'status': "Linked",
+        'reference_name': "ZSW"
+    })
+    new_comment.insert()
+    return
