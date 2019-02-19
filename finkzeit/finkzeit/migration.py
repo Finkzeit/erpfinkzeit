@@ -397,7 +397,7 @@ def send_customers_to_zsw(tenant):
             zsw_ref = "CH" + customer.name[2:]
         else:
             zsw_ref = customer.name[2:]
-        if !customer.disabled and customer.is_checked:
+        if not customer.disabled and customer.is_checked:
             active = True
         else:
             active = False
