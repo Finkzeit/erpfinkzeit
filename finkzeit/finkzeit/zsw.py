@@ -122,8 +122,6 @@ def create_update_customer(customer, customer_name, active, kst="FZV"):
         kst_code = 114
     else:
         kst_code = 13
-    # get default warehouse
-    warehouse = frappe.get_value('Cost Center', kst, 'default_warehouse')
     # connect to ZSW
     client, session = connect()
     # create or update customer
@@ -232,6 +230,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                 if kst_filter and kst != kst_filter:
                     print("Customer {0} dropped by KST filter".format(customer))
                     continue
+                # get default warehouse
+                warehouse = frappe.get_value('Cost Center', kst, 'default_warehouse')
                 # find income account
                 if "FZCH" in kst:
                     income_account = u"3400 - Dienstleistungsertrag - FZCH"
