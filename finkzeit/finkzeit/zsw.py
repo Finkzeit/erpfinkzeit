@@ -91,6 +91,7 @@ def mark_bookings(bookings):
     # connect to ZSW
     client, session = connect()
     # create or update customer
+    bookings = {'long': bookings}
     client.service.checkBookings(session, bookings, 5)
     # close connection
     disconnect(client, session)
@@ -121,6 +122,8 @@ def create_update_customer(customer, customer_name, active, kst="FZV"):
         kst_code = 114
     else:
         kst_code = 13
+    # get default warehouse
+    warehouse = frappe.get_value('Cost Center', kst, 'default_warehouse')
     # connect to ZSW
     client, session = connect()
     # create or update customer
@@ -167,11 +170,6 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
     # get start timestamp
     print("Reading config...")
     config = frappe.get_doc("ZSW", "ZSW")
-    #start_time = config.last_sync_sec
-    #if start_time == 0:
-    #    # fallback: get last two months
-    #    start_time = int(time()) - 5270400000
-    # read employee information
     employees = get_employees()
     print("Got {0} employees.".format(len(employees)))
     # get start time (at 0:00:00)
@@ -185,8 +183,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
     else:
         end_time = int(time())
     # shift times to find bookings (all booking pairs ar found on 0:00:00 on getBookingPairs
-    end_time += (20 * 60 * 60)
     start_time -= (2 * 60 * 60)
+    end_time += (20 * 60 * 60)
     if end_time < start_time:
         frappe.log_error( "Invalid end time (before start time)", "ZSW invalid end time" )
         print("Invalid end time (before start time)")
@@ -346,7 +344,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                     qty=duration,
                                     discount=100,
                                     kst=kst,
-                                    income_account=income_account))
+                                    income_account=income_account,
+                                    warehouse=warehouse))
                             elif invoice_type == "J":
                                 # remote, normal
                                 do_invoice_remote = True
@@ -356,7 +355,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                     qty=duration,
                                     discount=0,
                                     kst=kst,
-                                    income_account=income_account))
+                                    income_account=income_account,
+                                    warehouse=warehouse))
                         elif service_type == "T03":
                             if invoice_type in ["V", "J"]:
                                 # onsite, normal
@@ -367,7 +367,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                     qty=duration,
                                     discount=0,
                                     kst=kst,
-                                    income_account=income_account))
+                                    income_account=income_account,
+                                    warehouse=warehouse))
                             elif invoice_type == "N":
                                 # onsite, free of charge
                                 items_onsite.append(get_item(
@@ -376,7 +377,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                     qty=duration,
                                     discount=100,
                                     kst=kst,
-                                    income_account=income_account))
+                                    income_account=income_account,
+                                    warehouse=warehouse))
 
                         # add material items
                         if (len(item_code) > 0) and (len(item_code) == len(qty)):
@@ -385,7 +387,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                     item_code=item_code[i],
                                     qty=qty[i],
                                     kst=kst,
-                                    income_account=income_account))
+                                    income_account=income_account,
+                                    warehouse=warehouse))
                         else:
                             print("No invoicable items ({0}, {1}).".format(item_code, qty))
                         # mark as collected
@@ -438,7 +441,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
     return
 
 # parse to sales invoice item structure    
-def get_item(item_code, description, qty, discount, kst, income_account):
+def get_item(item_code, description, qty, discount, kst, income_account, warehouse):
     return {
         'item_code': item_code,
         'description': description,
@@ -446,18 +449,20 @@ def get_item(item_code, description, qty, discount, kst, income_account):
         'discount_percentage': discount,
         'cost_center': kst,
         'group': 'empty',
-        'income_account': income_account
+        'income_account': income_account,
+        'warehouse': warehouse
     }
 
-def get_short_item(item_code, qty, kst, income_account):
+def get_short_item(item_code, qty, kst, income_account, warehouse):
     return {
         'item_code': item_code,
         'qty': qty,
         'cost_center': kst,
         'group': 'empty',
-        'income_account': income_account
+        'income_account': income_account,
+        'warehouse': warehouse
     }
-    
+
 def set_last_sync(date):
     dt = datetime.strptime(date, "%Y-%m-%d")
     timestamp = (dt - datetime(1970, 1, 1)).total_seconds()
@@ -502,7 +507,6 @@ def test_connect():
     return
 
 def add_comment(text, from_time, to_time, kst, service_filter):
-    # this function will reset the submit status
     new_comment = frappe.get_doc({
         'doctype': 'Communication',
         'comment_type': "Comment",
