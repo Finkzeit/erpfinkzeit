@@ -106,5 +106,23 @@ def get_data():
                        "description": _("Bank Wizard")
                    }
             ]
+        },
+        {
+            "label": _("Integration"),
+            "icon": "octicon octicon-broadcast",
+            "items": [
+                   {
+                       "type": "doctype",
+                       "name": "ZSW",
+                       "label": _("ZSW"),
+                       "description": _("ZSW")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "SoftCard File",
+                       "label": _("SoftCard File"),
+                       "description": _("SoftCard File")
+                   }			   
+            ]
         }
     ]

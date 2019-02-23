@@ -54,5 +54,16 @@ DocType: Kasse,Cash in,Eingang
 DocType: Kasse,Cash out,Ausgang
 DocType: Kasse,Opening Balance,Anfangssaldo
 DocType: Kasse,Ending Balance,Endsaldo
-DocType: Licence,Invoice(s) created: ,"Rechnung(en) erstellt: "
-DocType: Licence,Are you sure that you want to create the invoice(s) for the current period?,"Möchten Sie wirklich die Rechnung(en) für diese Periode erstellen?"
+DocType: Licence,Invoice(s) created: ,Rechnung(en) erstellt: 
+DocType: Licence,Are you sure that you want to create the invoice(s) for the current period?,Möchten Sie wirklich die Rechnung(en) für diese Periode erstellen?
+DocType: ZSW,Something like https://zsw.finkzeit.at/ws?WSDL,Etwas wie https://zsw.finkzeit.at/ws?WSDL
+DocType: ZSW,Last sync,Letzte Synchronisation
+DocType: ZSW,Last sync [s],Letzte Synchronisation [Sek]
+DocType: ZSW,Last status,Letzter Status
+DocType: SoftCard File,SoftCard File,SoftCard Datei
+DocType: SoftCard File,Create SoftCard Export,SoftCard Export erstellen
+DocType: SoftCard File,Select customer,Kunde auswählen
+DocType: SoftCard File,Creation of Export File started…,Export-Datei wird erstellt…
+DocType: SoftCard File,Sales Invoices,Ausgangsrechnungen
+DocType: SoftCard File,Download Export File,Export-Datei herunterladen
+DocType: Budget Overhead,Budget Overhead,Budget-Overhead

@@ -39,6 +39,21 @@ def execute(filters=None):
         sales_products = frappe.db.sql(sql_query_sales_products, as_dict = True)[0]['sales_products']
     except:
         sales_products = "n/a"
+    # total revenue
+    sql_query_revenue = """SELECT 
+                  IFNULL(SUM(`tabGL Entry`.`credit`) - SUM(`tabGL Entry`.`debit`), 0) AS `revenue`
+                FROM `tabGL Entry`
+                JOIN `tabAccount` ON `tabGL Entry`.`account` = `tabAccount`.`name`
+                WHERE 
+                  `tabGL Entry`.`docstatus` = 1
+                  AND `tabAccount`.`account_type` = 'Income Account'
+                  AND `tabGL Entry`.`cost_center` LIKE '{cost_center}'
+                  AND `tabGL Entry`.`posting_date` >= '{from_date}'
+                  AND `tabGL Entry`.`posting_date` <= '{to_date}';""".format(cost_center=cost_center, from_date=from_date, to_date=to_date)
+    try:
+        revenue = frappe.db.sql(sql_query_revenue, as_dict = True)[0]['revenue']
+    except:
+        revenue = "n/a"
     # services sales    
     sql_query_sales_services = """SELECT 
                   IFNULL(SUM(`tabGL Entry`.`credit`) - SUM(`tabGL Entry`.`debit`), 0) AS `sales_services`
@@ -88,6 +103,21 @@ def execute(filters=None):
         costs_indirect = frappe.db.sql(sql_query_costs_indirect, as_dict = True)[0]['costs_indirect']
     except:
         costs_indirect = "n/a"
+    # total expenses
+    sql_query_expenses = """SELECT 
+                  IFNULL(SUM(`tabGL Entry`.`credit`) - SUM(`tabGL Entry`.`debit`), 0) AS `revenue`
+                FROM `tabGL Entry`
+                JOIN `tabAccount` ON `tabGL Entry`.`account` = `tabAccount`.`name`
+                WHERE 
+                  `tabGL Entry`.`docstatus` = 1
+                  AND `tabAccount`.`account_type` = 'Expense Account'
+                  AND `tabGL Entry`.`cost_center` LIKE '{cost_center}'
+                  AND `tabGL Entry`.`posting_date` >= '{from_date}'
+                  AND `tabGL Entry`.`posting_date` <= '{to_date}';""".format(cost_center=cost_center, from_date=from_date, to_date=to_date)
+    try:
+        expenses = frappe.db.sql(sql_query_expenses, as_dict = True)[0]['revenue']
+    except:
+        expenses = "n/a"
     # overhead costs    
     sql_query_costs_overhead = """SELECT 
                   IFNULL(SUM(`tabBudget Overhead`.`rate_per_month`), 0) AS `costs_overhead`
@@ -111,20 +141,27 @@ def execute(filters=None):
     # prepare report
     data.append(["<b>Deckungsbeitrag</b>", ""])
     data.append(["", ""])
-    data.append(["<b>Ertr&auml;ge</b>", "{0}".format(total_sales)])
-    data.append(["Produktertr&auml;ge", "{0}".format(sales_products)])
-    data.append(["Dienstleistungsertr&auml;ge", "{0}".format(sales_services)])
+    #data.append(["<b>Ertr&auml;ge</b>", "{0}".format(total_sales)])
+    #data.append(["Produktertr&auml;ge", "{0}".format(sales_products)])
+    #data.append(["Dienstleistungsertr&auml;ge", "{0}".format(sales_services)])
+    #data.append(["", ""])
+    #data.append(["<b>Direkte Aufwendungen</b>", "{0}".format(costs_material)])
+    #data.append(["Materialkosten", "{0}".format(costs_material)])
+    #data.append(["", ""])
+    #data.append(["<b>C1 Marge</b>", "{0}".format(margin_c1)])
+    #data.append(["", ""])
+    #data.append(["<b>Indirekte Aufwendungen</b>", "{0}".format(total_indirect_costs)])
+    #data.append(["Aufwendungen", "{0}".format(costs_material)])
+    #data.append(["Overheads", "{0}".format(costs_overhead)])
+    #data.append(["", ""])
+    #data.append(["<b>C2 Marge</b>", "{0}".format(margin_c2)])
+    data.append(["<b>Ertr&auml;ge</b>", "{0}".format(revenue)])
     data.append(["", ""])
-    data.append(["<b>Direkte Aufwendungen</b>", "{0}".format(costs_material)])
-    data.append(["Materialkosten", "{0}".format(costs_material)])
-    data.append(["", ""])
-    data.append(["<b>C1 Marge</b>", "{0}".format(margin_c1)])
-    data.append(["", ""])
-    data.append(["<b>Indirekte Aufwendungen</b>", "{0}".format(total_indirect_costs)])
-    data.append(["Aufwendungen", "{0}".format(costs_material)])
+    data.append(["<b>Aufwendungen</b>", "{0}".format(expenses + costs_overhead)])
+    data.append(["Aufwendungen", "{0}".format(expenses)])
     data.append(["Overheads", "{0}".format(costs_overhead)])
     data.append(["", ""])
-    data.append(["<b>C2 Marge</b>", "{0}".format(margin_c2)])
+    data.append(["Marge", "{0}".format(revenue + expenses + costs_overhead)])
     
     # return data
     return columns, data

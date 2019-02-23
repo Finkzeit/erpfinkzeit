@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2018-2019, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 #
 # Debug async "create_invoices" using "bench execute finkzeit.finkzeit.doctype.licence.licence.create_invoices"
@@ -219,12 +219,16 @@ def process_licence(licence_name):
     customer_record = frappe.get_doc("Customer", customer)
     kst = customer_record.kostenstelle
     # find income account
-    if customer_record.steuerregion == "EU":
-        income_account = u"4250 - Leistungserlöse EU-Ausland (in ZM) - FZAT"
-    elif customer_record.steuerregion == "DRL":
-        income_account = u"4200 - Leistungserlöse Export - FZAT"
+    if "FZCH" in kst:
+        income_account = u"3400 - Dienstleistungsertrag - FZCH"
     else:
-        income_account = u"4220 - Leistungserlöse 20 % USt - FZAT"
+        if customer_record.steuerregion == "EU":
+            income_account = u"4250 - Leistungserlöse EU-Ausland (in ZM) - FZAT"
+        elif customer_record.steuerregion == "DRL":
+            income_account = u"4200 - Leistungserlöse Export - FZAT"
+        else:
+            income_account = u"4220 - Leistungserlöse 20 % USt - FZAT"
+        
     # find groups
     groups = []
     for item in licence.invoice_items:
@@ -282,8 +286,10 @@ def get_item(licence_item, multiplier, kst, income_account):
         'income_account': income_account
     }
 
-# from_invoice: 1=normal, 2=special
-def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges, from_licence=1, groups=None, commission=None):
+# from_invoice: licence key
+def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges, 
+        from_licence=1, groups=None, commission=None, print_descriptions=0, update_stock=0,
+        auto_submit=True):
     # get values from customer record
     customer_record = frappe.get_doc("Customer", customer)
     delivery_option = "Post"
@@ -311,6 +317,7 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'doctype': 'Sales Invoice',
         'customer': customer,
         'items': items,
+        'apply_discount_on': 'Net Total',
         'additional_discount_percentage': overall_discount,
         'eingangstext': remarks,
         'from_licence': from_licence,
@@ -322,31 +329,36 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'groups': group_items,
         'enable_lsv': customer_record.enable_lsv,
         'ignore_pricing_rule': 1,
-        'kommission': commission
+        'kommission': commission,
+        'drucken_mit_beschreibung': print_descriptions,
+        'update_stock': update_stock
     })
     # robust insert sales invoice
-    # FEBRUARY TRANSITION: HC to one, remove after
-    from_licence = 1
-
     try:
         new_record = new_sales_invoice.insert()
-        # check auto-submit
-        sql_query = ("""SELECT `name`, `grand_total`
-                FROM `tabSales Invoice`
-                WHERE `customer` = '{customer}'
-                  AND `docstatus` = 1
-                  AND `from_licence` = {from_licence}
-                ORDER BY `posting_date` DESC
-                LIMIT 1;""".format(customer=customer, from_licence=from_licence))
-        last_invoice = frappe.db.sql(sql_query, as_dict=True)
-        if last_invoice:
-            if last_invoice[0]['grand_total'] == new_record.grand_total:
-                # last invoice has the same total, submit
+        # check auto-submit (only if customer is checked)
+        if auto_submit and customer_record.is_checked == 1:
+            if from_licence == 0:
+                # invoice from ZSW: submit
                 new_record.submit()
+            else:
+                # check previous invoices
+                sql_query = ("""SELECT `name`, `grand_total`
+                        FROM `tabSales Invoice`
+                        WHERE `customer` = '{customer}'
+                          AND `docstatus` = 1
+                          AND `from_licence` = '{from_licence}'
+                        ORDER BY `posting_date` DESC
+                        LIMIT 1;""".format(customer=customer, from_licence=from_licence))
+                last_invoice = frappe.db.sql(sql_query, as_dict=True)
+                if last_invoice:
+                    if last_invoice[0]['grand_total'] == new_record.grand_total:
+                        # last invoice has the same total, submit
+                        new_record.submit()
         frappe.db.commit()
         return new_record.name
 
     except Exception as err:
         frappe.log_error( _("Error inserting sales invoice from customer {0}: {1}").format(
-            customer, err.message) )
+            customer, err) )
         return None
