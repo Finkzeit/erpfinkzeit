@@ -24,8 +24,8 @@ def connect():
     client = Client(config.endpoint)
     print("Client created")
     # open session
-    session = client.service.openSession('finkzeit')
-    print("Session opened")
+    session = client.service.openSession(config.license)
+    print("Session {0} opened".format(config.license))
     # log in
     login_result = client.service.login(session, config.user, pw)
     print("Login: {0}".format(login_result))
