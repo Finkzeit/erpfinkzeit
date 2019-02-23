@@ -302,6 +302,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                         item_code.append("3032")
                                     elif p['val'] == "5/3":
                                         item_code.append("3033")
+                                    elif p['val'] == "5/4":
+                                        item_code.append("3036")
                                 elif p['key'] == 12:
                                     item_code.append("3026")
                                     qty.append((round(float(p['val']) / 60.0) + 0.04, 1)) # in h
