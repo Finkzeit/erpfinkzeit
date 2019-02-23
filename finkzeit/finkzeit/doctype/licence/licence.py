@@ -287,7 +287,9 @@ def get_item(licence_item, multiplier, kst, income_account):
     }
 
 # from_invoice: licence key
-def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges, from_licence=1, groups=None, commission=None, print_descriptions=0, update_stock=0):
+def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges, 
+        from_licence=1, groups=None, commission=None, print_descriptions=0, update_stock=0,
+        auto_submit=True):
     # get values from customer record
     customer_record = frappe.get_doc("Customer", customer)
     delivery_option = "Post"
@@ -335,7 +337,7 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
     try:
         new_record = new_sales_invoice.insert()
         # check auto-submit (only if customer is checked)
-        if customer_record.is_checked == 1:
+        if auto_submit and customer_record.is_checked == 1:
             if from_licence == 0:
                 # invoice from ZSW: submit
                 new_record.submit()
