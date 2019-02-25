@@ -71,7 +71,11 @@ def get_bookings(start_time, end_time):
     # connect
     client, session = connect()
     # get bookings
-    bookings = client.service.getBookingPairs(session, fromTS, toTS, False, 1)
+    try:
+        bookings = client.service.getBookingPairs(session, fromTS, toTS, False, 1)
+    except Exception as err:
+        bookings = []
+        frappe.log_error("Get booking parts failed with error {0}.".format(err), "ZSW get booking pairs")
     # close connection
     disconnect(client, session)
     # update end_time in ZSW record
@@ -92,7 +96,10 @@ def mark_bookings(bookings):
     client, session = connect()
     # create or update customer
     bookings = {'long': bookings}
-    client.service.checkBookings(session, bookings, 5)
+    try:
+        client.service.checkBookings(session, bookings, 5)
+    except Exception as err:
+        frappe.log_error("Marking bookings {0} failed with error {1}.".format(bookings, err), "ZSW mark bookings")
     # close connection
     disconnect(client, session)
     return
