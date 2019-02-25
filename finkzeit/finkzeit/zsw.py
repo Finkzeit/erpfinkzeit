@@ -105,7 +105,8 @@ def get_bookings(start_time, end_time):
 def mark_bookings(bookings):
     # connect to ZSW
     c, session = connect()
-    bookings = eval(bookings)
+    if type(bookings) is not list:
+        bookings = eval(bookings)
     # create or update customer
     try:
         # use pagination
