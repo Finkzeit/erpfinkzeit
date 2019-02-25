@@ -432,7 +432,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                         commission=None,
                         print_descriptions=1,
                         update_stock=1,
-                        auto_submit=True)
+                        auto_submit=True,
+                        ignore_pricing_rule=0)
                     invoice_count += 1
                 if do_invoice_onsite and len(items_onsite) > 0:
                     create_invoice(
@@ -446,7 +447,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                         commission=None,
                         print_descriptions=1,
                         update_stock=1,
-                        auto_submit=False)
+                        auto_submit=False,
+                        ignore_pricing_rule=0)
                     invoice_count += 1
             else:
                 err = "Customer not found in ERP: {0}".format(erp_customer)
