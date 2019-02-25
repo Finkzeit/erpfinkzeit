@@ -15,12 +15,6 @@ from frappe.utils.background_jobs import enqueue
 from finkzeit.finkzeit.doctype.licence.licence import create_invoice
 from frappe.utils.password import get_decrypted_password
 
-# global client definition
-try:
-    client, session = connect()
-except:
-    frappe.log_error("Unable to create global client", "ZSW global")
-
 """ Low-level connect/disconnect """
 def connect():
     # read configuration
@@ -42,6 +36,12 @@ def connect():
     print("Login: {0}".format(login_result))
     # return session
     return client, session
+
+# global client definition
+try:
+    client, session = connect()
+except:
+    frappe.log_error("Unable to create global client", "ZSW global")
 
 def disconnect(client, session):
     # log out
