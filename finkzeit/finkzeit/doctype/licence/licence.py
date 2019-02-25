@@ -337,7 +337,7 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
     try:
         new_record = new_sales_invoice.insert()
         # check auto-submit (only if customer is checked)
-        if auto_submit and customer_record.is_checked == 1:
+        if auto_submit and customer_record.is_checked == 1 and customer_record.disable_auto_submit == 0:
             if from_licence == 0:
                 # invoice from ZSW: submit
                 new_record.submit()
