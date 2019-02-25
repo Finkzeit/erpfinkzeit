@@ -15,14 +15,25 @@ from frappe.utils.background_jobs import enqueue
 from finkzeit.finkzeit.doctype.licence.licence import create_invoice
 from frappe.utils.password import get_decrypted_password
 
+# global client definition
+try:
+    client, session = connect()
+except:
+    frappe.log_error("Unable to create global client", "ZSW global")
+
 """ Low-level connect/disconnect """
 def connect():
     # read configuration
     config = frappe.get_doc("ZSW", "ZSW")
     pw = get_decrypted_password("ZSW", "ZSW", 'password', False)
     # create client
-    client = Client(config.endpoint)
-    print("Client created")
+    global client
+    try:
+        if client:
+            print("Reusing client")
+    except:
+        client = Client(config.endpoint)
+        print("Client created")
     # open session
     session = client.service.openSession(config.license)
     print("Session {0} opened".format(config.license))
@@ -43,7 +54,7 @@ def disconnect(client, session):
 def get_employees():
     # connect
     print("Connecting...")
-    client, session = connect()
+    c, session = connect()
     print("Session: {0}".format(session))
     # read employees
     print("Read employees...")
@@ -69,7 +80,7 @@ def get_bookings(start_time, end_time):
     fromTS = {'timeInSeconds': start_time}
     toTS = {'timeInSeconds': end_time}
     # connect
-    client, session = connect()
+    c, session = connect()
     # get bookings
     try:
         bookings = client.service.getBookingPairs(session, fromTS, toTS, False, 1)
@@ -93,11 +104,15 @@ def get_bookings(start_time, end_time):
 
 def mark_bookings(bookings):
     # connect to ZSW
-    client, session = connect()
+    c, session = connect()
+    bookings = eval(bookings)
     # create or update customer
-    bookings = {'long': bookings}
     try:
-        client.service.checkBookings(session, bookings, 5)
+        # use pagination
+        per_page = 100
+        for i in range(0, len(bookings), per_page):
+            bookings_paged = {'long': bookings[i:i+per_page]}
+            client.service.checkBookings(session, bookings_paged, 5)
     except Exception as err:
         frappe.log_error("Marking bookings {0} failed with error {1}.".format(bookings, err), "ZSW mark bookings")
     # close connection
@@ -130,7 +145,7 @@ def create_update_customer(customer, customer_name, active, kst="FZV"):
     else:
         kst_code = 13
     # connect to ZSW
-    client, session = connect()
+    c, session = connect()
     # create or update customer
     client.service.createLevels(session, level, True)
     # add link (or ignore if it exists already)
