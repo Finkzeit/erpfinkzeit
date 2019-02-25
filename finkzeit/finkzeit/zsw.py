@@ -284,11 +284,14 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                             if level['levelID'] == 1 and level['code'] == customer:
                                 use_booking = True
                             if level['levelID'] == 2:
-                                # sevrice type, e.g. "T01" (remote), "T03" (onsite), "AB-#####" (project)
+                                # service type, e.g. "T01" (remote), "T03" (onsite), "T02" (project remote), "T04" (project onsite)
                                 service_type = level['code']
                             if level['levelID'] == 3:
-                                # invoicing_type, e.g. "J": invoice, "N"/"W": free of charge
+                                # invoicing_type, e.g. "J": invoice, "N"/"W": free of charge, "P": flat rate
                                 invoice_type = level['code']
+                            if level['levelID'] == 4:
+                                # link to project (ZSW) sales order (ERP), e.g. "AB-00001" or "CHAB-00000"
+                                sales_order_reference = level['code']
                     except Exception as err:
                         print("...no levels... ({0})".format(err))
                     if use_booking:
