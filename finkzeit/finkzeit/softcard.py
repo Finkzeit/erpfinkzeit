@@ -26,11 +26,11 @@ def enqueue_create_export(customer):
     
 def create_export(customer):
     # check if there are any 
-    sql_query = """SELECT `name`, `outstanding_amount` 
+    sql_query = """SELECT `name`, `grand_total`, `outstanding_amount` 
         FROM `tabSales Invoice`
         WHERE `customer` = '{customer}'
           AND `docstatus` = 1
-          AND `outstanding_amount` != 0
+          /* AND `outstanding_amount` != 0 */
           AND `is_proposed` = 0
        """.format(customer=customer)
     pending_invoices = frappe.db.sql(sql_query, as_dict=True)
@@ -40,7 +40,7 @@ def create_export(customer):
         for invoice in pending_invoices:
             invoices.append({
                 'sales_invoice': invoice['name'],
-                'amount': invoice['outstanding_amount']
+                'amount': invoice['grand_total']
             })
             # mark invoice as proposed (prevent reoccurence)
             invoice_record = frappe.get_doc("Sales Invoice", invoice)
