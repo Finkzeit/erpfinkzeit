@@ -49,7 +49,51 @@ def disconnect(client, session):
     # close session
     client.service.closeSession(session)
     return
-    
+
+""" support functions """
+def isExtensionInList(list, propName):
+  for ext in list:
+    if ext["name"] == propName:
+      return True
+  return False
+
+def getExtension(list, propName):
+  for ext in list:
+    if ext["name"] == propName:
+      return ext
+  return None
+
+def createOrUpdateWSExtension(extensions, propKey, value):
+  if isExtensionInList(extensions, propKey):
+     ext = getExtension(extensions, propKey)
+     ext["value"] = value
+     ext["action"] = 3
+  else :
+    extensions.extend([{'action': 1, 'name': propKey, 'value': value }])
+
+def createOrUpdateWSExtension_link(extensions, propKey, value, naturalInfo, linkType, remove):
+  if isExtensionInList(extensions, propKey):
+     itemFound = False
+     for item in extensions:
+       if (item["name"] == propKey and item["link"]["naturalID"] == value):
+         if remove or itemFound:
+           item["action"] = 2
+         else:
+           item["action"] = 3
+           item["link"] = { 'action': 1, 'linkType': linkType, 'naturalID': value, 'naturalInfo': naturalInfo }
+           itemFound = True
+       elif (item["name"] == propKey):
+         item["action"] = 3
+     if not itemFound:
+      extensions.extend([{'action': 1,
+                          'name': propKey,
+                          'link': { 'action': 1, 'linkType': linkType, 'naturalID': value, 'naturalInfo': naturalInfo }}])
+  else :
+    if not remove:
+      extensions.extend([{'action': 1,
+                          'name': propKey,
+                          'link': { 'action': 1, 'linkType': linkType, 'naturalID': value, 'naturalInfo': naturalInfo }}])
+
 """ abstracted ZSW functions """
 def get_employees():
     # connect
@@ -120,18 +164,64 @@ def mark_bookings(bookings):
     disconnect(client, session)
     return
     
-def create_update_customer(customer, customer_name, active, kst="FZV"):
-    # create customer (=level) information
-    level = {'WSLevel':[{
-          'active': active,
-          'code': customer,
-          'levelID': 1,
-          'text': customer_name
-        }]
-    }
+def create_update_customer(customer, customer_name, active, kst="FZV", tenant="AT"):
+    # collect information
+    if tenant.lower() == "ch":
+        zsw_reference = "CH{0}".format(customer[2:])
+    else:
+        zsw_reference = "{0}".format(customer[2:])
+    adr_ids = frappe.get_all("Dynamic Link",
+        filters={'link_doctype': 'Customer', 'link_name': cus.name, 'parenttype': 'Address'},
+        fields=['parent'])
+    if adr_ids:
+        for adr_id in adr_ids:
+            address = frappe.get_doc("Address", adr_id['parent'])
+            if address.is_primary_address:
+                continue
+        city = address.city or "-"
+        street = address.address_line1 or "-"
+        pincode = address.pincode or "-" 
+    else:
+        city = "-"
+        street = "-"
+        pincode = "-"
+    # technician: crop from technician field (email ID without @...)
+    customer_record = frappe.get_doc("Customer", customer)
+    technician = customer_record.technik.split("@")[0]
+    # contact
+    if customer_record.customer_primary_contact:
+        contact = frappe.get_doc("Contact", customer_record.customer_primary_contact)
+        email = contact.email_id or "-"
+        phone = contact.phone or "-"
+    else:
+        # no primary contact defined
+        con_id = frappe.get_all("Dynamic Link",
+            filters={'link_doctype': 'Customer', 'link_name': cus.name, 'parenttype': 'Contact'},
+            fields=['parent'])
+        if con_id:
+            contact = frappe.get_doc("Contact", con_id[0]['parent'])
+            email = contact.email_id or "-"
+            phone = contact.phone or "-"
+        else:
+            email = "-"
+            phone = "-"
+    # maintenance contract customer?
+    sql_query = """SELECT DISTINCT `tabSales Invoice`.`posting_date`
+                   FROM `tabSales Invoice Item`
+                   LEFT JOIN `tabSales Invoice` ON `tabSales Invoice Item`.`parent` = `tabSales Invoice`.`name`
+                   WHERE
+                    `tabSales Invoice`.`posting_date` >= (DATE_SUB(NOW(), INTERVAL 13 MONTH))
+                    AND `tabSales Invoice Item`.`item_code` IN ("3010")
+                    AND `tabSales Invoice`.`customer` = '{customer}'
+                   ORDER BY `tabSales Invoice`.`posting_date` DESC;""".format(customer=customer)
+    contract = frappe.db.sql(sql_query, as_dict=True)
+    if len(contract) > 0:
+        maintenance_contract = True
+    else:
+        maintenance_contract = False
     # create link information (for cost center groups)
     link = {
-        'naturalID': customer,
+        'naturalID': zsw_reference,
         'naturalInfo': 1,
         'linkType': 3,
         'action': 4
@@ -148,7 +238,44 @@ def create_update_customer(customer, customer_name, active, kst="FZV"):
     # connect to ZSW
     c, session = connect()
     # create or update customer
-    client.service.createLevels(session, level, True)
+    wsTsNow = client.service.getTime(session)
+    wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': zsw_reference }] }
+    wsLevelEArray = client.service.getLevelsEByIdentification(session, wsLevelIdentArray, wsTsNow)
+    # check if customer exists
+    if wsLevelEArray:
+        # customer exists --> update
+        print "Customer found, update"
+        wsLevelEArray[0]["action"] = 3
+        wsLevelEArray[0]["wsLevel"]["text"] = kundenbezeichnung
+        wsLevelEArray[0]["wsLevel"]["active"] = kundeAktiv
+        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_ortKunde", city)
+        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_strasseKunde", street)
+        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_plzKunde", pincode)
+        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_mailadresseKunde", email)
+        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_telefonnummer", phone)
+        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
+        #createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", "AB-00350", 4, 3, False)
+        client.service.updateLevelsE(session, {'WSExtensibleLevel': [wsLevelEArray[0]]})
+    else:
+        print "Kundenauftrag nicht vorhanden"
+        wsLevelEArray = { 'WSExtensibleLevel' : [{
+            'action': 1,
+            'wsLevel': { 'active': kundeAktiv, 'levelID': 1, 'code': zsw_reference, 'text': customer_name },
+            'extensions': { 'WSExtension': [
+                {'action': 1, 'name': 'p_ortKunde', 'value': city },
+                {'action': 1, 'name': 'p_plzKunde', 'value': pincode },
+                {'action': 1, 'name': 'p_strasseKunde','value': street },
+                {'action': 1, 'name': 'p_mailadresseKunde','value': mail },
+                {'action': 1, 'name': 'p_telefonnummer','value': phone },
+                {'action': 1, 'name': 'p_wartungsvertrag','value': maintenance_contract },
+                #{'action': 1, 'name': 'p_auftrag_projekt', 'link': { 'action': 1, 'linkType': 3, 'naturalID': auftragsbestaetigung, 'naturalInfo': 4 }},
+                {'action': 1, 'name': 'p_projektverantwortlicher', 'link': { 'action': 1, 'linkType': 0, 'naturalID': technician, 'naturalInfo': 2 }}
+            ]}
+        }
+        ]}
+        client.service.createLevelsE(session, wsLevelEArray)
+
+    #client.service.createLevels(session, level, True)
     # add link (or ignore if it exists already)
     try:
         client.service.quickAddGroupMember(session, kst_code, link)
@@ -159,14 +286,50 @@ def create_update_customer(customer, customer_name, active, kst="FZV"):
     disconnect(client, session)
     return
 
+def create_update_sales_order(sales_order, customer, customer_name, tenant="AT"):
+    # collect city
+    so = frappe.get_doc("Sales Order", sales_order)
+    address = frappe.get_doc("Address", so.customer_address)
+    city = address.city or "-"
+    # prepare information
+    if tenant.lower == "ch":
+        zsw_project_name = "CH{0}".format(sales_order)
+    else:
+        zsw_project_name = "{0}".format(sales_order)
+    # create project (=level) information
+    level = {'WSLevel':[{
+          'active': True,
+          'code': zsw_project_name,
+          'levelID': 4,
+          'text': "{0}, {1}".format(customer_name, city)
+        }]
+    }
+    # connect to ZSW
+    c, session = connect()
+    # create or update customer
+    client.service.createLevels(session, level, True)
+    # close connection
+    disconnect(client, session)
+    return
+
 """ interaction mechanisms """
 @frappe.whitelist()
 def update_customer(customer_name, kst, zsw_reference, active=True):
     create_update_customer(
-        customer=zsw_reference, 
-        customer_name=customer_name, 
+        customer=zsw_reference,
+        customer_name=customer_name,
         active=active,
         kst=kst
+    )
+    return
+
+@frappe.whitelist()
+def update_project(sales_order, customer, customer_name, tenant="AT"):
+    create_update_customer(
+        sales_order=sales_order
+        customer=customer,
+        customer_name=customer_name,
+        tenant=tenant
     )
     return
 
