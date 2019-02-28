@@ -171,7 +171,7 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
     else:
         zsw_reference = "{0}".format(customer[2:])
     adr_ids = frappe.get_all("Dynamic Link",
-        filters={'link_doctype': 'Customer', 'link_name': cus.name, 'parenttype': 'Address'},
+        filters={'link_doctype': 'Customer', 'link_name': customer, 'parenttype': 'Address'},
         fields=['parent'])
     if adr_ids:
         for adr_id in adr_ids:
@@ -187,7 +187,10 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
         pincode = "-"
     # technician: crop from technician field (email ID without @...)
     customer_record = frappe.get_doc("Customer", customer)
-    technician = customer_record.technik.split("@")[0]
+    if customer_record.technik:
+        technician = customer_record.technik.split("@")[0]
+    else:
+        technician = ""
     # contact
     if customer_record.customer_primary_contact:
         contact = frappe.get_doc("Contact", customer_record.customer_primary_contact)
@@ -196,7 +199,7 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
     else:
         # no primary contact defined
         con_id = frappe.get_all("Dynamic Link",
-            filters={'link_doctype': 'Customer', 'link_name': cus.name, 'parenttype': 'Contact'},
+            filters={'link_doctype': 'Customer', 'link_name': customer, 'parenttype': 'Contact'},
             fields=['parent'])
         if con_id:
             contact = frappe.get_doc("Contact", con_id[0]['parent'])
@@ -244,10 +247,10 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
     # check if customer exists
     if wsLevelEArray:
         # customer exists --> update
-        print "Customer found, update"
+        print("Customer found, update")
         wsLevelEArray[0]["action"] = 3
-        wsLevelEArray[0]["wsLevel"]["text"] = kundenbezeichnung
-        wsLevelEArray[0]["wsLevel"]["active"] = kundeAktiv
+        wsLevelEArray[0]["wsLevel"]["text"] = customer_name
+        wsLevelEArray[0]["wsLevel"]["active"] = active
         createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_ortKunde", city)
         createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_strasseKunde", street)
         createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_plzKunde", pincode)
@@ -255,9 +258,10 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
         createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_telefonnummer", phone)
         createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
         #createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", "AB-00350", 4, 3, False)
+        print("LevelArray: {0}".format(wsLevelEArray[0]))
         client.service.updateLevelsE(session, {'WSExtensibleLevel': [wsLevelEArray[0]]})
     else:
-        print "Kundenauftrag nicht vorhanden"
+        print("Customer not found")
         wsLevelEArray = { 'WSExtensibleLevel' : [{
             'action': 1,
             'wsLevel': { 'active': kundeAktiv, 'levelID': 1, 'code': zsw_reference, 'text': customer_name },
@@ -306,7 +310,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT")
     }
     # connect to ZSW
     c, session = connect()
-    # create or update customer
+    # create or update sales order
     client.service.createLevels(session, level, True)
     # close connection
     disconnect(client, session)
@@ -314,19 +318,20 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT")
 
 """ interaction mechanisms """
 @frappe.whitelist()
-def update_customer(customer_name, kst, zsw_reference, active=True):
+def update_customer(customer, customer_name, kst, zsw_reference=None, active=True, tenant="AT"):
     create_update_customer(
-        customer=zsw_reference,
+        customer=customer,
         customer_name=customer_name,
         active=active,
-        kst=kst
+        kst=kst,
+        tenant=tenant
     )
     return
 
 @frappe.whitelist()
 def update_project(sales_order, customer, customer_name, tenant="AT"):
-    create_update_customer(
-        sales_order=sales_order
+    create_update_sales_order(
+        sales_order=sales_order,
         customer=customer,
         customer_name=customer_name,
         tenant=tenant
