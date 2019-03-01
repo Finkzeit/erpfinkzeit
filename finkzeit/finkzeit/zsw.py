@@ -48,15 +48,56 @@ def getSession():
     # return the resulting session can bei either None or all OK
     return session
 
-# global config, client and session definition
 try:
     # read configuration
     config = frappe.get_doc("ZSW", "ZSW")
     print("Global config loaded")
+
+    import logging.config
+
+    logging.config.dictConfig({
+        'version': 1,
+        'formatters': {
+            'verbose': {
+                'format': '%(name)s: %(message)s'
+            }
+        },
+        'handlers': {
+            'console': {
+                'level': 'DEBUG',
+                'class': 'logging.StreamHandler',
+                'formatter': 'verbose',
+            },
+        },
+        'loggers': {
+            'zeep.transports': {
+                'level': 'DEBUG',
+                'propagate': True,
+                'handlers': ['console'],
+            },
+        }
+    })
+
+    from zeep import Plugin
+
+    class LoggingPlugin(Plugin):
+
+        def ingress(self, envelope, http_headers, operation):
+            print(etree.tostring(envelope, pretty_print=True))
+            return envelope, http_headers
+
+        def egress(self, envelope, http_headers, operation, binding_options):
+            print(etree.tostring(envelope, pretty_print=True))
+            return envelope, http_headers
+
     # create SOAP client stub
-    client = Client(config.endpoint)
+    # with logging plugin
+    client = Client(config.endpoint, plugins=[LoggingPlugin()])
+    # without logging plugin
+    #client = Client(config.endpoint)
     print("Global SOAP client stub initialized")
-    # open session and athenticate it
+
+    # create and initialize session variable to be used later on
     session = None
     print("Global session variable initialized")
 except:
@@ -65,9 +106,7 @@ except:
 def disconnect():
     if session:
         s = getSession()
-        # log out
         client.service.logout(s)
-        # close session
         client.service.closeSession(s)
 
 """ support functions """
@@ -678,7 +717,7 @@ def set_last_sync(date):
     date_str = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
     print("Timestamp: {0} / {1}".format(timestamp, date_str))
     # update end_time in ZSW record
-    config = frappe.get_doc("ZSW", "ZSW")
+    global config
     try:
         config.last_sync_sec = timestamp
         config.last_sync_date = date_str
