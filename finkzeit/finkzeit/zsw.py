@@ -16,18 +16,6 @@ from finkzeit.finkzeit.doctype.licence.licence import create_invoice
 from frappe.utils.password import get_decrypted_password
 
 """ Low-level connect/disconnect """
-def getClient():
-    global client
-    if not 'client' in globals():
-        client = None
-
-    if client == None:
-        client = Client(config.endpoint)
-        print("SOAP Client created for ", config.endpoint)
-
-    # return the newly created client or the one we already had
-    return client
-
 def getSession():
     global session
     if not 'session' in globals():
@@ -41,7 +29,7 @@ def getSession():
                 # return a refreshed and authenticated session
                 return session
         except:
-            print()"Old Session expired, creating new one")
+            print("Old Session expired, creating new one")
 
     try:
         #create a new session
@@ -66,7 +54,7 @@ try:
     config = frappe.get_doc("ZSW", "ZSW")
     print("Global config loaded")
     # create SOAP client stub
-    client = getClient()
+    client = Client(config.endpoint)
     print("Global SOAP client stub initialized")
     # open session and athenticate it
     session = None
@@ -75,6 +63,7 @@ except:
     frappe.log_error("Unable to create and initialize global variables", "ZSW global")
 
 def disconnect():
+    # only disconnect if connected
     if session != None:
         s = getSession()
         # log out
@@ -171,7 +160,6 @@ def get_bookings(start_time, end_time):
 
 def mark_bookings(bookings):
     if type(bookings) is not list:
-        # why execute "bookings" as python code here it it wasn't a list type?!?
         bookings = eval(bookings)
 
     try:
