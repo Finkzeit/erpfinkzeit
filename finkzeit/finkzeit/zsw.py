@@ -16,154 +16,177 @@ from finkzeit.finkzeit.doctype.licence.licence import create_invoice
 from frappe.utils.password import get_decrypted_password
 
 """ Low-level connect/disconnect """
-def connect():
+def getClient():
+    global client
+    if not 'client' in globals():
+        client = None
+
+    if client == None:
+        client = Client(config.endpoint)
+        print("SOAP Client created for ", config.endpoint)
+
+    # return the newly created client or the one we already had
+    return client
+
+def getSession():
+    global session
+    if not 'session' in globals():
+        session = None
+
+    if session != None:
+        try:
+            session = client.service.refreshSession(session)
+            if session != None;
+                print("Session: ", session, "refreshed")
+                # return a refreshed and authenticated session
+                return session
+        except:
+            print()"Old Session expired, creating new one")
+
+    try:
+        #create a new session
+        session = client.service.openSession(config.license)
+        print("Session: ", session, " created")
+        pw = get_decrypted_password("ZSW", "ZSW", 'password', False)
+        # try to authenticate session
+        login_result = client.service.login(session, config.user, pw)
+        if login_result != 0:
+            client.service.closeSession(session)
+            session = None
+    except:
+        print("Faild creating new session")
+        session = None
+
+    # return the resulting session can bei either None or all OK
+    return session
+
+# global config, client and session definition
+try:
     # read configuration
     config = frappe.get_doc("ZSW", "ZSW")
-    pw = get_decrypted_password("ZSW", "ZSW", 'password', False)
-    # create client
-    global client
-    try:
-        if client:
-            print("Reusing client")
-    except:
-        client = Client(config.endpoint)
-        print("Client created")
-    # open session
-    session = client.service.openSession(config.license)
-    print("Session {0} opened".format(config.license))
-    # log in
-    login_result = client.service.login(session, config.user, pw)
-    print("Login: {0}".format(login_result))
-    # return session
-    return client, session
-
-# global client definition
-try:
-    client, session = connect()
+    print("Global config loaded")
+    # create SOAP client stub
+    client = getClient()
+    print("Global SOAP client stub initialized")
+    # open session and athenticate it
+    session = None
+    print("Global session variable initialized")
 except:
-    frappe.log_error("Unable to create global client", "ZSW global")
+    frappe.log_error("Unable to create and initialize global variables", "ZSW global")
 
-def disconnect(client, session):
-    # log out
-    logoutResult = client.service.logout(session)
-    # close session
-    client.service.closeSession(session)
-    return
+def disconnect():
+    if session != None:
+        s = getSession()
+        # log out
+        client.service.logout(s)
+        # close session
+        client.service.closeSession(s)
 
 """ support functions """
-def isExtensionInList(list, propName):
-  for ext in list:
-    if ext["name"] == propName:
-      return True
-  return False
-
 def getExtension(list, propName):
-  for ext in list:
-    if ext["name"] == propName:
-      return ext
-  return None
+    for ext in list:
+        if ext["name"] == propName:
+            # found it -> early return
+            return True, ext
+    # got until here - so we didn't find what we were looking for
+    return False, None
 
 def createOrUpdateWSExtension(extensions, propKey, value):
-  if isExtensionInList(extensions, propKey):
-     ext = getExtension(extensions, propKey)
+  foundExt, ext = getExtension(extensions, propKey)
+  if foundExt:
      ext["value"] = value
      ext["action"] = 3
   else :
-    extensions.extend([{'action': 1, 'name': propKey, 'value': value }])
+    extensions.append({'action': 1, 'name': propKey, 'value': value })
 
 def createOrUpdateWSExtension_link(extensions, propKey, value, naturalInfo, linkType, remove):
-  if isExtensionInList(extensions, propKey):
-     itemFound = False
-     for item in extensions:
-       if (item["name"] == propKey and item["link"]["naturalID"] == value):
-         if remove or itemFound:
-           item["action"] = 2
-         else:
-           item["action"] = 3
-           item["link"] = { 'action': 1, 'linkType': linkType, 'naturalID': value, 'naturalInfo': naturalInfo }
-           itemFound = True
-       elif (item["name"] == propKey):
-         item["action"] = 3
-     if not itemFound:
-      extensions.extend([{'action': 1,
-                          'name': propKey,
-                          'link': { 'action': 1, 'linkType': linkType, 'naturalID': value, 'naturalInfo': naturalInfo }}])
+  foundExt, ext = getExtension(extensions, propKey):
+  if foundExt:
+    itemFound = False
+    for item in extensions:
+      if (item["name"] == propKey and item["link"]["naturalID"] == value):
+        if remove or itemFound:
+          item["action"] = 2
+        else:
+          item["action"] = 3
+          item["link"] = { 'action': 1, 'linkType': linkType, 'naturalID': value, 'naturalInfo': naturalInfo }
+          itemFound = True
+      elif (item["name"] == propKey):
+        item["action"] = 3
+      if not itemFound:
+        extensions.append({'action': 1,
+                           'name': propKey,
+                           'link': { 'action': 1, 'linkType': linkType, 'naturalID': value, 'naturalInfo': naturalInfo }})
   else :
     if not remove:
-      extensions.extend([{'action': 1,
-                          'name': propKey,
-                          'link': { 'action': 1, 'linkType': linkType, 'naturalID': value, 'naturalInfo': naturalInfo }}])
+      extensions.append({'action': 1,
+                         'name': propKey,
+                         'link': { 'action': 1, 'linkType': linkType, 'naturalID': value, 'naturalInfo': naturalInfo }})
 
 """ abstracted ZSW functions """
 def get_employees():
-    # connect
-    print("Connecting...")
-    c, session = connect()
-    print("Session: {0}".format(session))
-    # read employees
     print("Read employees...")
-    employees = client.service.getAllEmployees(session, 0)
+    employees = client.service.getAllEmployees(getSession(), 0)
     # clean up employees
     employee_dict = {}
     for employee in employees:
         # reformat employees to indexed dict
         employee_dict[employee['personID']] = "{0} {1}".format(employee['firstname'], employee['lastname'])
     print("Employees: {0}".format(employee_dict))
-    # close connection
-    print("Disconnecting...")
-    disconnect(client, session)
     return employee_dict
-    
+
 def get_bookings(start_time, end_time):
-    # current time as end time
     end_time = int(end_time)
     start_time = int(start_time)
     print("Start {0} (type: {1})".format(start_time, type(start_time)))
     print("End {0} (type: {1})".format(end_time, type(end_time)))
+
     # timestamp dicts
     fromTS = {'timeInSeconds': start_time}
     toTS = {'timeInSeconds': end_time}
-    # connect
-    c, session = connect()
+
     # get bookings
     try:
-        bookings = client.service.getBookingPairs(session, fromTS, toTS, False, 1)
+        bookings = client.service.getBookingPairs(getSession(), fromTS, toTS, False, 1)
     except Exception as err:
-        bookings = []
-        frappe.log_error("Get booking parts failed with error {0}.".format(err), "ZSW get booking pairs")
-    # close connection
-    disconnect(client, session)
+        frappe.log_error("Get booking pairs failed with error {0}.".format(err), "ZSW get booking pairs")
+        #return here because going further doesn't make sense!
+        return []
+
     # update end_time in ZSW record
-    config = frappe.get_doc("ZSW", "ZSW")
+    global config
     try:
         config.last_sync_sec = end_time
         config.last_sync_date = datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')
         config.save()
+        print("Global config updated")
     except Exception as err:
         frappe.log_error( "Unable to set end time. ({0})".format(err), "ZSW get_booking")
+        return []
+
     print("Bookings: {0}".format(bookings))
     if bookings:
         print("Total {0} bookings".format(len(bookings)))
     return bookings
 
 def mark_bookings(bookings):
-    # connect to ZSW
-    c, session = connect()
     if type(bookings) is not list:
+        # why execute "bookings" as python code here it it wasn't a list type?!?
         bookings = eval(bookings)
-    # create or update customer
+
     try:
         # use pagination
         per_page = 100
+        s = getSession()
         for i in range(0, len(bookings), per_page):
             bookings_paged = {'long': bookings[i:i+per_page]}
-            client.service.checkBookings(session, bookings_paged, 5)
+            client.service.checkBookings(s, bookings_paged, 5)
     except Exception as err:
         frappe.log_error("Marking bookings {0} failed with error {1}.".format(bookings, err), "ZSW mark bookings")
-    # close connection
-    disconnect(client, session)
-    return
-    
+        return False
+
+    return True
+
 def create_update_customer(customer, customer_name, active, kst="FZV", tenant="AT"):
     # collect information
     if tenant.lower() == "ch":
@@ -180,7 +203,7 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
                 continue
         city = address.city or "-"
         street = address.address_line1 or "-"
-        pincode = address.pincode or "-" 
+        pincode = address.pincode or "-"
     else:
         city = "-"
         street = "-"
@@ -238,12 +261,11 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
         kst_code = 114
     else:
         kst_code = 13
-    # connect to ZSW
-    c, session = connect()
+    s = getSession()
     # create or update customer
-    wsTsNow = client.service.getTime(session)
+    wsTsNow = client.service.getTime(s)
     wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': zsw_reference }] }
-    wsLevelEArray = client.service.getLevelsEByIdentification(session, wsLevelIdentArray, wsTsNow)
+    wsLevelEArray = client.service.getLevelsEByIdentification(s, wsLevelIdentArray, wsTsNow)
     # check if customer exists
     if wsLevelEArray:
         # customer exists --> update
@@ -437,7 +459,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                     else:
                         income_account = u"4220 - Leistungserlöse 20 % USt - FZAT"
                         tax_rule = "Verkaufssteuern Inland 20p (022) - FZAT"
-                
+
                 # create lists to collect invoice items
                 items_remote = []
                 items_onsite = []
@@ -593,13 +615,13 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                 print("Customer {0} aggregated, {1} items remote, {2} items onsite.".format(customer, len(items_remote), len(items_onsite)))
                 if do_invoice_remote and len(items_remote) > 0:
                     create_invoice(
-                        customer = customer_record.name, 
-                        items = items_remote, 
-                        overall_discount = 0, 
-                        remarks = "Telefonsupport", 
-                        taxes_and_charges = tax_rule, 
-                        from_licence = 0, 
-                        groups=None, 
+                        customer = customer_record.name,
+                        items = items_remote,
+                        overall_discount = 0,
+                        remarks = "Telefonsupport",
+                        taxes_and_charges = tax_rule,
+                        from_licence = 0,
+                        groups=None,
                         commission=None,
                         print_descriptions=1,
                         update_stock=1,
@@ -608,13 +630,13 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                     invoice_count += 1
                 if do_invoice_onsite and len(items_onsite) > 0:
                     create_invoice(
-                        customer = customer_record.name, 
-                        items = items_onsite, 
-                        overall_discount = 0, 
-                        remarks = "Support vor Ort", 
-                        taxes_and_charges = tax_rule, 
-                        from_licence = 0, 
-                        groups=None, 
+                        customer = customer_record.name,
+                        items = items_onsite,
+                        overall_discount = 0,
+                        remarks = "Support vor Ort",
+                        taxes_and_charges = tax_rule,
+                        from_licence = 0,
+                        groups=None,
                         commission=None,
                         print_descriptions=1,
                         update_stock=1,
@@ -624,7 +646,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
             else:
                 err = "Customer not found in ERP: {0}".format(erp_customer)
                 print(err)
-                frappe.log_error(err, "ZSW customer not found")          
+                frappe.log_error(err, "ZSW customer not found")
         # finished, mark bookings as invoices
         mark_bookings(collected_bookings)
         # update last status
@@ -640,7 +662,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
         print("No bookings found.")
     return
 
-# parse to sales invoice item structure    
+# parse to sales invoice item structure
 def get_item(item_code, description, qty, discount, kst, income_account, warehouse):
     return {
         'item_code': item_code,
@@ -679,31 +701,8 @@ def set_last_sync(date):
     return
 
 def test_connect():
-    # read configuration
-    config = frappe.get_doc("ZSW", "ZSW")
-    # create client
-    client = Client(config.endpoint)
-    print("Client created: {0}".format(config.endpoint))
-    # open session
-    session = client.service.openSession('finkzeit')
-    print("Session opened")
-    # log in
-    pw = get_decrypted_password("ZSW", "ZSW", 'password', False)
-    login_result = client.service.login(session, config.user, pw)
-    print("Login: {0}".format(login_result))
-
-    print("Session: {0}".format(session))
-    # read employees
-    print("Read employees...")
-    employees = client.service.getAllEmployees(session, 0)
-    # close connection
-    print("Disconnecting...")
-
-    # log out
-    logoutResult = client.service.logout(session)
-    # close session
-    client.service.closeSession(session)
-    print("Connection closed")
+    get_employees()
+    disconnect()
     return
 
 def add_comment(text, from_time, to_time, kst, service_filter):
