@@ -21,11 +21,11 @@ def getSession():
     if not 'session' in globals():
         session = None
 
-    if session != None:
+    if session:
         try:
             session = client.service.refreshSession(session)
-            if session != None;
-                print("Session: ", session, "refreshed")
+            if session:
+                print("Session: {0} refreshed".format(session))
                 # return a refreshed and authenticated session
                 return session
         except:
@@ -34,7 +34,7 @@ def getSession():
     try:
         #create a new session
         session = client.service.openSession(config.license)
-        print("Session: ", session, " created")
+        print("Session: {0}  created".format(session))
         pw = get_decrypted_password("ZSW", "ZSW", 'password', False)
         # try to authenticate session
         login_result = client.service.login(session, config.user, pw)
@@ -63,8 +63,7 @@ except:
     frappe.log_error("Unable to create and initialize global variables", "ZSW global")
 
 def disconnect():
-    # only disconnect if connected
-    if session != None:
+    if session:
         s = getSession()
         # log out
         client.service.logout(s)
@@ -89,7 +88,7 @@ def createOrUpdateWSExtension(extensions, propKey, value):
     extensions.append({'action': 1, 'name': propKey, 'value': value })
 
 def createOrUpdateWSExtension_link(extensions, propKey, value, naturalInfo, linkType, remove):
-  foundExt, ext = getExtension(extensions, propKey):
+  foundExt, ext = getExtension(extensions, propKey)
   if foundExt:
     itemFound = False
     for item in extensions:
@@ -319,11 +318,11 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT")
         }]
     }
     # connect to ZSW
-    c, session = connect()
+    s = getSession()
     # create or update sales order
     client.service.createLevels(session, level, True)
     # close connection
-    disconnect(client, session)
+    disconnect()
     return
 
 """ interaction mechanisms """
