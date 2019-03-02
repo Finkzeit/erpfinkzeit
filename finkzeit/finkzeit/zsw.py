@@ -16,18 +16,6 @@ from finkzeit.finkzeit.doctype.licence.licence import create_invoice
 from frappe.utils.password import get_decrypted_password
 
 """ Low-level connect/disconnect """
-def getClient():
-    global client
-    if not 'client' in globals():
-        client = None
-
-    if client == None:
-        client = Client(config.endpoint)
-        print("SOAP Client created for {0}".format(config.endpoint))
-
-    # return the newly created client or the one we already had
-    return client
-
 def getSession():
     global session
     if not 'session' in globals():
@@ -60,15 +48,56 @@ def getSession():
     # return the resulting session can bei either None or all OK
     return session
 
-# global config, client and session definition
 try:
     # read configuration
     config = frappe.get_doc("ZSW", "ZSW")
     print("Global config loaded")
+
+    import logging.config
+
+    logging.config.dictConfig({
+        'version': 1,
+        'formatters': {
+            'verbose': {
+                'format': '%(name)s: %(message)s'
+            }
+        },
+        'handlers': {
+            'console': {
+                'level': 'DEBUG',
+                'class': 'logging.StreamHandler',
+                'formatter': 'verbose',
+            },
+        },
+        'loggers': {
+            'zeep.transports': {
+                'level': 'DEBUG',
+                'propagate': True,
+                'handlers': ['console'],
+            },
+        }
+    })
+
+    from zeep import Plugin
+
+    class LoggingPlugin(Plugin):
+
+        def ingress(self, envelope, http_headers, operation):
+            print(etree.tostring(envelope, pretty_print=True))
+            return envelope, http_headers
+
+        def egress(self, envelope, http_headers, operation, binding_options):
+            print(etree.tostring(envelope, pretty_print=True))
+            return envelope, http_headers
+
     # create SOAP client stub
-    client = getClient()
+    # with logging plugin
+    client = Client(config.endpoint, plugins=[LoggingPlugin()])
+    # without logging plugin
+    #client = Client(config.endpoint)
     print("Global SOAP client stub initialized")
-    # open session and athenticate it
+
+    # create and initialize session variable to be used later on
     session = None
     print("Global session variable initialized")
 except:
@@ -77,9 +106,7 @@ except:
 def disconnect():
     if session:
         s = getSession()
-        # log out
         client.service.logout(s)
-        # close session
         client.service.closeSession(s)
 
 """ support functions """
@@ -171,7 +198,6 @@ def get_bookings(start_time, end_time):
 
 def mark_bookings(bookings):
     if type(bookings) is not list:
-        # why execute "bookings" as python code here it it wasn't a list type?!?
         bookings = eval(bookings)
 
     try:
@@ -695,7 +721,7 @@ def set_last_sync(date):
     date_str = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
     print("Timestamp: {0} / {1}".format(timestamp, date_str))
     # update end_time in ZSW record
-    config = frappe.get_doc("ZSW", "ZSW")
+    global config
     try:
         config.last_sync_sec = timestamp
         config.last_sync_date = date_str
