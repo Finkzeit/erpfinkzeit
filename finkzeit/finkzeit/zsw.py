@@ -8,7 +8,7 @@ from __future__ import unicode_literals
 import frappe
 from frappe import _
 from lxml import etree
-from zeep import Client
+from zeep import Client, Settings
 from time import time
 from datetime import datetime
 from frappe.utils.background_jobs import enqueue
@@ -53,48 +53,52 @@ try:
     config = frappe.get_doc("ZSW", "ZSW")
     print("Global config loaded")
 
-    import logging.config
+    #import logging.config
 
-    logging.config.dictConfig({
-        'version': 1,
-        'formatters': {
-            'verbose': {
-                'format': '%(name)s: %(message)s'
-            }
-        },
-        'handlers': {
-            'console': {
-                'level': 'DEBUG',
-                'class': 'logging.StreamHandler',
-                'formatter': 'verbose',
-            },
-        },
-        'loggers': {
-            'zeep.transports': {
-                'level': 'DEBUG',
-                'propagate': True,
-                'handlers': ['console'],
-            },
-        }
-    })
+    #logging.config.dictConfig({
+    #    'version': 1,
+    #    'formatters': {
+    #        'verbose': {
+    #            'format': '%(name)s: %(message)s'
+    #        }
+    #    },
+    #    'handlers': {
+    #        'console': {
+    #            'level': 'DEBUG',
+    #            'class': 'logging.StreamHandler',
+    #            'formatter': 'verbose',
+    #        },
+    #    },
+    #    'loggers': {
+    #        'zeep.transports': {
+    #            'level': 'DEBUG',
+    #            'propagate': True,
+    #            'handlers': ['console'],
+    #        },
+    #    }
+    #})
 
-    from zeep import Plugin
+    #from zeep import Plugin
 
-    class LoggingPlugin(Plugin):
+    #class LoggingPlugin(Plugin):
 
-        def ingress(self, envelope, http_headers, operation):
-            print(etree.tostring(envelope, pretty_print=True))
-            return envelope, http_headers
+    #    def ingress(self, envelope, http_headers, operation):
+    #        print(etree.tostring(envelope, pretty_print=True))
+    #        return envelope, http_headers
 
-        def egress(self, envelope, http_headers, operation, binding_options):
-            print(etree.tostring(envelope, pretty_print=True))
-            return envelope, http_headers
+    #    def egress(self, envelope, http_headers, operation, binding_options):
+    #        print(etree.tostring(envelope, pretty_print=True))
+    #        return envelope, http_headers
 
     # create SOAP client stub
     # with logging plugin
-    client = Client(config.endpoint, plugins=[LoggingPlugin()])
+    #client = Client(config.endpoint, plugins=[LoggingPlugin()])
     # without logging plugin
     #client = Client(config.endpoint)
+    # with settings
+    #settings = Settings(strict=False, xml_huge_tree=True)
+    settings = Settings(strict=True, xml_huge_tree=False)
+    client = Client(config.endpoint, settings=settings)
     print("Global SOAP client stub initialized")
 
     # create and initialize session variable to be used later on
@@ -307,6 +311,7 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
         createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
         #createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", "AB-00350", 4, 3, False)
         # compress level
+        print("Settings: {0}".format(client.settings))
         contentStr = "{0}".format(wsLevelEArray[0])
         contentDict = eval(contentStr)
         contentDict.pop('genericProperties', None)
