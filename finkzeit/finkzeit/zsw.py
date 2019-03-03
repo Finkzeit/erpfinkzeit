@@ -8,7 +8,8 @@ from __future__ import unicode_literals
 import frappe
 from frappe import _
 from lxml import etree
-from zeep import Client
+import logging.config
+from zeep import Client, Plugin, Settings
 from time import time
 from datetime import datetime
 from frappe.utils.background_jobs import enqueue
@@ -53,8 +54,6 @@ try:
     config = frappe.get_doc("ZSW", "ZSW")
     print("Global config loaded")
 
-    import logging.config
-
     logging.config.dictConfig({
         'version': 1,
         'formatters': {
@@ -78,8 +77,6 @@ try:
         }
     })
 
-    from zeep import Plugin
-
     class LoggingPlugin(Plugin):
 
         def ingress(self, envelope, http_headers, operation):
@@ -91,7 +88,8 @@ try:
             return envelope, http_headers
 
     # create SOAP client stub
-    # with logging plugin
+    # with logging plugin and sttings
+    settings = Settings(xml_huge_tree=True)
     client = Client(config.endpoint, plugins=[LoggingPlugin()])
     # without logging plugin
     #client = Client(config.endpoint)
