@@ -304,8 +304,12 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
         createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_telefonnummer", phone)
         createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
         #createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", "AB-00350", 4, 3, False)
-        print("LevelArray: {0}".format(wsLevelEArray[0]))
-        client.service.updateLevelsE(session, {'WSExtensibleLevel': [wsLevelEArray[0]]})
+        # compress level
+        contentStr = "{0}".format(wsLevelEArray[0])
+        contentDict = eval(contentStr)
+        contentDict.pop('genericProperties', None)
+        print("LevelArray: {0}".format(contentDict))
+        client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
     else:
         print("Customer not found")
         wsLevelEArray = { 'WSExtensibleLevel' : [{
@@ -333,7 +337,7 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
         frappe.log_error( "Unable to add link ({0})<br>Session: {1}, kst: {2}, link: {3}".format(
             err, session, kst_code, link), "ZSW update customer" )
     # close connection
-    disconnect(client, session)
+    disconnect()
     return
 
 def create_update_sales_order(sales_order, customer, customer_name, tenant="AT"):
@@ -724,11 +728,6 @@ def set_last_sync(date):
         frappe.log_error( "Unable to set end time. ({0})".format(err), "ZSW set_last_sync")
     return
 
-def test_connect():
-    get_employees()
-    disconnect()
-    return
-
 def add_comment(text, from_time, to_time, kst, service_filter):
     new_comment = frappe.get_doc({
         'doctype': 'Communication',
@@ -741,3 +740,21 @@ def add_comment(text, from_time, to_time, kst, service_filter):
     })
     new_comment.insert()
     return
+
+# integarted test functions for integration tests
+def test_connect():
+    get_employees()
+    disconnect()
+    return
+
+def test_customer():
+    s = getSession()
+    #wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': "1234500" }] }
+    wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': "21762" }] }
+    wsLevelEArray = client.service.getLevelsEByIdentification(session, wsLevelIdentArray, None)
+    contentStr = "{0}".format(wsLevelEArray[0])
+    contentDict = eval(contentStr)
+    contentDict.pop('genericProperties', None)
+    print("Level E: {0}".format(contentDict))
+    client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
+    disconnect()
