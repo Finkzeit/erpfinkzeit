@@ -293,6 +293,7 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
     wsTsNow = client.service.getTime(s)
     wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': zsw_reference }] }
     wsLevelEArray = client.service.getLevelsEByIdentification(s, wsLevelIdentArray, wsTsNow)
+    #print("Level E: {0}".format(wsLevelEArray))
     # check if customer exists
     if wsLevelEArray:
         # customer exists --> update
@@ -300,13 +301,17 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
         wsLevelEArray[0]["action"] = 3
         wsLevelEArray[0]["wsLevel"]["text"] = customer_name
         wsLevelEArray[0]["wsLevel"]["active"] = active
+        # make sure extension key exists
+        if not wsLevelEArray[0]["extensions"]:
+            wsLevelEArray[0]["extensions"] = {'WSExtension': []}
+        if not wsLevelEArray[0]["extensions"]["WSExtension"]:
+            wsLevelEArray[0]["extensions"]["WSExtension"] = []
         createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_ortKunde", city)
         createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_strasseKunde", street)
         createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_plzKunde", pincode)
         createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_mailadresseKunde", email)
         createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_telefonnummer", phone)
         createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
-        #createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", "AB-00350", 4, 3, False)
         # compress level
         contentDict = compress_level_e(wsLevelEArray[0])
         client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
@@ -322,7 +327,6 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
                 {'action': 1, 'name': 'p_mailadresseKunde','value': mail },
                 {'action': 1, 'name': 'p_telefonnummer','value': phone },
                 {'action': 1, 'name': 'p_wartungsvertrag','value': maintenance_contract },
-                #{'action': 1, 'name': 'p_auftrag_projekt', 'link': { 'action': 1, 'linkType': 3, 'naturalID': auftragsbestaetigung, 'naturalInfo': 4 }},
                 {'action': 1, 'name': 'p_projektverantwortlicher', 'link': { 'action': 1, 'linkType': 0, 'naturalID': technician, 'naturalInfo': 2 }}
             ]}
         }
