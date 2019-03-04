@@ -219,10 +219,7 @@ def mark_bookings(bookings):
 
 def create_update_customer(customer, customer_name, active, kst="FZV", tenant="AT"):
     # collect information
-    if tenant.lower() == "ch":
-        zsw_reference = "CH{0}".format(customer[2:])
-    else:
-        zsw_reference = "{0}".format(customer[2:])
+    zsw_reference = get_zsw_reference(customer, tenant)
     adr_ids = frappe.get_all("Dynamic Link",
         filters={'link_doctype': 'Customer', 'link_name': customer, 'parenttype': 'Address'},
         fields=['parent'])
@@ -311,11 +308,7 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
         createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
         #createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", "AB-00350", 4, 3, False)
         # compress level
-        print("Settings: {0}".format(client.settings))
-        contentStr = "{0}".format(wsLevelEArray[0])
-        contentDict = eval(contentStr)
-        contentDict.pop('genericProperties', None)
-        print("LevelArray: {0}".format(contentDict))
+        contentDict = compress_level_e(wsLevelEArray[0])
         client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
     else:
         print("Customer not found")
@@ -353,10 +346,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT")
     address = frappe.get_doc("Address", so.customer_address)
     city = address.city or "-"
     # prepare information
-    if tenant.lower == "ch":
-        zsw_project_name = "CH{0}".format(sales_order)
-    else:
-        zsw_project_name = "{0}".format(sales_order)
+    zsw_project_name = get_zsw_project_name(sales_order, tenant)
     # create project (=level) information
     level = {'WSLevel':[{
           'active': True,
@@ -369,10 +359,43 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT")
     s = getSession()
     # create or update sales order
     client.service.createLevels(session, level, True)
+    # retrieve E-level
+    wsTsNow = client.service.getTime(s)
+    wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': get_zsw_reference(customer, tenant) }] }
+    wsLevelEArray = client.service.getLevelsEByIdentification(s, wsLevelIdentArray, wsTsNow)
+    if wsLevelEArray:
+        createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", zsw_project_name, 4, 3, False)
+        contentDict = compress_level_e(wsLevelEArray[0])
+        client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
+    else:
+        frappe.log_error( "Trying to link to customer that does not exist: {0} ({1})".format(customer, sales_order), "ZSW create_update_sales_order")
+        
     # close connection
     disconnect()
     return
 
+def get_zsw_reference(customer, tenant):
+    if tenant.lower() == "ch":
+        zsw_reference = "CH{0}".format(customer[2:])
+    else:
+        zsw_reference = "{0}".format(customer[2:])
+    return zsw_reference
+
+def get_zsw_project_name(sales_order, tenant):
+    if tenant.lower == "ch":
+        zsw_project_name = "CH{0}".format(sales_order)
+    else:
+        zsw_project_name = "{0}".format(sales_order)
+    return zsw_project_name
+
+def compress_level_e(level_e_array):
+    #print("Settings: {0}".format(client.settings))
+    contentStr = "{0}".format(level_e_array)
+    contentDict = eval(contentStr)
+    contentDict.pop('genericProperties', None)
+    #print("LevelArray: {0}".format(contentDict))
+    return contentDict
+        
 """ interaction mechanisms """
 @frappe.whitelist()
 def update_customer(customer, customer_name, kst, zsw_reference=None, active=True, tenant="AT"):
