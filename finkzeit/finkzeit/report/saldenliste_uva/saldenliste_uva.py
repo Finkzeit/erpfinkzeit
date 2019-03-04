@@ -48,6 +48,10 @@ def get_data(from_date, to_date, report_type):
        WHERE `tabGL Entry`.`posting_date` >= '{from_date}' 
          AND `tabGL Entry`.`posting_date` <= '{to_date}'
          AND `tabAccount`.`report_type` LIKE '{report_type}'
+         AND `tabAccount`.`account_number` IN (SELECT `account_number` 
+                    FROM `tabAccount` AS `tA1` 
+                    WHERE `tA1`.`account_number` IN ("2500", "2505", "2510", "3510", "3511", "3512") 
+                    OR `tA1`.`account_number` LIKE "4%")
        GROUP BY `tabGL Entry`.`account`;""".format(from_date=from_date, to_date=to_date, report_type=report_type)
        
     # run query, as list, otherwise export to Excel fails 
