@@ -314,7 +314,7 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
         print("Customer not found")
         wsLevelEArray = { 'WSExtensibleLevel' : [{
             'action': 1,
-            'wsLevel': { 'active': kundeAktiv, 'levelID': 1, 'code': zsw_reference, 'text': customer_name },
+            'wsLevel': { 'active': active, 'levelID': 1, 'code': zsw_reference, 'text': customer_name },
             'extensions': { 'WSExtension': [
                 {'action': 1, 'name': 'p_ortKunde', 'value': city },
                 {'action': 1, 'name': 'p_plzKunde', 'value': pincode },
