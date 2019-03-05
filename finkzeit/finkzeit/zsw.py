@@ -326,7 +326,7 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
                 {'action': 1, 'name': 'p_ortKunde', 'value': city },
                 {'action': 1, 'name': 'p_plzKunde', 'value': pincode },
                 {'action': 1, 'name': 'p_strasseKunde','value': street },
-                {'action': 1, 'name': 'p_mailadresseKunde','value': mail },
+                {'action': 1, 'name': 'p_mailadresseKunde','value': email },
                 {'action': 1, 'name': 'p_telefonnummer','value': phone },
                 {'action': 1, 'name': 'p_wartungsvertrag','value': maintenance_contract },
                 {'action': 1, 'name': 'p_projektverantwortlicher', 'link': { 'action': 1, 'linkType': 0, 'naturalID': zsw_technician, 'naturalInfo': 2 }}
