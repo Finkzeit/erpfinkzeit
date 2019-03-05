@@ -356,7 +356,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
         try:
             # update customer record in ERP
             customer_record = frappe.get_doc("Customer", customer)
-            customer_rcord.technik = technician
+            customer_record.technik = technician
             customer_record.save()
         except Exception as err:
             frappe.log_error( "Unable to update customer {0}: {1}".format(customer, err), "ZSW create_update_sales_order" )
