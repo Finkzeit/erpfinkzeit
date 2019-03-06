@@ -4,9 +4,15 @@ from frappe import _
 def get_data():
     return[
         {
-            "label": _("Deckungsbeitrag"),
+            "label": _("Sales Dashbaord"),
             "icon": "fa fa-money",
             "items": [
+                   {
+                       "type": "page",
+                       "name": "sales_dashboard",
+                       "label": _("Sales Dashboard"),
+                       "description": _("Sales Dashboard")
+                   },
                    {
 					   "type": "report",
                        "doctype": "GL Entry",

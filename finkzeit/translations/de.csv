@@ -67,3 +67,4 @@ DocType: SoftCard File,Creation of Export File started…,Export-Datei wird erst
 DocType: SoftCard File,Sales Invoices,Ausgangsrechnungen
 DocType: SoftCard File,Download Export File,Export-Datei herunterladen
 DocType: Budget Overhead,Budget Overhead,Budget-Overhead
+Page: Sales Dashboard,Sales Dashboard,Verkaufskennzahlen
