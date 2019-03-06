@@ -124,11 +124,12 @@ def getExtension(list, propName):
 
 def createOrUpdateWSExtension(extensions, propKey, value):
   foundExt, ext = getExtension(extensions, propKey)
-  if foundExt:
-     ext["value"] = value
-     ext["action"] = 3
-  else :
-    extensions.append({'action': 1, 'name': propKey, 'value': value })
+  if value:
+      if foundExt:
+          ext["value"] = value
+          ext["action"] = 3
+      else:
+          extensions.append({'action': 1, 'name': propKey, 'value': value })
 
 def createOrUpdateWSExtension_link(extensions, propKey, value, naturalInfo, linkType, remove):
   foundExt, ext = getExtension(extensions, propKey)
