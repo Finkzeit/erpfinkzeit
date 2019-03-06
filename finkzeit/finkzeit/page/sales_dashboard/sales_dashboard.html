@@ -1,13 +1,64 @@
 <div style="margin: 5px; margin-top: 0px; border-top: 1px solid white; ">
   
-  <p class="text-muted">{{ __("Sales Dashboard") }}&nbsp;</p>
+  <!-- <p class="text-muted">{{ __("Sales Dashboard") }}&nbsp;</p> -->
 
   <div class="section-body">	  
     <div class="row">
         <div class="col-sm-12">
-	    <div id="table_placeholder"><p>Hello World</p></div>	    
-	</div>
+            <div class="card">
+              <div class="card-header">
+                {{ __("Revenue and Expenses") }}
+              </div>
+              <div class="card-body">
+
+              </div>
+            </div>	    
+        </div>
     </div>
+    
+    <div class="row">
+        <div class="col-sm-4">
+            <div class="card">
+              <div class="card-header">
+                {{ __("Revenue") }}
+              </div>
+              <div class="card-body">
+                <table style="width: 100%;">
+                    <tr>
+                        <td><h3><span class="text-muted">{{ __("YTD") }}</span></h3></td>
+                        <td><h3>EUR 150000</h3></td>
+                        <td rowspan="2"><h2>+15%</h2></td>
+                    </tr>
+                    <tr>
+                        <td><h3><span class="text-muted">{{ __("PY") }}</span></h3></td>
+                        <td><h3>EUR 125000</h3></td>
+                    </tr>
+                </table>
+              </div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card">
+              <div class="card-header">
+                {{ __("Expenses") }}
+              </div>
+              <div class="card-body">
+
+              </div>
+            </div>
+        </div>
+        <div class="col-sm-4">
+            <div class="card">
+              <div class="card-header">
+                {{ __("Profit") }}
+              </div>
+              <div class="card-body">
+
+              </div>
+            </div>
+        </div>
+    </div>
+                
   </div>
   
 </div>
