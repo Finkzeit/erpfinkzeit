@@ -320,23 +320,22 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
         client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
     else:
         print("Customer not found")
-        wsLevelEArray = { 'WSExtensibleLevel' : [{
+        wsLevelEArray = { 'WSExtensibleLevel' : 
+          [{
             'action': 1,
             'wsLevel': { 'active': active, 'levelID': 1, 'code': zsw_reference, 'text': customer_name },
-            'extensions': { 'WSExtension': [
-                {'action': 1, 'name': 'p_ortKunde', 'value': city },
-                {'action': 1, 'name': 'p_plzKunde', 'value': pincode },
-                {'action': 1, 'name': 'p_strasseKunde','value': street },
-                {'action': 1, 'name': 'p_mailadresseKunde','value': email },
-                {'action': 1, 'name': 'p_telefonnummer','value': phone },
-                {'action': 1, 'name': 'p_wartungsvertrag','value': maintenance_contract },
-                {'action': 1, 'name': 'p_projektverantwortlicher', 'link': { 'action': 1, 'linkType': 0, 'naturalID': zsw_technician, 'naturalInfo': 2 }}
-            ]}
+            'extensions': { 'WSExtension': [   ]}
+          }]
         }
-        ]}
+        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]['extensions']['WSExtension'], 'p_ortKunde', city)
+        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_strasseKunde", street)
+        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_plzKunde", pincode)
+        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_mailadresseKunde", email)
+        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_telefonnummer", phone)
+        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
+        createOrUpdateWSExtension_link(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_projektverantwortlicher", zsw_technician, 2, 0, False)
         client.service.createLevelsE(session, wsLevelEArray)
 
-    #client.service.createLevels(session, level, True)
     # add link (or ignore if it exists already)
     try:
         client.service.quickAddGroupMember(session, kst_code, link)
