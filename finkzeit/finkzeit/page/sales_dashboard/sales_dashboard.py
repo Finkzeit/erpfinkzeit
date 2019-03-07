@@ -102,10 +102,10 @@ def get_cashflows(cost_center):
         expenses_indicator = ""
     elif expenses_ytd >= expenses_py:
         expenses_trend = "+{0:.1f}%".format(100.0 * expenses_ytd / expenses_py)
-        expenses_indicator = "border-success"
+        expenses_indicator = "border-danger"
     else:
         expenses_trend = "-{0:.1f}%".format(100.0 * expenses_ytd / expenses_py)
-        expenses_indicator = "border-danger"
+        expenses_indicator = "border-success"
     profit_ytd = revenue_ytd - expenses_ytd
     profit_py = revenue_py - expenses_py
     if profit_py == 0:
