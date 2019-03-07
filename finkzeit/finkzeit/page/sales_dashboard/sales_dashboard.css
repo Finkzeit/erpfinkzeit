@@ -228,3 +228,16 @@
     width:100%;
 }
 }
+
+.border-success {
+    border-color: #28a745 !important;
+}
+.border-primary {
+    border-color: #007bff !important;
+}
+.border-danger {
+    border-color: #dc3545 !important;
+}
+.border-warning {
+    border-color: #ffc107 !important;
+}

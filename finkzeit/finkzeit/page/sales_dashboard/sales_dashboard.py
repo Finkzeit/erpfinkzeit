@@ -88,41 +88,56 @@ def get_cashflows(cost_center):
     revenue_py = get_cashflow_to_date(cost_center, py=True, income=True)
     if revenue_py == 0:
         revenue_trend = "n/a"
+        revenue_indicator = ""
     elif revenue_ytd >= revenue_py:
         revenue_trend = "+{0:.1f}%".format(100.0 * revenue_ytd / revenue_py)
+        revenue_indicator = "border-success"
     else:
         revenue_trend = "-{0:.1f}%".format(100.0 * revenue_ytd / revenue_py)
+        revenue_indicator = "border-danger"
     expenses_ytd = get_cashflow_to_date(cost_center, py=False, income=False)
     expenses_py = get_cashflow_to_date(cost_center, py=True, income=False)
     if expenses_py == 0:
         expenses_trend = "n/a"
+        expenses_indicator = ""
     elif expenses_ytd >= expenses_py:
         expenses_trend = "+{0:.1f}%".format(100.0 * expenses_ytd / expenses_py)
+        expenses_indicator = "border-success"
     else:
         expenses_trend = "-{0:.1f}%".format(100.0 * expenses_ytd / expenses_py)
+        expenses_indicator = "border-danger"
     profit_ytd = revenue_ytd - expenses_ytd
     profit_py = revenue_py - expenses_py
     if profit_py == 0:
         profit_trend = "n/a"
+        profit_indicator = ""
     elif profit_ytd >= profit_py:
         profit_trend = "+{0:.1f}%".format(100.0 * profit_ytd / profit_py)
+        profit_indicator = "border-success"
     else:
         profit_trend = "-{0:.1f}%".format(100.0 * profit_ytd / profit_py)
+        profit_indicator = "border-danger"
     cashflows = {
         'revenue': {
-            'ytd': revenue_ytd,
-            'py': revenue_py,
-            'trend': revenue_trend
+            'ytd': "{0:,.0f}".format(revenue_ytd).replace(",", "'").replace(".", ",").replace("'", "."),
+            'py': "{0:,.0f}".format(revenue_py).replace(",", "'").replace(".", ",").replace("'", "."),
+            'trend': revenue_trend,
+            'indicator': revenue_indicator,
+            'title': _("Revenue")
         },
         'expenses': {
-            'ytd': expenses_ytd,
-            'py': expenses_py,
-            'trend': expenses_trend
+            'ytd': "{0:,.0f}".format(expenses_ytd).replace(",", "'").replace(".", ",").replace("'", "."),
+            'py': "{0:,.0f}".format(expenses_py).replace(",", "'").replace(".", ",").replace("'", "."),
+            'trend': expenses_trend,
+            'indicator': expenses_indicator,
+            'title': _("Expenses")
         },
         'profit': {
-            'ytd': profit_ytd,
-            'py': profit_py,
-            'trend': profit_trend
+            'ytd': "{0:,.0f}".format(profit_ytd).replace(",", "'").replace(".", ",").replace("'", "."),
+            'py': "{0:,.0f}".format(profit_py).replace(",", "'").replace(".", ",").replace("'", "."),
+            'trend': profit_trend,
+            'indicator': profit_indicator,
+            'title': _("Profit")
         },
         'monthly_revenue_ytd': get_cashflow_per_month(cost_center, py=False, income=True),
         'monthly_revenue_py': get_cashflow_per_month(cost_center, py=True, income=True),
