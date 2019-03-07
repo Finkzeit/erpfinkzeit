@@ -50,25 +50,40 @@ frappe.sales_dashboard = {
                 } 
             }
         }); 
-        
-        //make_chart()
-        /*
-        // populate bank accounts
+
+        // get documents
         frappe.call({
-            method: 'erpnextswiss.erpnextswiss.page.bank_wizard.bank_wizard.get_bank_accounts',
+            method: 'finkzeit.finkzeit.page.sales_dashboard.sales_dashboard.get_documents_for_user',
+            args: {
+                'user': frappe.user.name
+            },
             callback: function(r) {
                 if (r.message) {
-                    var select = document.getElementById("bank_account");
-                    for (var i = 0; i < r.message.accounts.length; i++) {
-                        var opt = document.createElement("option");
-                        opt.value = r.message.accounts[i];
-                        opt.innerHTML = r.message.accounts[i];
-                        select.appendChild(opt);
-                    }
-                } 
+                    console.log(r.message.toSource());
+                    // create document card
+                    var documents_container = document.getElementById("documents-placeholder");
+                    var content = frappe.render_template('docs', r.message.documents);
+                    documents_container.innerHTML = content;
+                }
             }
-        }); 
-        */
+        });
+
+        // get service shares
+        frappe.call({
+            method: 'finkzeit.finkzeit.page.sales_dashboard.sales_dashboard.get_service_share_for_user',
+            args: {
+                'user': frappe.user.name
+            },
+            callback: function(r) {
+                if (r.message) {
+                    console.log(r.message.toSource());
+                    // create service share card
+                    var service_share_container = document.getElementById("service-share-placeholder");
+                    var content = frappe.render_template('svc', r.message.shares);
+                    service_share_container.innerHTML = content;
+                }
+            }
+        });
     },
     make_chart: function(cashflows) {
         const chart = new frappeChart.Chart( "#main-chart", { 

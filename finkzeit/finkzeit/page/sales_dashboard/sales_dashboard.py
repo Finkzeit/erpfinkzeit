@@ -147,3 +147,135 @@ def get_cashflows(cost_center):
     }
     print("{0}".format(cashflows))
     return {'cashflows': cashflows}
+
+@frappe.whitelist()
+def get_documents_for_user(user):
+    cost_center = frappe.get_value("User", user, "cost_center")
+    return get_documents(cost_center)
+
+def get_documents(cost_center):
+    # open quotations
+    sql_query_quotation = """SELECT
+                  IFNULL(COUNT(`tabQuotation`.`name`), 0) AS `count`,
+                  IFNULL(SUM(`tabQuotation`.`grand_total`), 0) AS `amount`
+                FROM `tabQuotation`
+                LEFT JOIN `tabCustomer` ON `tabQuotation`.`customer` = `tabCustomer`.`name`
+                WHERE
+                  `tabQuotation`.`status` = 'Submitted'
+                  AND `tabQuotation`.`docstatus` = 1
+                  AND `tabCustomer`.`kostenstelle` LIKE '{cost_center}';""".format(cost_center=cost_center)
+    try:
+        result = frappe.db.sql(sql_query_quotation, as_dict = True)[0]
+        quotation_count = result['count']
+        quotation_amount = result['amount']
+    except:
+        quotation_count = 0
+        quotation_amount = 0.0
+
+    # open sales orders
+    sql_query_sales_order = """SELECT
+                  IFNULL(COUNT(`tabSales Order`.`name`), 0) AS `count`,
+                  IFNULL(SUM(`tabSales Order`.`grand_total`), 0) AS `amount`
+                FROM `tabSales Order`
+                LEFT JOIN `tabCustomer` ON `tabSales Order`.`customer` = `tabCustomer`.`name`
+                WHERE
+                  `tabSales Order`.`docstatus` = 1
+                  AND `tabSales Order`.`status` NOT IN ('Completed', 'Closed')
+                  AND `tabCustomer`.`kostenstelle` LIKE '{cost_center}';""".format(cost_center=cost_center)
+    try:
+        result = frappe.db.sql(sql_query_sales_order, as_dict = True)[0]
+        sales_order_count = result['count']
+        sales_order_amount = result['amount']
+    except:
+        sales_order_count = 0
+        sales_order_amount = 0.0
+
+    # open sales invoices
+    sql_query_sales_invoice = """SELECT
+                  IFNULL(COUNT(`tabSales Invoice`.`name`), 0) AS `count`,
+                  IFNULL(SUM(`tabSales Invoice`.`outstanding_amount`), 0) AS `amount`
+                FROM `tabSales Invoice`
+                LEFT JOIN `tabCustomer` ON `tabSales Invoice`.`customer` = `tabCustomer`.`name`
+                WHERE
+                  `tabSales Invoice`.`docstatus` = 1
+                  AND `tabSales Invoice`.`outstanding_amount` > 0
+                  AND `tabCustomer`.`kostenstelle` LIKE '{cost_center}';""".format(cost_center=cost_center)
+    try:
+        result = frappe.db.sql(sql_query_sales_invoice, as_dict = True)[0]
+        sales_invoice_count = result['count']
+        sales_invoice_amount = result['amount']
+    except:
+        sales_invoice_count = 0
+        sales_invoice_amount = 0.0
+
+    documents = {
+        'quotation_count': quotation_count,
+        'sales_order_count': sales_order_count,
+        'sales_invoice_count': sales_invoice_count,
+        'quotation_amount': quotation_amount,
+        'sales_order_amount': sales_order_amount,
+        'sales_invoice_amount': sales_invoice_amount
+    }
+    print("{0}".format(documents))
+    return documents
+
+@frappe.whitelist()
+def get_service_share_for_user(user):
+    cost_center = frappe.get_value("User", user, "cost_center")
+    return get_service_share(cost_center)
+
+def get_service_share(cost_center):
+    # time spans
+    py = datetime.now() - relativedelta(years=1)
+    ytd = datetime.now()
+    # service shares
+    ytd_service = get_share("{y}-01-01".format(y=ytd.year),
+        "{y}-{m}-{d}".format(y=ytd.year, m=ytd.month, d=ytd.day), cost_center, service=True)
+    ytd_material = get_share("{y}-01-01".format(y=ytd.year),
+        "{y}-{m}-{d}".format(y=ytd.year, m=ytd.month, d=ytd.day), cost_center, service=False)
+    py_service = get_share("{y}-01-01".format(y=py.year),
+        "{y}-{m}-{d}".format(y=py.year, m=py.month, d=py.day), cost_center, service=True)
+    py_material = get_share("{y}-01-01".format(y=py.year),
+        "{y}-{m}-{d}".format(y=py.year, m=py.month, d=py.day), cost_center, service=False)
+    if (ytd_service + ytd_material) > 0:
+        ytd_service_share = "+{0:.1f}%".format( 100.0 * ytd_service / (ytd_service + ytd_material) )
+    else:
+        ytd_service_share = "n/a"
+    if (py_service + py_material) > 0:
+        py_service_share = "+{0:.1f}%".format( 100.0 * py_service / (py_service + py_material) )
+    else:
+        py_service_share = "n/a"
+
+    shares = {
+        'service_share_ytd': ytd_service_share,
+        'service_ytd': ytd_service,
+        'material_ytd': ytd_material,
+        'service_share_py': py_service_share,
+        'service_py': py_service,
+        'material_py': py_material,
+    }
+    print("{0}".format(shares))
+    return shares
+
+def get_share(from_date, to_date, cost_center, service=True):
+    if service:
+        service_mask = "'4000', '4005', '4020'"
+    else:
+        service_mask = "'4200', '4220', '4250'"
+
+    sql_query = """SELECT
+              IFNULL(SUM(`tabGL Entry`.`credit`) - SUM(`tabGL Entry`.`debit`), 0) AS `share`
+            FROM `tabGL Entry`
+            JOIN `tabAccount` ON `tabGL Entry`.`account` = `tabAccount`.`name`
+            WHERE
+              `tabGL Entry`.`docstatus` = 1
+              AND `tabAccount`.`account_number` IN ({service_mask})
+              AND `tabGL Entry`.`cost_center` LIKE '{cost_center}'
+              AND `tabGL Entry`.`posting_date` >= '{from_date}'
+              AND `tabGL Entry`.`posting_date` <= '{to_date}';""".format(
+        cost_center=cost_center, from_date=from_date, to_date=to_date, service_mask=service_mask)
+    try:
+        share = frappe.db.sql(sql_query, as_dict = True)[0]['share']
+    except:
+        share = 0.0
+    return share
