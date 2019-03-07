@@ -1,13 +1,11 @@
 <div style="margin: 5px; margin-top: 0px; border-top: 1px solid white; ">
-  
-  <!-- <p class="text-muted">{{ __("Sales Dashboard") }}&nbsp;</p> -->
 
   <div class="section-body">	  
     <div class="row">
         <div class="col-sm-12">
             <div class="card">
               <div class="card-header">
-                {{ __("Revenue and Expenses") }}
+                {{ __("Revenue and Expenses") }}&nbsp;<span class="text-muted" id="kst-placeholder"></span>
               </div>
               <div class="card-body">
                   <div id="main-chart"></div>
@@ -23,17 +21,7 @@
                 {{ __("Revenue") }}
               </div>
               <div class="card-body">
-                <table style="width: 100%;">
-                    <tr>
-                        <td><h3><span class="text-muted">{{ __("YTD") }}</span></h3></td>
-                        <td><h3>EUR 150000</h3></td>
-                        <td rowspan="2"><h2>+15%</h2></td>
-                    </tr>
-                    <tr>
-                        <td><h3><span class="text-muted">{{ __("PY") }}</span></h3></td>
-                        <td><h3>EUR 125000</h3></td>
-                    </tr>
-                </table>
+                <div id="revenue-placeholder"></div>
               </div>
             </div>
         </div>
@@ -43,7 +31,7 @@
                 {{ __("Expenses") }}
               </div>
               <div class="card-body">
-
+                <div id="expenses-placeholder"></div>
               </div>
             </div>
         </div>
@@ -53,7 +41,7 @@
                 {{ __("Profit") }}
               </div>
               <div class="card-body">
-
+                <div id="profit-placeholder"></div>
               </div>
             </div>
         </div>

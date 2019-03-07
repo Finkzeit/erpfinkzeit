@@ -23,7 +23,34 @@ frappe.sales_dashboard = {
         
     },
     run: function() {
-        frappe.sales_dashboard.make_chart();
+        // get cashflows
+        frappe.call({
+            method: 'finkzeit.finkzeit.page.sales_dashboard.sales_dashboard.get_cashflow_for_user',
+            args: {
+                'user': frappe.user.name
+            },
+            callback: function(r) {
+                if (r.message) {
+                    console.log(r.message.toSource());
+                    // create chart
+                    frappe.sales_dashboard.make_chart(r.message.cashflows);
+                    // create KPIs
+                    var revenue_container = document.getElementById("revenue-placeholder");
+                    var content = frappe.render_template('kpi', r.message.cashflows.revenue);
+                    revenue_container.innerHTML = content;
+                    var expenses_container = document.getElementById("expenses-placeholder");
+                    var content = frappe.render_template('kpi', r.message.cashflows.expenses);
+                    expenses_container.innerHTML = content;
+                    var profit_container = document.getElementById("profit-placeholder");
+                    var content = frappe.render_template('kpi', r.message.cashflows.profit);
+                    profit_container.innerHTML = content;                    
+                    // control: show cost center
+                    var kst_container = document.getElementById("kst-placeholder");
+                    kst_container.innerHTML = r.message.cashflows.cost_center;
+                } 
+            }
+        }); 
+        
         //make_chart()
         /*
         // populate bank accounts
@@ -43,7 +70,7 @@ frappe.sales_dashboard = {
         }); 
         */
     },
-    make_chart: function() {
+    make_chart: function(cashflows) {
         const chart = new frappeChart.Chart( "#main-chart", { 
             data: {
                 labels: ["Jan", "Feb", "Mär", "Apr",
@@ -53,19 +80,19 @@ frappe.sales_dashboard = {
                 datasets: [
                     {
                         name: __("Revenue YTD"), chartType: 'line',
-                        values: [5, 10, 15, 12, 23, 12, 7, 11, 12, 15, 9, 10]
+                        values: cashflows.monthly_revenue_ytd
                     },
                                         {
                         name: __("Revenue PY"), chartType: 'line',
-                        values: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+                        values: cashflows.monthly_revenue_py
                     },
                                         {
                         name: __("Expenses YTD"), chartType: 'line',
-                        values: [15, 20, -3, -15, 58, 12, -17, 37]
+                        values: cashflows.monthly_expenses_ytd
                     },
                                         {
                         name: __("Expenses PY"), chartType: 'line',
-                        values: [6, 7, 6, 8, 9, 10, 12, 8, 6, 7, 8, 5]
+                        values: cashflows.monthly_expenses_py
                     }
                 ],
 

@@ -19,7 +19,10 @@ def get_cashflow_to_date(cost_center, py=False, income=True):
         cost_center, income)
                 
 def get_cashflow_per_month(cost_center, py=False, income=True):
-    d = datetime.now()
+    if py:
+        d = datetime.now() - relativedelta(years=1)
+    else:
+        d = datetime.now()
     x, feb = monthrange(d.year,2)
     cashflows = [
         get_cashflow("{y}-01-01".format(y=d.year), "{y}-01-31".format(y=d.year), cost_center, income),
@@ -76,16 +79,56 @@ def get_cashflow(from_date, to_date, cost_center, income=True):
         return ((-1) * cashflow) + costs_overhead
 
 @frappe.whitelist()
+def get_cashflow_for_user(user):
+    cost_center = frappe.get_value("User", user, "cost_center")
+    return get_cashflows(cost_center)
+
 def get_cashflows(cost_center):
+    revenue_ytd = get_cashflow_to_date(cost_center, py=False, income=True)
+    revenue_py = get_cashflow_to_date(cost_center, py=True, income=True)
+    if revenue_py == 0:
+        revenue_trend = "n/a"
+    elif revenue_ytd >= revenue_py:
+        revenue_trend = "+{0:.1f}%".format(100.0 * revenue_ytd / revenue_py)
+    else:
+        revenue_trend = "-{0:.1f}%".format(100.0 * revenue_ytd / revenue_py)
+    expenses_ytd = get_cashflow_to_date(cost_center, py=False, income=False)
+    expenses_py = get_cashflow_to_date(cost_center, py=True, income=False)
+    if expenses_py == 0:
+        expenses_trend = "n/a"
+    elif expenses_ytd >= expenses_py:
+        expenses_trend = "+{0:.1f}%".format(100.0 * expenses_ytd / expenses_py)
+    else:
+        expenses_trend = "-{0:.1f}%".format(100.0 * expenses_ytd / expenses_py)
+    profit_ytd = revenue_ytd - expenses_ytd
+    profit_py = revenue_py - expenses_py
+    if profit_py == 0:
+        profit_trend = "n/a"
+    elif profit_ytd >= profit_py:
+        profit_trend = "+{0:.1f}%".format(100.0 * profit_ytd / profit_py)
+    else:
+        profit_trend = "-{0:.1f}%".format(100.0 * profit_ytd / profit_py)
     cashflows = {
-        'revenue_ytd': get_cashflow_to_date(cost_center, py=False, income=True),
-        'revenue_py': get_cashflow_to_date(cost_center, py=True, income=True),
-        'expenses_ytd': get_cashflow_to_date(cost_center, py=False, income=False),
-        'expenses_py': get_cashflow_to_date(cost_center, py=True, income=False),
+        'revenue': {
+            'ytd': revenue_ytd,
+            'py': revenue_py,
+            'trend': revenue_trend
+        },
+        'expenses': {
+            'ytd': expenses_ytd,
+            'py': expenses_py,
+            'trend': expenses_trend
+        },
+        'profit': {
+            'ytd': profit_ytd,
+            'py': profit_py,
+            'trend': profit_trend
+        },
         'monthly_revenue_ytd': get_cashflow_per_month(cost_center, py=False, income=True),
         'monthly_revenue_py': get_cashflow_per_month(cost_center, py=True, income=True),
         'monthly_expenses_ytd': get_cashflow_per_month(cost_center, py=False, income=False),
-        'monthly_expenses_py': get_cashflow_per_month(cost_center, py=True, income=False)
+        'monthly_expenses_py': get_cashflow_per_month(cost_center, py=True, income=False),
+        'cost_center': cost_center
     }
     print("{0}".format(cashflows))
-    return cashflows
+    return {'cashflows': cashflows}
