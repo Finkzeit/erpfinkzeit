@@ -212,12 +212,12 @@ def get_documents(cost_center):
         'quotation_count': quotation_count,
         'sales_order_count': sales_order_count,
         'sales_invoice_count': sales_invoice_count,
-        'quotation_amount': quotation_amount,
-        'sales_order_amount': sales_order_amount,
-        'sales_invoice_amount': sales_invoice_amount
+        'quotation_amount': "{0:,.0f}".format(quotation_amount).replace(",", "'").replace(".", ",").replace("'", "."),
+        'sales_order_amount': "{0:,.0f}".format(sales_order_amount).replace(",", "'").replace(".", ",").replace("'", "."),
+        'sales_invoice_amount': "{0:,.0f}".format(sales_invoice_amount).replace(",", "'").replace(".", ",").replace("'", ".")
     }
     print("{0}".format(documents))
-    return documents
+    return {'documents': documents}
 
 @frappe.whitelist()
 def get_service_share_for_user(user):
@@ -238,11 +238,11 @@ def get_service_share(cost_center):
     py_material = get_share("{y}-01-01".format(y=py.year),
         "{y}-{m}-{d}".format(y=py.year, m=py.month, d=py.day), cost_center, service=False)
     if (ytd_service + ytd_material) > 0:
-        ytd_service_share = "+{0:.1f}%".format( 100.0 * ytd_service / (ytd_service + ytd_material) )
+        ytd_service_share = "{0:.1f}%".format( 100.0 * ytd_service / (ytd_service + ytd_material) )
     else:
         ytd_service_share = "n/a"
     if (py_service + py_material) > 0:
-        py_service_share = "+{0:.1f}%".format( 100.0 * py_service / (py_service + py_material) )
+        py_service_share = "{0:.1f}%".format( 100.0 * py_service / (py_service + py_material) )
     else:
         py_service_share = "n/a"
 
@@ -255,7 +255,7 @@ def get_service_share(cost_center):
         'material_py': py_material,
     }
     print("{0}".format(shares))
-    return shares
+    return {'shares': shares}
 
 def get_share(from_date, to_date, cost_center, service=True):
     if service:
