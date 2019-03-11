@@ -47,7 +47,7 @@ def get_cashflow(from_date, to_date, cost_center, income=True):
         t = "Expense Account"
         # overhead costs    
         sql_query_costs_overhead = """SELECT 
-                      IFNULL(SUM(`tabBudget Overhead`.`rate_per_month`), 0) AS `costs_overhead`
+                      ROUND((DATEDIFF('{to_date}', '{from_date}') / 30.42) * IFNULL(SUM(`tabBudget Overhead`.`rate_per_month`), 0), 0) AS `costs_overhead`
                     FROM `tabBudget Overhead`
                     WHERE 
                       `tabBudget Overhead`.`docstatus` = 1
