@@ -31,7 +31,9 @@ frappe.sales_dashboard = {
             },
             callback: function(r) {
                 if (r.message) {
-                    console.log(r.message.toSource());
+                    try {
+                        console.log(r.message.toSource());
+                    } catch { console.log("debug only available in Firefox"); }
                     // create chart
                     frappe.sales_dashboard.make_chart(r.message.cashflows);
                     // create KPIs
@@ -59,7 +61,9 @@ frappe.sales_dashboard = {
             },
             callback: function(r) {
                 if (r.message) {
-                    console.log(r.message.toSource());
+                    try {
+                        console.log(r.message.toSource());
+                    } catch { console.log("debug only available in Firefox"); }
                     // create document card
                     var documents_container = document.getElementById("documents-placeholder");
                     var content = frappe.render_template('docs', r.message.documents);
@@ -76,7 +80,9 @@ frappe.sales_dashboard = {
             },
             callback: function(r) {
                 if (r.message) {
-                    console.log(r.message.toSource());
+                    try {
+                        console.log(r.message.toSource());
+                    } catch { console.log("debug only available in Firefox"); }
                     // create service share card
                     var service_share_container = document.getElementById("service-share-placeholder");
                     var content = frappe.render_template('svc', r.message.shares);
