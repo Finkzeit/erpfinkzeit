@@ -259,9 +259,11 @@ def get_service_share(cost_center):
 
 def get_share(from_date, to_date, cost_center, service=True):
     if service:
-        service_mask = "'4000', '4005', '4020'"
-    else:
+        # service mask
         service_mask = "'4200', '4220', '4250'"
+    else:
+        # material mask
+        service_mask = "'4000', '4005', '4020'"
 
     sql_query = """SELECT
               IFNULL(SUM(`tabGL Entry`.`credit`) - SUM(`tabGL Entry`.`debit`), 0) AS `share`
