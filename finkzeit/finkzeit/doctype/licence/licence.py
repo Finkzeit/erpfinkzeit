@@ -289,7 +289,7 @@ def get_item(licence_item, multiplier, kst, income_account):
 # from_invoice: licence key
 def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges, 
         from_licence=1, groups=None, commission=None, print_descriptions=0, update_stock=0,
-        auto_submit=True, ignore_pricing_rule=1):
+        auto_submit=True, ignore_pricing_rule=1, append=False):
     # get values from customer record
     customer_record = frappe.get_doc("Customer", customer)
     delivery_option = "Post"

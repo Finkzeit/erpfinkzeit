@@ -550,7 +550,6 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                 items_remote = []
                 items_onsite = []
                 do_invoice_remote = False
-                do_invoice_onsite = False
                 # loop through all bookings
                 for booking in bookings:
                     use_booking = False
@@ -664,7 +663,6 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                         elif service_type == "T03":
                             if invoice_type in ["V", "J"]:
                                 # onsite, normal
-                                do_invoice_onsite = True
                                 items_onsite.append(get_item(
                                     item_code="3001",
                                     description=description,
@@ -699,6 +697,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                         collected_bookings.append(booking_id)
                 # collected all items, create invoices
                 print("Customer {0} aggregated, {1} items remote, {2} items onsite.".format(customer, len(items_remote), len(items_onsite)))
+                # invoice T01
                 if do_invoice_remote and len(items_remote) > 0:
                     create_invoice(
                         customer = customer_record.name,
@@ -714,7 +713,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                         auto_submit=True,
                         ignore_pricing_rule=1)
                     invoice_count += 1
-                if do_invoice_onsite and len(items_onsite) > 0:
+                # invoice T03
+                if len(items_onsite) > 0:
                     create_invoice(
                         customer = customer_record.name,
                         items = items_onsite,
@@ -727,7 +727,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                         print_descriptions=1,
                         update_stock=1,
                         auto_submit=False,
-                        ignore_pricing_rule=1)
+                        ignore_pricing_rule=1,
+                        append=True)
                     invoice_count += 1
             else:
                 err = "Customer not found in ERP: {0}".format(erp_customer)
