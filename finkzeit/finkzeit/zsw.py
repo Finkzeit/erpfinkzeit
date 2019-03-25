@@ -369,11 +369,14 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
     disconnect()
     return
 
-def create_update_sales_order(sales_order, customer, customer_name, tenant="AT", technician=None):
+def create_update_sales_order(sales_order, customer, customer_name, tenant="AT", technician=None, active=True):
     # collect city
     so = frappe.get_doc("Sales Order", sales_order)
     address = frappe.get_doc("Address", so.customer_address)
     city = address.city or "-"
+    # check active
+    if active == 0 or active == "false":
+        active = False
     # get technician data (must be from client, as trigger is before save)
     if technician:
         try:
@@ -390,7 +393,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
     zsw_project_name = get_zsw_project_name(sales_order, tenant)
     # create project (=level) information
     level = {'WSLevel':[{
-          'active': True,
+          'active': active,
           'code': zsw_project_name,
           'levelID': 4,
           'text': "{0}, {1}".format(customer_name, city)
@@ -411,7 +414,12 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
             wsLevelEArray[0]["extensions"] = {'WSExtension': []}
         if not wsLevelEArray[0]["extensions"]["WSExtension"]:
             wsLevelEArray[0]["extensions"]["WSExtension"] = []
-        createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", zsw_project_name, 4, 3, False)
+        if active:
+            # create 
+            createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", zsw_project_name, 4, 3, False)
+        else:
+            # delete link
+            createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", zsw_project_name, 4, 2, False)
         createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_projektverantwortlicher", zsw_technician, 2, 0, False)
         contentDict = compress_level_e(wsLevelEArray[0])
         #print("Content: {0}".format(contentDict))
@@ -459,13 +467,14 @@ def update_customer(customer, customer_name, kst, zsw_reference=None, active=Tru
     return
 
 @frappe.whitelist()
-def update_project(sales_order, customer, customer_name, tenant="AT", technician=None):
+def update_project(sales_order, customer, customer_name, tenant="AT", technician=None, active=True):
     create_update_sales_order(
         sales_order=sales_order,
         customer=customer,
         customer_name=customer_name,
         tenant=tenant,
-        technician=technician
+        technician=technician,
+        active=active
     )
     return
 
