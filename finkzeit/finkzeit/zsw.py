@@ -792,7 +792,9 @@ def add_comment(text, from_time, to_time, kst, service_filter):
         'doctype': 'Communication',
         'comment_type': "Comment",
         'content': "Created invoices between {from_time} and {to_time} on cost center {kst} and service type {service_filter}: {text}".format(
-            from_time=from_time, to_time=to_time, kst=kst, service_filter=service_filter, text=text),
+            from_time=datetime.utcfromtimestamp(from_time).strftime('%Y-%m-%d %H:%M:%S'), 
+            to_time=datetime.utcfromtimestamp(to_time).strftime('%Y-%m-%d %H:%M:%S'), 
+            kst=kst, service_filter=service_filter, text=text),
         'reference_doctype': "ZSW",
         'status': "Linked",
         'reference_name': "ZSW"
