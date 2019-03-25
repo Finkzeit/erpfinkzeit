@@ -12,7 +12,7 @@ from zeep import Client, Settings
 from time import time
 from datetime import datetime
 from frappe.utils.background_jobs import enqueue
-from finkzeit.finkzeit.doctype.licence.licence import create_invoice
+from finkzeit.finkzeit.doctype.licence.licence import create_invoice, create_delivery_note
 from frappe.utils.password import get_decrypted_password
 
 """ Low-level connect/disconnect """
@@ -195,6 +195,29 @@ def get_bookings(start_time, end_time):
         print("Global config updated")
     except Exception as err:
         frappe.log_error( "Unable to set end time. ({0})".format(err), "ZSW get_booking")
+        return []
+
+    print("Bookings: {0}".format(bookings))
+    if bookings:
+        print("Total {0} bookings".format(len(bookings)))
+    return bookings
+
+def get_project_bookings(zsw_project, from_time, to_time):
+    end_time = int(end_time)
+    start_time = int(start_time)
+    print("Start {0} (type: {1})".format(start_time, type(start_time)))
+    print("End {0} (type: {1})".format(end_time, type(end_time)))
+
+    # timestamp dicts
+    fromTS = {'timeInSeconds': start_time}
+    toTS = {'timeInSeconds': end_time}
+
+    # get bookings
+    try:
+        bookings = client.service.getBookingPairsByLevel(getSession(), fromTS, toTS, zsw_project, 4)
+    except Exception as err:
+        frappe.log_error("Get booking pairs by level failed with error {0}.".format(err), "ZSW get booking pairs by level")
+        #return here because going further doesn't make sense!
         return []
 
     print("Bookings: {0}".format(bookings))
@@ -819,3 +842,185 @@ def test_customer():
     print("Level E: {0}".format(contentDict))
     client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
     disconnect()
+
+@frappe.whitelist()
+def create_delivery_note(sales_order, tenant="AT"):
+    # zsw project name
+    zsw_project_name = get_zsw_project_name(sales_order, tenant)
+    # get start timestamp
+    print("Reading config...")
+    config = frappe.get_doc("ZSW", "ZSW")
+    employees = get_employees()
+    print("Got {0} employees.".format(len(employees)))
+    sales_order_object = frappe.get_doc("Sales Order", sales_order)
+    start_time = sales_order_object.last_zsw_get_dn_timestamp
+    end_time = int(time())
+
+    # get bookings
+    bookings = get_project_bookings(zsw_project=zsw_project_name, from_time=start_time, to_time=end_time)
+    collected_bookings = []
+    if bookings:
+        print("Got {0} bookings.".format(len(bookings)))
+        items = []
+        # get default warehouse
+        kst = sales_order_object.kostenstelle
+        warehouse = frappe.get_value('Cost Center', kst, 'default_warehouse')
+        # find income account
+        if "FZCH" in kst:
+            income_account = u"3400 - Dienstleistungsertrag - FZCH"
+            tax_rule = "Schweiz normal (302) - FZCH"
+        else:
+            if customer_record.steuerregion == "EU":
+                income_account = u"4250 - Leistungserlöse EU-Ausland (in ZM) - FZAT"
+                tax_rule = "Verkaufssteuern Leistungen EU,DRL (021) - FZAT"
+            elif customer_record.steuerregion == "DRL":
+                income_account = u"4200 - Leistungserlöse Export - FZAT"
+                tax_rule = "Verkaufssteuern Leistungen EU,DRL (021) - FZAT"
+            else:
+                income_account = u"4220 - Leistungserlöse 20 % USt - FZAT"
+                tax_rule = "Verkaufssteuern Inland 20p (022) - FZAT"
+        # loop through all bookings
+        for booking in bookings:
+            use_booking = False
+            override_duration = False
+            # collect WS levels
+            try:
+                for level in booking['levels']['WSLevelIdentification']:
+                    if level['levelID'] == 1:
+                        use_booking = True
+                        customer_zsw_code = level['code']
+                    if level['levelID'] == 2:
+                        # service type, e.g. "T02" (project remote), "T04" (project onsite)
+                        service_type = level['code']
+                    if level['levelID'] == 3:
+                        # invoicing_type, e.g. "J": invoice, "N": free of charge, "P": flat rate
+                        invoice_type = level['code']
+                    if level['levelID'] == 4:
+                        # link to project (ZSW) sales order (ERP), e.g. "AB-00001" or "CHAB-00000"
+                        sales_order_reference = level['code']
+            except Exception as err:
+                print("...no levels... ({0})".format(err))
+            if use_booking:
+                # collect properties
+                item_code = []
+                qty = []
+                customer_contact = None
+                try:
+                #if True:
+                    try:
+                        print("Properties: {0}".format(len(booking['properties']['WSProperty'])))
+                    except:
+                        print("No properties")
+                    for p in booking['properties']['WSProperty']:
+                        print("Reading properties...")
+                        if p['key'] == 2:
+                            customer_contact = p['val']
+                        elif p['key'] == 14:
+                            content = p['val']
+                            # "qty level/item_code"
+                            _item = content.split("/")[1]
+                            if _item != "0001":
+                                item_code.append(_item)
+                                qty.append(float(content.split(" ")[0]))
+                        elif p['key'] == 11:
+                            qty.append(1.0)
+                            if p['val'] == "5/0":
+                                item_code.append("3048")
+                            elif p['val'] == "5/1":
+                                item_code.append("3031")
+                            elif p['val'] == "5/2":
+                                item_code.append("3032")
+                            elif p['val'] == "5/3":
+                                item_code.append("3033")
+                            elif p['val'] == "5/4":
+                                item_code.append("3036")
+                        elif p['key'] == 12:
+                            item_code.append("3026")
+                            qty.append((round(float(p['val']) / 60.0) + 0.04, 1)) # in h
+                        elif p['key'] == 13:
+                            qty.append(float(p['val']))
+                            if "FZT" in kst:
+                                item_code.append("3008")
+                            else:
+                                item_code.append("3007")
+                        elif p['key'] == 15:
+                            override_duration = True
+                            # field is stored as 01:30 (hh:mm)
+                            print("Fetching custom duration...")
+                            duration_fields = "{0}".format(p['val']).split(":")
+                            duration = (float(duration_fields[0])) + (float(duration_fields[1]) / 60)
+                            duration = round(duration, 2)
+                            print("Duration override: {0}".format(duration))
+                except Exception as err:
+                    print("...no properties... ({0})".format(err))
+                # add item to list
+                booking_id = booking['fromBookingID']
+                if not override_duration:
+                    duration = round((float(booking['duration']) / 60.0) + 0.04, 1) # in h
+                description = "{0} {1} ({3})<br>{2}".format(
+                    booking['from']['timestamp'].split(" ")[0],
+                    employees[booking['person']],
+                    booking['notice'] or "",
+                    service_type)
+                if customer_contact:
+                    description += "<br>{0}".format(customer_contact)
+                if invoice_type in ["W", "N"]:
+                    # remote, free of charge
+                    items.append(get_item(
+                        item_code="3001",
+                        description=description,
+                        qty=duration,
+                        discount=100,
+                        kst=kst,
+                        income_account=income_account,
+                        warehouse=warehouse))
+                elif invoice_type == "J":
+                    # remote, normal
+                    do_invoice_remote = True
+                    items.append(get_item(
+                        item_code="3001",
+                        description=description,
+                        qty=duration,
+                        discount=0,
+                        kst=kst,
+                        income_account=income_account,
+                        warehouse=warehouse))
+
+                # add material items
+                if (len(item_code) > 0) and (len(item_code) == len(qty)):
+                    for i in range(0, len(item_code)):
+                        items.append(get_short_item(
+                            item_code=item_code[i],
+                            qty=qty[i],
+                            kst=kst,
+                            income_account=income_account,
+                            warehouse=warehouse))
+                else:
+                    print("No invoicable items ({0}, {1}).".format(item_code, qty))
+                # mark as collected
+                collected_bookings.append(booking_id)
+        # collected all items, create invoices
+        print("Processed all bookings, found {0} items.".format(len(items)))
+        # create delivery note
+        if len(items) > 0:
+            new_dn = create_delivery_note(customer = sales_order_object.customer, 
+                items = items, 
+                overall_discount = 0, 
+                remarks = "Projektabrechnung", 
+                taxes_and_charges = tax_rule, 
+                groups=None, 
+                auto_submit=False, 
+                append=False)
+
+        # finished, mark bookings as invoices
+        mark_bookings(collected_bookings)
+        # update last status
+        sales_order_object.last_zsw_get_dn_timestamp = end_time
+        try:
+            sales_order_object.save()
+        except Exception as err:
+            frappe.log_error( "Unable to update sync time. ({0}, {1})".format(sales_order, err), "ZSW create_invoices")
+        return {'delivery_note': new_dn}
+    else:
+        print("No bookings found.")
+        return {'delivery_note': None}
