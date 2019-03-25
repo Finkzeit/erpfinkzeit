@@ -146,7 +146,7 @@ def createOrUpdateWSExtension_link(extensions, propKey, value, naturalInfo, link
             itemFound = True
         elif (item["name"] == propKey):
           item["action"] = 3
-      if not itemFound:
+      if not itemFound and not remove:
         extensions.append({'action': 1,
                            'name': propKey,
                            'link': { 'action': 1, 'linkType': linkType, 'naturalID': value, 'naturalInfo': naturalInfo }})
