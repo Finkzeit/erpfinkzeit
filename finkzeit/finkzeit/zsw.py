@@ -1045,7 +1045,7 @@ def maintain_projects(tenant="AT"):
     deactivate_sales_orders = frappe.db.sql(sql_query, as_dict=True)
     if deactivate_sales_orders:
         for sales_order in deactivate_sales_orders:
-            record = frappe.get_doc("Sales Order", sales_order)
-            print("Closing project {0}".format(sales_order))
-            update_project(sales_order=sales_order, customer=record.customer, customer_name=record.customer_name, tenant=tenant, active=False)
+            record = frappe.get_doc("Sales Order", sales_order['name'])
+            print("Closing project {0}".format(sales_order['name']))
+            update_project(sales_order=sales_order['name'], customer=record.customer, customer_name=record.customer_name, tenant=tenant, active=False)
     return
