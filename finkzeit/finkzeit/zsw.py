@@ -1040,7 +1040,7 @@ def create_delivery_note(sales_order, tenant="AT"):
         
 def maintain_projects(tenant="AT"):
     sql_query = """SELECT `name` FROM `tabSales Order`
-                   WHERE `modified` >= (DATE(NOW()) - INTERVAL 90 DAY)
+                   WHERE `modified` >= (DATE(NOW()) - INTERVAL 3 DAY)
                      AND (`docstatus` = 2
                           OR (`docstatus` = 1 AND `status` IN ('Closed', 'Completed')));"""
     deactivate_sales_orders = frappe.db.sql(sql_query, as_dict=True)
