@@ -799,14 +799,15 @@ def get_item(item_code, description, qty, discount, kst, income_account, warehou
         'against_sales_order': against_sales_order
     }
 
-def get_short_item(item_code, qty, kst, income_account, warehouse):
+def get_short_item(item_code, qty, kst, income_account, warehouse, against_sales_order=None):
     return {
         'item_code': item_code,
         'qty': qty,
         'cost_center': kst,
         'group': 'empty',
         'income_account': income_account,
-        'warehouse': warehouse
+        'warehouse': warehouse,
+        'against_sales_order': against_sales_order
     }
 
 def set_last_sync(date):
@@ -1012,7 +1013,8 @@ def deliver_sales_order(sales_order, tenant="AT"):
                             qty=qty[i],
                             kst=kst,
                             income_account=income_account,
-                            warehouse=warehouse))
+                            warehouse=warehouse,
+                            against_sales_order=sales_order))
                 else:
                     print("No invoicable items ({0}, {1}).".format(item_code, qty))
                 # mark as collected
