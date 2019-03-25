@@ -372,8 +372,11 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
 def create_update_sales_order(sales_order, customer, customer_name, tenant="AT", technician=None, active=True):
     # collect city
     so = frappe.get_doc("Sales Order", sales_order)
-    address = frappe.get_doc("Address", so.customer_address)
-    city = address.city or "-"
+    try:
+        address = frappe.get_doc("Address", so.customer_address)
+        city = address.city or "-"
+    except:
+        city = "-"
     # check active
     if active == 0 or active == "false":
         active = False
