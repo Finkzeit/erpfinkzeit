@@ -394,6 +394,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
         zsw_technician = ""
     # prepare information
     zsw_project_name = get_zsw_project_name(sales_order, tenant)
+    print("ZSW project: {0} (SO: {1}, tenant: {2})".format(zsw_project_name, sales_order, tenant))
     # create project (=level) information
     level = {'WSLevel':[{
           'active': active,
@@ -442,7 +443,7 @@ def get_zsw_reference(customer, tenant):
     return zsw_reference
 
 def get_zsw_project_name(sales_order, tenant):
-    if tenant.lower == "ch":
+    if tenant.lower() == "ch":
         zsw_project_name = "CH{0}".format(sales_order)
     else:
         zsw_project_name = "{0}".format(sales_order)
@@ -1039,7 +1040,7 @@ def create_delivery_note(sales_order, tenant="AT"):
         
 def maintain_projects(tenant="AT"):
     sql_query = """SELECT `name` FROM `tabSales Order`
-                   WHERE `modified` >= (DATE(NOW()) - INTERVAL 2 DAY)
+                   WHERE `modified` >= (DATE(NOW()) - INTERVAL 90 DAY)
                      AND (`docstatus` = 2
                           OR (`docstatus` = 1 AND `status` IN ('Closed', 'Completed')));"""
     deactivate_sales_orders = frappe.db.sql(sql_query, as_dict=True)
