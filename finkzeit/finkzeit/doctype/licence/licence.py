@@ -380,7 +380,7 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         return None
         
 def create_delivery_note(customer, items, overall_discount, remarks, taxes_and_charges, 
-        groups=None, auto_submit=True, append=False):
+        groups=None, auto_submit=True, append=False, ignore_pricing_rule=1):
     # get values from customer record
     customer_record = frappe.get_doc("Customer", customer)
     # prepare taxes and charges

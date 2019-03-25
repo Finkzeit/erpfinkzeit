@@ -203,8 +203,8 @@ def get_bookings(start_time, end_time):
     return bookings
 
 def get_project_bookings(zsw_project, from_time, to_time):
-    end_time = int(end_time)
-    start_time = int(start_time)
+    end_time = int(to_time)
+    start_time = int(from_time)
     print("Start {0} (type: {1})".format(start_time, type(start_time)))
     print("End {0} (type: {1})".format(end_time, type(end_time)))
 
@@ -631,15 +631,15 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                         qty.append(float(content.split(" ")[0]))
                                 elif p['key'] == 11:
                                     qty.append(1.0)
-                                    if p['val'] == "5/0":
+                                    if p['val'] == "6/0":
                                         item_code.append("3048")
-                                    elif p['val'] == "5/1":
+                                    elif p['val'] == "6/1":
                                         item_code.append("3031")
-                                    elif p['val'] == "5/2":
+                                    elif p['val'] == "6/2":
                                         item_code.append("3032")
-                                    elif p['val'] == "5/3":
+                                    elif p['val'] == "6/3":
                                         item_code.append("3033")
-                                    elif p['val'] == "5/4":
+                                    elif p['val'] == "6/4":
                                         item_code.append("3036")
                                 elif p['key'] == 12:
                                     item_code.append("3026")
@@ -786,7 +786,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
     return
 
 # parse to sales invoice item structure
-def get_item(item_code, description, qty, discount, kst, income_account, warehouse):
+def get_item(item_code, description, qty, discount, kst, income_account, warehouse, against_sales_order=None):
     return {
         'item_code': item_code,
         'description': description,
@@ -795,7 +795,8 @@ def get_item(item_code, description, qty, discount, kst, income_account, warehou
         'cost_center': kst,
         'group': 'empty',
         'income_account': income_account,
-        'warehouse': warehouse
+        'warehouse': warehouse,
+        'against_sales_order': against_sales_order
     }
 
 def get_short_item(item_code, qty, kst, income_account, warehouse):
@@ -857,7 +858,7 @@ def test_customer():
     disconnect()
 
 @frappe.whitelist()
-def create_delivery_note(sales_order, tenant="AT"):
+def deliver_sales_order(sales_order, tenant="AT"):
     # zsw project name
     zsw_project_name = get_zsw_project_name(sales_order, tenant)
     # get start timestamp
@@ -866,6 +867,7 @@ def create_delivery_note(sales_order, tenant="AT"):
     employees = get_employees()
     print("Got {0} employees.".format(len(employees)))
     sales_order_object = frappe.get_doc("Sales Order", sales_order)
+    customer_record = frappe.get_doc("Customer", sales_order_object.customer)
     start_time = sales_order_object.last_zsw_get_dn_timestamp
     end_time = int(time())
 
@@ -935,17 +937,18 @@ def create_delivery_note(sales_order, tenant="AT"):
                             if _item != "0001":
                                 item_code.append(_item)
                                 qty.append(float(content.split(" ")[0]))
+                                print("Found {0} x {1}".format(float(content.split(" ")[0]), _item))
                         elif p['key'] == 11:
                             qty.append(1.0)
-                            if p['val'] == "5/0":
+                            if p['val'] == "6/0":
                                 item_code.append("3048")
-                            elif p['val'] == "5/1":
+                            elif p['val'] == "6/1":
                                 item_code.append("3031")
-                            elif p['val'] == "5/2":
+                            elif p['val'] == "6/2":
                                 item_code.append("3032")
-                            elif p['val'] == "5/3":
+                            elif p['val'] == "6/3":
                                 item_code.append("3033")
-                            elif p['val'] == "5/4":
+                            elif p['val'] == "6/4":
                                 item_code.append("3036")
                         elif p['key'] == 12:
                             item_code.append("3026")
@@ -986,7 +989,8 @@ def create_delivery_note(sales_order, tenant="AT"):
                         discount=100,
                         kst=kst,
                         income_account=income_account,
-                        warehouse=warehouse))
+                        warehouse=warehouse,
+                        against_sales_order=sales_order))
                 elif invoice_type == "J":
                     # remote, normal
                     do_invoice_remote = True
@@ -997,7 +1001,8 @@ def create_delivery_note(sales_order, tenant="AT"):
                         discount=0,
                         kst=kst,
                         income_account=income_account,
-                        warehouse=warehouse))
+                        warehouse=warehouse,
+                        against_sales_order=sales_order))
 
                 # add material items
                 if (len(item_code) > 0) and (len(item_code) == len(qty)):
@@ -1016,11 +1021,11 @@ def create_delivery_note(sales_order, tenant="AT"):
         print("Processed all bookings, found {0} items.".format(len(items)))
         # create delivery note
         if len(items) > 0:
-            new_dn = create_delivery_note(customer = sales_order_object.customer, 
-                items = items, 
-                overall_discount = 0, 
-                remarks = "Projektabrechnung", 
-                taxes_and_charges = tax_rule, 
+            new_dn = create_delivery_note(sales_order_object.customer, # customer 
+                items=items, # items
+                overall_discount=0, # overall_discount
+                remarks="Projektabrechnung", # remarks
+                taxes_and_charges=tax_rule, # taxes_and_charges
                 groups=None, 
                 auto_submit=False, 
                 append=False)
