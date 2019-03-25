@@ -26,7 +26,13 @@ def post_invoice(**kwargs):
     else:
         supplier = supplier[0]['name']
     supplier_record = frappe.get_doc("Supplier", supplier)
-    taxes_and_charges = frappe.get_doc("Purchase Taxes and Charges Template", supplier_record.default_purchase_tax_template)
+    if "011" in invoice['taxes_and_charges']:
+        # rewrite tax codes export/material (011) --> (000) no tax
+        no_tax_template = frappe.get_all("Purchase Taxes and Charges Template", filters=[['name', 'LIKE', '%000%']], fields=['name'])
+        tax_template_name = no_tax_template[0]['name']
+    else:
+        tax_template_name = supplier_record.default_purchase_tax_template
+    taxes_and_charges = frappe.get_doc("Purchase Taxes and Charges Template", tax_template_name)
     taxes = []
     for tax in taxes_and_charges.taxes:
         taxes.append(tax)
@@ -40,7 +46,7 @@ def post_invoice(**kwargs):
         'bill_date': invoice['posting_date'],
         'terms': invoice['terms'],
         'currency': invoice['currency'],
-        'taxes_and_charges': supplier_record.default_purchase_tax_template,
+        'taxes_and_charges': tax_template_name,
         'taxes': taxes,
         'apply_discount_on': invoice['apply_discount_on'],
         'additional_discount_percentage': invoice['additional_discount_percentage'],
