@@ -419,7 +419,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
             createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", zsw_project_name, 4, 3, False)
         else:
             # delete link
-            createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", zsw_project_name, 4, 2, False)
+            createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", zsw_project_name, 4, 3, True)
         createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_projektverantwortlicher", zsw_technician, 2, 0, False)
         contentDict = compress_level_e(wsLevelEArray[0])
         #print("Content: {0}".format(contentDict))
