@@ -1033,3 +1033,16 @@ def create_delivery_note(sales_order, tenant="AT"):
     else:
         print("No bookings found.")
         return {'delivery_note': None}
+        
+def maintain_projects(tenant="AT"):
+    sql_query = """SELECT `name` FROM `tabSales Order`
+                   WHERE `modified` >= (DATE(NOW()) - INTERVAL 2 DAY)
+                     AND (`docstatus` = 2
+                          OR (`docstatus` = 1 AND `status` IN ('Closed', 'Completed')));"""
+    deactivate_sales_orders = frappe.db.sql(sql_query, as_dict=True)
+    if deactivate_sales_orders:
+        for sales_order in deactivate_sales_orders:
+            record = frappe.get_doc("Sales Order", sales_order)
+            print("Closing project {0}".format(sales_order))
+            update_project(sales_order=sales_order, customer=record.customer, customer_name=record.customer_name, tenant=tenant, active=False)
+    return
