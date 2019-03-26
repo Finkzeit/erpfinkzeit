@@ -320,14 +320,15 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
             fields=['name'])
         if open_invoices:
             append_invoice = frappe.get_doc("Sales Invoice", open_invoices[0]['name'])
-            append_invoice.items.append(items)
+            for item in items:
+                append_invoice.append('items', item)
             try:
                 append_invoice.save()
                 frappe.db.commit()
                 return append_invoice.name
             except:
                 # failure in appending, create a new one instead
-                pass
+                print("saving appended {0} failed, creating a new one".format(append_invoice.name))
     # not appended, create
     new_sales_invoice = frappe.get_doc({
         'doctype': 'Sales Invoice',
@@ -406,7 +407,8 @@ def create_delivery_note(customer, items, overall_discount, remarks, taxes_and_c
             fields=['name'])
         if open_delivery_notes:
             append_delivery_note = frappe.get_doc("Delivery Note", open_invoices[0]['name'])
-            append_delivery_note.items.append(items)
+            for item in items:
+                append_delivery_note.append('items', item)
             try:
                 append_delivery_note.save()
                 frappe.db.commit()
