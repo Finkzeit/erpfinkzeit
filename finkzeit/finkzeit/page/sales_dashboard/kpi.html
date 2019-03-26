@@ -1,0 +1,18 @@
+<div class="card {{ indicator }}">
+    <div class="card-header">
+        {{ title }}
+    </div>
+    <div class="card-body">
+      <table style="width: 100%;">
+        <tr>
+            <td><h3><span class="text-muted">{{ __("YTD") }}</span></h3></td>
+            <td style="text-align: right;"><h3>EUR {{ ytd }}</h3></td>
+            <td rowspan="2" style="text-align: right;"><h2>{{ trend }}</h2></td>
+        </tr>
+        <tr>
+            <td><h3><span class="text-muted">{{ __("PY") }}</span></h3></td>
+            <td style="text-align: right;"><h3>EUR {{ py }}</h3></td>
+        </tr>
+      </table>
+    </div>
+</div>

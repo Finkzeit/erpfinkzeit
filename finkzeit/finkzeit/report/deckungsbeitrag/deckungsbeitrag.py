@@ -120,7 +120,7 @@ def execute(filters=None):
         expenses = "n/a"
     # overhead costs    
     sql_query_costs_overhead = """SELECT 
-                  IFNULL(SUM(`tabBudget Overhead`.`rate_per_month`), 0) AS `costs_overhead`
+                  ROUND((DATEDIFF('{to_date}', '{from_date}') / 30.42) * IFNULL(SUM(`tabBudget Overhead`.`rate_per_month`), 0), 0) AS `costs_overhead`
                 FROM `tabBudget Overhead`
                 WHERE 
                   `tabBudget Overhead`.`docstatus` = 1
@@ -129,7 +129,7 @@ def execute(filters=None):
                   AND `tabBudget Overhead`.`start_date` <= '{from_date}'
                   AND `tabBudget Overhead`.`end_date` >= '{to_date}';""".format(cost_center=cost_center, from_date=from_date, to_date=to_date)
     try:
-        costs_overhead = frappe.db.sql(sql_query_costs_overhead, as_dict = True)[0]['costs_overhead']
+        costs_overhead = (-1) * float(frappe.db.sql(sql_query_costs_overhead, as_dict = True)[0]['costs_overhead'])
     except:
         costs_overhead = "n/a"
     

@@ -289,7 +289,7 @@ def get_item(licence_item, multiplier, kst, income_account):
 # from_invoice: licence key
 def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges, 
         from_licence=1, groups=None, commission=None, print_descriptions=0, update_stock=0,
-        auto_submit=True):
+        auto_submit=True, ignore_pricing_rule=1, append=False):
     # get values from customer record
     customer_record = frappe.get_doc("Customer", customer)
     delivery_option = "Post"
@@ -313,6 +313,23 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
                 'sum_caption': group,
                 'amount': group_sum
             })
+    if append:
+        # try to append
+        open_invoices = frappe.get_all("Sales Invoice",
+            filters={'docstatus': 0, 'Customer': customer}, 
+            fields=['name'])
+        if open_invoices:
+            append_invoice = frappe.get_doc("Sales Invoice", open_invoices[0]['name'])
+            for item in items:
+                append_invoice.append('items', item)
+            try:
+                append_invoice.save()
+                frappe.db.commit()
+                return append_invoice.name
+            except:
+                # failure in appending, create a new one instead
+                print("saving appended {0} failed, creating a new one".format(append_invoice.name))
+    # not appended, create
     new_sales_invoice = frappe.get_doc({
         'doctype': 'Sales Invoice',
         'customer': customer,
@@ -328,7 +345,7 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
         'kostenstelle': customer_record.kostenstelle,
         'groups': group_items,
         'enable_lsv': customer_record.enable_lsv,
-        'ignore_pricing_rule': 1,
+        'ignore_pricing_rule': ignore_pricing_rule,
         'kommission': commission,
         'drucken_mit_beschreibung': print_descriptions,
         'update_stock': update_stock
@@ -337,7 +354,7 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
     try:
         new_record = new_sales_invoice.insert()
         # check auto-submit (only if customer is checked)
-        if auto_submit and customer_record.is_checked == 1:
+        if auto_submit and customer_record.is_checked == 1 and customer_record.disable_auto_submit == 0:
             if from_licence == 0:
                 # invoice from ZSW: submit
                 new_record.submit()
@@ -360,5 +377,70 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
 
     except Exception as err:
         frappe.log_error( _("Error inserting sales invoice from customer {0}: {1}").format(
+            customer, err) )
+        return None
+        
+def create_delivery_note(customer, items, overall_discount, remarks, taxes_and_charges, 
+        groups=None, auto_submit=True, append=False, ignore_pricing_rule=1):
+    # get values from customer record
+    customer_record = frappe.get_doc("Customer", customer)
+    # prepare taxes and charges
+    taxes_and_charges_template = frappe.get_doc("Sales Taxes and Charges Template", taxes_and_charges)
+    # define group child table
+    group_items = []
+    if groups:
+        for group in groups:
+            group_sum = 0
+            for item in items:
+                if item['group'] == group:
+                    group_sum += float(item['qty']) * float(item['rate'])
+            group_items.append({
+                'group': group,
+                'title': group,
+                'sum_caption': group,
+                'amount': group_sum
+            })
+    if append:
+        # try to append
+        open_delivery_notes = frappe.get_all("Delivery Note",
+            filters={'docstatus': 0, 'Customer': customer}, 
+            fields=['name'])
+        if open_delivery_notes:
+            append_delivery_note = frappe.get_doc("Delivery Note", open_invoices[0]['name'])
+            for item in items:
+                append_delivery_note.append('items', item)
+            try:
+                append_delivery_note.save()
+                frappe.db.commit()
+                return append_delivery_note.name
+            except:
+                # failure in appending, create a new one instead
+                pass
+    # not appended, create
+    new_delivery_note = frappe.get_doc({
+        'doctype': 'Delivery Note',
+        'customer': customer,
+        'items': items,
+        'apply_discount_on': 'Net Total',
+        'additional_discount_percentage': overall_discount,
+        'eingangstext': remarks,
+        'taxes_and_charges': taxes_and_charges,
+        'taxes': taxes_and_charges_template.taxes,
+        'tax_id': customer_record.tax_id,
+        'kostenstelle': customer_record.kostenstelle,
+        'groups': group_items,
+        'ignore_pricing_rule': ignore_pricing_rule
+    })
+    # robust insert sales invoice
+    try:
+        new_record = new_delivery_note.insert()
+        # check auto-submit (only if customer is checked)
+        if auto_submit and customer_record.is_checked == 1 and customer_record.disable_auto_submit == 0:
+            new_record.submit()
+        frappe.db.commit()
+        return new_record.name
+
+    except Exception as err:
+        frappe.log_error( _("Error inserting delivery note from customer {0}: {1}").format(
             customer, err) )
         return None

@@ -8,107 +8,298 @@ from __future__ import unicode_literals
 import frappe
 from frappe import _
 from lxml import etree
-from zeep import Client
+from zeep import Client, Settings
 from time import time
 from datetime import datetime
 from frappe.utils.background_jobs import enqueue
-from finkzeit.finkzeit.doctype.licence.licence import create_invoice
+from finkzeit.finkzeit.doctype.licence.licence import create_invoice, create_delivery_note
 from frappe.utils.password import get_decrypted_password
 
 """ Low-level connect/disconnect """
-def connect():
+def getSession():
+    global session
+    if not 'session' in globals():
+        session = None
+
+    if session:
+        try:
+            session = client.service.refreshSession(session)
+            if session:
+                print("Session: {0} refreshed".format(session))
+                # return a refreshed and authenticated session
+                return session
+        except:
+            print("Old Session expired, creating new one")
+
+    try:
+        #create a new session
+        session = client.service.openSession(config.license)
+        print("Session: {0}  created".format(session))
+        pw = get_decrypted_password("ZSW", "ZSW", 'password', False)
+        # try to authenticate session
+        login_result = client.service.login(session, config.user, pw)
+        if login_result != 0:
+            client.service.closeSession(session)
+            session = None
+    except:
+        print("Faild creating new session")
+        session = None
+
+    # return the resulting session can bei either None or all OK
+    return session
+
+try:
     # read configuration
     config = frappe.get_doc("ZSW", "ZSW")
-    pw = get_decrypted_password("ZSW", "ZSW", 'password', False)
-    # create client
-    client = Client(config.endpoint)
-    print("Client created")
-    # open session
-    session = client.service.openSession(config.license)
-    print("Session {0} opened".format(config.license))
-    # log in
-    login_result = client.service.login(session, config.user, pw)
-    print("Login: {0}".format(login_result))
-    # return session
-    return client, session
+    print("Global config loaded")
 
-def disconnect(client, session):
-    # log out
-    logoutResult = client.service.logout(session)
-    # close session
-    client.service.closeSession(session)
-    return
-    
+    #import logging.config
+
+    #logging.config.dictConfig({
+    #    'version': 1,
+    #    'formatters': {
+    #        'verbose': {
+    #            'format': '%(name)s: %(message)s'
+    #        }
+    #    },
+    #    'handlers': {
+    #        'console': {
+    #            'level': 'DEBUG',
+    #            'class': 'logging.StreamHandler',
+    #            'formatter': 'verbose',
+    #        },
+    #    },
+    #    'loggers': {
+    #        'zeep.transports': {
+    #            'level': 'DEBUG',
+    #            'propagate': True,
+    #            'handlers': ['console'],
+    #        },
+    #    }
+    #})
+
+    #from zeep import Plugin
+
+    #class LoggingPlugin(Plugin):
+
+    #    def ingress(self, envelope, http_headers, operation):
+    #        print(etree.tostring(envelope, pretty_print=True))
+    #        return envelope, http_headers
+
+    #    def egress(self, envelope, http_headers, operation, binding_options):
+    #        print(etree.tostring(envelope, pretty_print=True))
+    #        return envelope, http_headers
+
+    # create SOAP client stub
+    # with logging plugin
+    #client = Client(config.endpoint, plugins=[LoggingPlugin()])
+    # without logging plugin
+    #client = Client(config.endpoint)
+    # with settings
+    #settings = Settings(strict=False, xml_huge_tree=True)
+    settings = Settings(strict=True, xml_huge_tree=False)
+    client = Client(config.endpoint, settings=settings)
+    print("Global SOAP client stub initialized")
+
+    # create and initialize session variable to be used later on
+    session = None
+    print("Global session variable initialized")
+except:
+    frappe.log_error("Unable to create and initialize global variables", "ZSW global")
+
+def disconnect():
+    if session:
+        s = getSession()
+        client.service.logout(s)
+        client.service.closeSession(s)
+
+""" support functions """
+def getExtension(list, propName):
+    for ext in list:
+        if ext["name"] == propName:
+            # found it -> early return
+            return True, ext
+    # got until here - so we didn't find what we were looking for
+    return False, None
+
+def createOrUpdateWSExtension(extensions, propKey, value):
+  foundExt, ext = getExtension(extensions, propKey)
+  if value:
+      if foundExt:
+          ext["value"] = value
+          ext["action"] = 3
+      else:
+          extensions.append({'action': 1, 'name': propKey, 'value': value })
+
+def createOrUpdateWSExtension_link(extensions, propKey, value, naturalInfo, linkType, remove):
+  foundExt, ext = getExtension(extensions, propKey)
+  if value and value != "":
+    if foundExt:
+      itemFound = False
+      for item in extensions:
+        if (item["name"] == propKey and item["link"]["naturalID"] == value):
+          if remove or itemFound:
+            item["action"] = 2
+          else:
+            item["action"] = 3
+            item["link"] = { 'action': 1, 'linkType': linkType, 'naturalID': value, 'naturalInfo': naturalInfo }
+            itemFound = True
+        elif (item["name"] == propKey):
+          item["action"] = 3
+      if not itemFound and not remove:
+        extensions.append({'action': 1,
+                           'name': propKey,
+                           'link': { 'action': 1, 'linkType': linkType, 'naturalID': value, 'naturalInfo': naturalInfo }})
+    else :
+      if not remove:
+        extensions.append({'action': 1,
+                           'name': propKey,
+                           'link': { 'action': 1, 'linkType': linkType, 'naturalID': value, 'naturalInfo': naturalInfo }})
+
 """ abstracted ZSW functions """
 def get_employees():
-    # connect
-    print("Connecting...")
-    client, session = connect()
-    print("Session: {0}".format(session))
-    # read employees
     print("Read employees...")
-    employees = client.service.getAllEmployees(session, 0)
+    employees = client.service.getAllEmployees(getSession(), 0)
     # clean up employees
     employee_dict = {}
     for employee in employees:
         # reformat employees to indexed dict
         employee_dict[employee['personID']] = "{0} {1}".format(employee['firstname'], employee['lastname'])
     print("Employees: {0}".format(employee_dict))
-    # close connection
-    print("Disconnecting...")
-    disconnect(client, session)
     return employee_dict
-    
+
 def get_bookings(start_time, end_time):
-    # current time as end time
     end_time = int(end_time)
     start_time = int(start_time)
     print("Start {0} (type: {1})".format(start_time, type(start_time)))
     print("End {0} (type: {1})".format(end_time, type(end_time)))
+
     # timestamp dicts
     fromTS = {'timeInSeconds': start_time}
     toTS = {'timeInSeconds': end_time}
-    # connect
-    client, session = connect()
+
     # get bookings
-    bookings = client.service.getBookingPairs(session, fromTS, toTS, False, 1)
-    # close connection
-    disconnect(client, session)
+    try:
+        bookings = client.service.getBookingPairs(getSession(), fromTS, toTS, False, 1)
+    except Exception as err:
+        frappe.log_error("Get booking pairs failed with error {0}.".format(err), "ZSW get booking pairs")
+        #return here because going further doesn't make sense!
+        return []
+
     # update end_time in ZSW record
-    config = frappe.get_doc("ZSW", "ZSW")
+    global config
     try:
         config.last_sync_sec = end_time
         config.last_sync_date = datetime.fromtimestamp(end_time).strftime('%Y-%m-%d %H:%M:%S')
         config.save()
+        print("Global config updated")
     except Exception as err:
         frappe.log_error( "Unable to set end time. ({0})".format(err), "ZSW get_booking")
+        return []
+
+    print("Bookings: {0}".format(bookings))
+    if bookings:
+        print("Total {0} bookings".format(len(bookings)))
+    return bookings
+
+def get_project_bookings(zsw_project, from_time, to_time):
+    end_time = int(to_time)
+    start_time = int(from_time)
+    print("Start {0} (type: {1})".format(start_time, type(start_time)))
+    print("End {0} (type: {1})".format(end_time, type(end_time)))
+
+    # timestamp dicts
+    fromTS = {'timeInSeconds': start_time}
+    toTS = {'timeInSeconds': end_time}
+
+    # get bookings
+    try:
+        bookings = client.service.getBookingPairsByLevel(getSession(), fromTS, toTS, zsw_project, 4)
+    except Exception as err:
+        frappe.log_error("Get booking pairs by level failed with error {0}.".format(err), "ZSW get booking pairs by level")
+        #return here because going further doesn't make sense!
+        return []
+
     print("Bookings: {0}".format(bookings))
     if bookings:
         print("Total {0} bookings".format(len(bookings)))
     return bookings
 
 def mark_bookings(bookings):
-    # connect to ZSW
-    client, session = connect()
-    # create or update customer
-    bookings = {'long': bookings}
-    client.service.checkBookings(session, bookings, 5)
-    # close connection
-    disconnect(client, session)
-    return
-    
-def create_update_customer(customer, customer_name, active, kst="FZV"):
-    # create customer (=level) information
-    level = {'WSLevel':[{
-          'active': active,
-          'code': customer,
-          'levelID': 1,
-          'text': customer_name
-        }]
-    }
+    if type(bookings) is not list:
+        bookings = eval(bookings)
+
+    try:
+        # use pagination
+        per_page = 100
+        s = getSession()
+        for i in range(0, len(bookings), per_page):
+            bookings_paged = {'long': bookings[i:i+per_page]}
+            client.service.checkBookings(s, bookings_paged, 5)
+    except Exception as err:
+        frappe.log_error("Marking bookings {0} failed with error {1}.".format(bookings, err), "ZSW mark bookings")
+        return False
+
+    return True
+
+def create_update_customer(customer, customer_name, active, kst="FZV", tenant="AT", technician=None):
+    # collect information
+    zsw_reference = get_zsw_reference(customer, tenant)
+    adr_ids = frappe.get_all("Dynamic Link",
+        filters={'link_doctype': 'Customer', 'link_name': customer, 'parenttype': 'Address'},
+        fields=['parent'])
+    if adr_ids:
+        for adr_id in adr_ids:
+            address = frappe.get_doc("Address", adr_id['parent'])
+            if address.is_primary_address:
+                continue
+        city = address.city or "-"
+        street = address.address_line1 or "-"
+        pincode = address.pincode or "-"
+    else:
+        city = "-"
+        street = "-"
+        pincode = "-"
+    # technician: crop from technician field (email ID without @...)
+    customer_record = frappe.get_doc("Customer", customer)
+    if technician:
+        zsw_technician = technician.split("@")[0]
+    else:
+        zsw_technician = ""
+    # contact
+    if customer_record.customer_primary_contact:
+        contact = frappe.get_doc("Contact", customer_record.customer_primary_contact)
+        email = contact.email_id or "-"
+        phone = contact.phone or "-"
+    else:
+        # no primary contact defined
+        con_id = frappe.get_all("Dynamic Link",
+            filters={'link_doctype': 'Customer', 'link_name': customer, 'parenttype': 'Contact'},
+            fields=['parent'])
+        if con_id:
+            contact = frappe.get_doc("Contact", con_id[0]['parent'])
+            email = contact.email_id or "-"
+            phone = contact.phone or "-"
+        else:
+            email = "-"
+            phone = "-"
+    # maintenance contract customer?
+    sql_query = """SELECT DISTINCT `tabSales Invoice`.`posting_date`
+                   FROM `tabSales Invoice Item`
+                   LEFT JOIN `tabSales Invoice` ON `tabSales Invoice Item`.`parent` = `tabSales Invoice`.`name`
+                   WHERE
+                    `tabSales Invoice`.`posting_date` >= (DATE_SUB(NOW(), INTERVAL 13 MONTH))
+                    AND `tabSales Invoice Item`.`item_code` IN ("3010")
+                    AND `tabSales Invoice`.`customer` = '{customer}'
+                   ORDER BY `tabSales Invoice`.`posting_date` DESC;""".format(customer=customer)
+    contract = frappe.db.sql(sql_query, as_dict=True)
+    if len(contract) > 0:
+        maintenance_contract = True
+    else:
+        maintenance_contract = False
     # create link information (for cost center groups)
     link = {
-        'naturalID': customer,
+        'naturalID': zsw_reference,
         'naturalInfo': 1,
         'linkType': 3,
         'action': 4
@@ -122,10 +313,52 @@ def create_update_customer(customer, customer_name, active, kst="FZV"):
         kst_code = 114
     else:
         kst_code = 13
-    # connect to ZSW
-    client, session = connect()
+    s = getSession()
     # create or update customer
-    client.service.createLevels(session, level, True)
+    wsTsNow = client.service.getTime(s)
+    wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': zsw_reference }] }
+    wsLevelEArray = client.service.getLevelsEByIdentification(s, wsLevelIdentArray, wsTsNow)
+    #print("Level E: {0}".format(wsLevelEArray))
+    # check if customer exists
+    if wsLevelEArray:
+        # customer exists --> update
+        print("Customer found, update")
+        wsLevelEArray[0]["action"] = 3
+        wsLevelEArray[0]["wsLevel"]["text"] = customer_name
+        wsLevelEArray[0]["wsLevel"]["active"] = active
+        # make sure extension key exists
+        if not wsLevelEArray[0]["extensions"]:
+            wsLevelEArray[0]["extensions"] = {'WSExtension': []}
+        if not wsLevelEArray[0]["extensions"]["WSExtension"]:
+            wsLevelEArray[0]["extensions"]["WSExtension"] = []
+        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_ortKunde", city)
+        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_strasseKunde", street)
+        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_plzKunde", pincode)
+        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_mailadresseKunde", email)
+        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_telefonnummer", phone)
+        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
+        createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_projektverantwortlicher", zsw_technician, 2, 0, False)
+        # compress level
+        contentDict = compress_level_e(wsLevelEArray[0])
+        client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
+    else:
+        print("Customer not found")
+        wsLevelEArray = { 'WSExtensibleLevel' : 
+          [{
+            'action': 1,
+            'wsLevel': { 'active': active, 'levelID': 1, 'code': zsw_reference, 'text': customer_name },
+            'extensions': { 'WSExtension': [   ]}
+          }]
+        }
+        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]['extensions']['WSExtension'], 'p_ortKunde', city)
+        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_strasseKunde", street)
+        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_plzKunde", pincode)
+        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_mailadresseKunde", email)
+        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_telefonnummer", phone)
+        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
+        createOrUpdateWSExtension_link(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_projektverantwortlicher", zsw_technician, 2, 0, False)
+        client.service.createLevelsE(session, wsLevelEArray)
+
     # add link (or ignore if it exists already)
     try:
         client.service.quickAddGroupMember(session, kst_code, link)
@@ -133,17 +366,119 @@ def create_update_customer(customer, customer_name, active, kst="FZV"):
         frappe.log_error( "Unable to add link ({0})<br>Session: {1}, kst: {2}, link: {3}".format(
             err, session, kst_code, link), "ZSW update customer" )
     # close connection
-    disconnect(client, session)
+    disconnect()
     return
 
+def create_update_sales_order(sales_order, customer, customer_name, tenant="AT", technician=None, active=True):
+    # collect city
+    so = frappe.get_doc("Sales Order", sales_order)
+    try:
+        address = frappe.get_doc("Address", so.customer_address)
+        city = address.city or "-"
+    except:
+        city = "-"
+    # check active
+    if active == 0 or active == "false":
+        active = False
+    # get technician data (must be from client, as trigger is before save)
+    if technician:
+        try:
+            # update customer record in ERP
+            customer_record = frappe.get_doc("Customer", customer)
+            customer_record.technik = technician
+            customer_record.save()
+        except Exception as err:
+            frappe.log_error( "Unable to update customer {0}: {1}".format(customer, err), "ZSW create_update_sales_order" )
+        zsw_technician = technician.split('@')[0]
+    else:
+        zsw_technician = ""
+    # prepare information
+    zsw_project_name = get_zsw_project_name(sales_order, tenant)
+    print("ZSW project: {0} (SO: {1}, tenant: {2})".format(zsw_project_name, sales_order, tenant))
+    # create project (=level) information
+    level = {'WSLevel':[{
+          'active': active,
+          'code': zsw_project_name,
+          'levelID': 4,
+          'text': "{0}, {1}".format(customer_name, city)
+        }]
+    }
+    # connect to ZSW
+    s = getSession()
+    # create or update sales order
+    client.service.createLevels(session, level, True)
+    # retrieve E-level
+    wsTsNow = client.service.getTime(s)
+    wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': get_zsw_reference(customer, tenant) }] }
+    wsLevelEArray = client.service.getLevelsEByIdentification(s, wsLevelIdentArray, wsTsNow)
+    if wsLevelEArray:
+        #print("Level E Array: {0}".format(wsLevelEArray[0]) )
+        # make sure extension key exists
+        if not wsLevelEArray[0]["extensions"]:
+            wsLevelEArray[0]["extensions"] = {'WSExtension': []}
+        if not wsLevelEArray[0]["extensions"]["WSExtension"]:
+            wsLevelEArray[0]["extensions"]["WSExtension"] = []
+        if active:
+            # create 
+            createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", zsw_project_name, 4, 3, False)
+        else:
+            # delete link
+            createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", zsw_project_name, 4, 3, True)
+        createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_projektverantwortlicher", zsw_technician, 2, 0, False)
+        contentDict = compress_level_e(wsLevelEArray[0])
+        #print("Content: {0}".format(contentDict))
+        client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
+    else:
+        frappe.log_error( "Trying to link to customer that does not exist: {0} ({1})".format(customer, sales_order), "ZSW create_update_sales_order")
+        
+    # close connection
+    disconnect()
+    return
+
+def get_zsw_reference(customer, tenant):
+    if tenant.lower() == "ch":
+        zsw_reference = "CH{0}".format(customer[2:])
+    else:
+        zsw_reference = "{0}".format(customer[2:])
+    return zsw_reference
+
+def get_zsw_project_name(sales_order, tenant):
+    if tenant.lower() == "ch":
+        zsw_project_name = "CH{0}".format(sales_order)
+    else:
+        zsw_project_name = "{0}".format(sales_order)
+    return zsw_project_name
+
+def compress_level_e(level_e_array):
+    #print("Settings: {0}".format(client.settings))
+    contentStr = "{0}".format(level_e_array)
+    contentDict = eval(contentStr)
+    contentDict.pop('genericProperties', None)
+    #print("LevelArray: {0}".format(contentDict))
+    return contentDict
+        
 """ interaction mechanisms """
 @frappe.whitelist()
-def update_customer(customer_name, kst, zsw_reference, active=True):
+def update_customer(customer, customer_name, kst, zsw_reference=None, active=True, tenant="AT", technician=None):
     create_update_customer(
-        customer=zsw_reference, 
-        customer_name=customer_name, 
+        customer=customer,
+        customer_name=customer_name,
         active=active,
-        kst=kst
+        kst=kst,
+        tenant=tenant,
+        technician=technician
+    )
+    return
+
+@frappe.whitelist()
+def update_project(sales_order, customer, customer_name, tenant="AT", technician=None, active=True):
+    create_update_sales_order(
+        sales_order=sales_order,
+        customer=customer,
+        customer_name=customer_name,
+        tenant=tenant,
+        technician=technician,
+        active=active
     )
     return
 
@@ -246,12 +581,11 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                     else:
                         income_account = u"4220 - Leistungserlöse 20 % USt - FZAT"
                         tax_rule = "Verkaufssteuern Inland 20p (022) - FZAT"
-                
+
                 # create lists to collect invoice items
                 items_remote = []
                 items_onsite = []
                 do_invoice_remote = False
-                do_invoice_onsite = False
                 # loop through all bookings
                 for booking in bookings:
                     use_booking = False
@@ -261,11 +595,14 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                             if level['levelID'] == 1 and level['code'] == customer:
                                 use_booking = True
                             if level['levelID'] == 2:
-                                # sevrice type, e.g. "T01" (remote), "T03" (onsite), "AB-#####" (project)
+                                # service type, e.g. "T01" (remote), "T03" (onsite), "T02" (project remote), "T04" (project onsite)
                                 service_type = level['code']
                             if level['levelID'] == 3:
-                                # invoicing_type, e.g. "J": invoice, "N"/"W": free of charge
+                                # invoicing_type, e.g. "J": invoice, "N"/"W": free of charge, "P": flat rate
                                 invoice_type = level['code']
+                            if level['levelID'] == 4:
+                                # link to project (ZSW) sales order (ERP), e.g. "AB-00001" or "CHAB-00000"
+                                sales_order_reference = level['code']
                     except Exception as err:
                         print("...no levels... ({0})".format(err))
                     if use_booking:
@@ -294,15 +631,15 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                         qty.append(float(content.split(" ")[0]))
                                 elif p['key'] == 11:
                                     qty.append(1.0)
-                                    if p['val'] == "5/0":
+                                    if p['val'] == "6/0":
                                         item_code.append("3048")
-                                    elif p['val'] == "5/1":
+                                    elif p['val'] == "6/1":
                                         item_code.append("3031")
-                                    elif p['val'] == "5/2":
+                                    elif p['val'] == "6/2":
                                         item_code.append("3032")
-                                    elif p['val'] == "5/3":
+                                    elif p['val'] == "6/3":
                                         item_code.append("3033")
-                                    elif p['val'] == "5/4":
+                                    elif p['val'] == "6/4":
                                         item_code.append("3036")
                                 elif p['key'] == 12:
                                     item_code.append("3026")
@@ -362,7 +699,6 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                         elif service_type == "T03":
                             if invoice_type in ["V", "J"]:
                                 # onsite, normal
-                                do_invoice_onsite = True
                                 items_onsite.append(get_item(
                                     item_code="3001",
                                     description=description,
@@ -397,38 +733,43 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                         collected_bookings.append(booking_id)
                 # collected all items, create invoices
                 print("Customer {0} aggregated, {1} items remote, {2} items onsite.".format(customer, len(items_remote), len(items_onsite)))
+                # invoice T01
                 if do_invoice_remote and len(items_remote) > 0:
                     create_invoice(
-                        customer = customer_record.name, 
-                        items = items_remote, 
-                        overall_discount = 0, 
-                        remarks = "Telefonsupport", 
-                        taxes_and_charges = tax_rule, 
-                        from_licence = 0, 
-                        groups=None, 
+                        customer = customer_record.name,
+                        items = items_remote,
+                        overall_discount = 0,
+                        remarks = "Telefonsupport",
+                        taxes_and_charges = tax_rule,
+                        from_licence = 0,
+                        groups=None,
                         commission=None,
                         print_descriptions=1,
                         update_stock=1,
-                        auto_submit=True)
+                        auto_submit=True,
+                        ignore_pricing_rule=1)
                     invoice_count += 1
-                if do_invoice_onsite and len(items_onsite) > 0:
+                # invoice T03
+                if len(items_onsite) > 0:
                     create_invoice(
-                        customer = customer_record.name, 
-                        items = items_onsite, 
-                        overall_discount = 0, 
-                        remarks = "Support vor Ort", 
-                        taxes_and_charges = tax_rule, 
-                        from_licence = 0, 
-                        groups=None, 
+                        customer = customer_record.name,
+                        items = items_onsite,
+                        overall_discount = 0,
+                        remarks = "Support vor Ort",
+                        taxes_and_charges = tax_rule,
+                        from_licence = 0,
+                        groups=None,
                         commission=None,
                         print_descriptions=1,
                         update_stock=1,
-                        auto_submit=False)
+                        auto_submit=False,
+                        ignore_pricing_rule=1,
+                        append=True)
                     invoice_count += 1
             else:
                 err = "Customer not found in ERP: {0}".format(erp_customer)
                 print(err)
-                frappe.log_error(err, "ZSW customer not found")          
+                frappe.log_error(err, "ZSW customer not found")
         # finished, mark bookings as invoices
         mark_bookings(collected_bookings)
         # update last status
@@ -444,8 +785,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
         print("No bookings found.")
     return
 
-# parse to sales invoice item structure    
-def get_item(item_code, description, qty, discount, kst, income_account, warehouse):
+# parse to sales invoice item structure
+def get_item(item_code, description, qty, discount, kst, income_account, warehouse, against_sales_order=None):
     return {
         'item_code': item_code,
         'description': description,
@@ -454,17 +795,19 @@ def get_item(item_code, description, qty, discount, kst, income_account, warehou
         'cost_center': kst,
         'group': 'empty',
         'income_account': income_account,
-        'warehouse': warehouse
+        'warehouse': warehouse,
+        'against_sales_order': against_sales_order
     }
 
-def get_short_item(item_code, qty, kst, income_account, warehouse):
+def get_short_item(item_code, qty, kst, income_account, warehouse, against_sales_order=None):
     return {
         'item_code': item_code,
         'qty': qty,
         'cost_center': kst,
         'group': 'empty',
         'income_account': income_account,
-        'warehouse': warehouse
+        'warehouse': warehouse,
+        'against_sales_order': against_sales_order
     }
 
 def set_last_sync(date):
@@ -473,7 +816,7 @@ def set_last_sync(date):
     date_str = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
     print("Timestamp: {0} / {1}".format(timestamp, date_str))
     # update end_time in ZSW record
-    config = frappe.get_doc("ZSW", "ZSW")
+    global config
     try:
         config.last_sync_sec = timestamp
         config.last_sync_date = date_str
@@ -482,43 +825,235 @@ def set_last_sync(date):
         frappe.log_error( "Unable to set end time. ({0})".format(err), "ZSW set_last_sync")
     return
 
-def test_connect():
-    # read configuration
-    config = frappe.get_doc("ZSW", "ZSW")
-    # create client
-    client = Client(config.endpoint)
-    print("Client created: {0}".format(config.endpoint))
-    # open session
-    session = client.service.openSession('finkzeit')
-    print("Session opened")
-    # log in
-    pw = get_decrypted_password("ZSW", "ZSW", 'password', False)
-    login_result = client.service.login(session, config.user, pw)
-    print("Login: {0}".format(login_result))
-
-    print("Session: {0}".format(session))
-    # read employees
-    print("Read employees...")
-    employees = client.service.getAllEmployees(session, 0)
-    # close connection
-    print("Disconnecting...")
-
-    # log out
-    logoutResult = client.service.logout(session)
-    # close session
-    client.service.closeSession(session)
-    print("Connection closed")
-    return
-
 def add_comment(text, from_time, to_time, kst, service_filter):
     new_comment = frappe.get_doc({
         'doctype': 'Communication',
         'comment_type': "Comment",
         'content': "Created invoices between {from_time} and {to_time} on cost center {kst} and service type {service_filter}: {text}".format(
-            from_time=from_time, to_time=to_time, kst=kst, service_filter=service_filter, text=text),
+            from_time=datetime.utcfromtimestamp(from_time).strftime('%Y-%m-%d %H:%M:%S'), 
+            to_time=datetime.utcfromtimestamp(to_time).strftime('%Y-%m-%d %H:%M:%S'), 
+            kst=kst, service_filter=service_filter, text=text),
         'reference_doctype': "ZSW",
         'status': "Linked",
         'reference_name': "ZSW"
     })
     new_comment.insert()
+    return
+
+# integarted test functions for integration tests
+def test_connect():
+    get_employees()
+    disconnect()
+    return
+
+def test_customer():
+    s = getSession()
+    #wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': "1234500" }] }
+    wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': "21762" }] }
+    wsLevelEArray = client.service.getLevelsEByIdentification(session, wsLevelIdentArray, None)
+    contentStr = "{0}".format(wsLevelEArray[0])
+    contentDict = eval(contentStr)
+    contentDict.pop('genericProperties', None)
+    print("Level E: {0}".format(contentDict))
+    client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
+    disconnect()
+
+@frappe.whitelist()
+def deliver_sales_order(sales_order, tenant="AT"):
+    # zsw project name
+    zsw_project_name = get_zsw_project_name(sales_order, tenant)
+    # get start timestamp
+    print("Reading config...")
+    config = frappe.get_doc("ZSW", "ZSW")
+    employees = get_employees()
+    print("Got {0} employees.".format(len(employees)))
+    sales_order_object = frappe.get_doc("Sales Order", sales_order)
+    customer_record = frappe.get_doc("Customer", sales_order_object.customer)
+    start_time = sales_order_object.last_zsw_get_dn_timestamp
+    end_time = int(time())
+
+    # get bookings
+    bookings = get_project_bookings(zsw_project=zsw_project_name, from_time=start_time, to_time=end_time)
+    collected_bookings = []
+    if bookings:
+        print("Got {0} bookings.".format(len(bookings)))
+        items = []
+        # get default warehouse
+        kst = sales_order_object.kostenstelle
+        warehouse = frappe.get_value('Cost Center', kst, 'default_warehouse')
+        # find income account
+        if "FZCH" in kst:
+            income_account = u"3400 - Dienstleistungsertrag - FZCH"
+            tax_rule = "Schweiz normal (302) - FZCH"
+        else:
+            if customer_record.steuerregion == "EU":
+                income_account = u"4250 - Leistungserlöse EU-Ausland (in ZM) - FZAT"
+                tax_rule = "Verkaufssteuern Leistungen EU,DRL (021) - FZAT"
+            elif customer_record.steuerregion == "DRL":
+                income_account = u"4200 - Leistungserlöse Export - FZAT"
+                tax_rule = "Verkaufssteuern Leistungen EU,DRL (021) - FZAT"
+            else:
+                income_account = u"4220 - Leistungserlöse 20 % USt - FZAT"
+                tax_rule = "Verkaufssteuern Inland 20p (022) - FZAT"
+        # loop through all bookings
+        for booking in bookings:
+            use_booking = False
+            override_duration = False
+            # collect WS levels
+            try:
+                for level in booking['levels']['WSLevelIdentification']:
+                    if level['levelID'] == 1:
+                        use_booking = True
+                        customer_zsw_code = level['code']
+                    if level['levelID'] == 2:
+                        # service type, e.g. "T02" (project remote), "T04" (project onsite)
+                        service_type = level['code']
+                    if level['levelID'] == 3:
+                        # invoicing_type, e.g. "J": invoice, "N": free of charge, "P": flat rate
+                        invoice_type = level['code']
+                    if level['levelID'] == 4:
+                        # link to project (ZSW) sales order (ERP), e.g. "AB-00001" or "CHAB-00000"
+                        sales_order_reference = level['code']
+            except Exception as err:
+                print("...no levels... ({0})".format(err))
+            if use_booking:
+                # collect properties
+                item_code = []
+                qty = []
+                customer_contact = None
+                try:
+                #if True:
+                    try:
+                        print("Properties: {0}".format(len(booking['properties']['WSProperty'])))
+                    except:
+                        print("No properties")
+                    for p in booking['properties']['WSProperty']:
+                        print("Reading properties...")
+                        if p['key'] == 2:
+                            customer_contact = p['val']
+                        elif p['key'] == 14:
+                            content = p['val']
+                            # "qty level/item_code"
+                            _item = content.split("/")[1]
+                            if _item != "0001":
+                                item_code.append(_item)
+                                qty.append(float(content.split(" ")[0]))
+                                print("Found {0} x {1}".format(float(content.split(" ")[0]), _item))
+                        elif p['key'] == 11:
+                            qty.append(1.0)
+                            if p['val'] == "6/0":
+                                item_code.append("3048")
+                            elif p['val'] == "6/1":
+                                item_code.append("3031")
+                            elif p['val'] == "6/2":
+                                item_code.append("3032")
+                            elif p['val'] == "6/3":
+                                item_code.append("3033")
+                            elif p['val'] == "6/4":
+                                item_code.append("3036")
+                        elif p['key'] == 12:
+                            item_code.append("3026")
+                            qty.append((round(float(p['val']) / 60.0) + 0.04, 1)) # in h
+                        elif p['key'] == 13:
+                            qty.append(float(p['val']))
+                            if "FZT" in kst:
+                                item_code.append("3008")
+                            else:
+                                item_code.append("3007")
+                        elif p['key'] == 15:
+                            override_duration = True
+                            # field is stored as 01:30 (hh:mm)
+                            print("Fetching custom duration...")
+                            duration_fields = "{0}".format(p['val']).split(":")
+                            duration = (float(duration_fields[0])) + (float(duration_fields[1]) / 60)
+                            duration = round(duration, 2)
+                            print("Duration override: {0}".format(duration))
+                except Exception as err:
+                    print("...no properties... ({0})".format(err))
+                # add item to list
+                booking_id = booking['fromBookingID']
+                if not override_duration:
+                    duration = round((float(booking['duration']) / 60.0) + 0.04, 1) # in h
+                description = "{0} {1} ({3})<br>{2}".format(
+                    booking['from']['timestamp'].split(" ")[0],
+                    employees[booking['person']],
+                    booking['notice'] or "",
+                    service_type)
+                if customer_contact:
+                    description += "<br>{0}".format(customer_contact)
+                if invoice_type in ["W", "N"]:
+                    # remote, free of charge
+                    items.append(get_item(
+                        item_code="3001",
+                        description=description,
+                        qty=duration,
+                        discount=100,
+                        kst=kst,
+                        income_account=income_account,
+                        warehouse=warehouse,
+                        against_sales_order=sales_order))
+                elif invoice_type == "J":
+                    # remote, normal
+                    do_invoice_remote = True
+                    items.append(get_item(
+                        item_code="3001",
+                        description=description,
+                        qty=duration,
+                        discount=0,
+                        kst=kst,
+                        income_account=income_account,
+                        warehouse=warehouse,
+                        against_sales_order=sales_order))
+
+                # add material items
+                if (len(item_code) > 0) and (len(item_code) == len(qty)):
+                    for i in range(0, len(item_code)):
+                        items.append(get_short_item(
+                            item_code=item_code[i],
+                            qty=qty[i],
+                            kst=kst,
+                            income_account=income_account,
+                            warehouse=warehouse,
+                            against_sales_order=sales_order))
+                else:
+                    print("No invoicable items ({0}, {1}).".format(item_code, qty))
+                # mark as collected
+                collected_bookings.append(booking_id)
+        # collected all items, create invoices
+        print("Processed all bookings, found {0} items.".format(len(items)))
+        # create delivery note
+        if len(items) > 0:
+            new_dn = create_delivery_note(sales_order_object.customer, # customer 
+                items=items, # items
+                overall_discount=0, # overall_discount
+                remarks="Projektabrechnung", # remarks
+                taxes_and_charges=tax_rule, # taxes_and_charges
+                groups=None, 
+                auto_submit=False, 
+                append=False)
+
+        # finished, mark bookings as invoices
+        mark_bookings(collected_bookings)
+        # update last status
+        sales_order_object.last_zsw_get_dn_timestamp = end_time
+        try:
+            sales_order_object.save()
+        except Exception as err:
+            frappe.log_error( "Unable to update sync time. ({0}, {1})".format(sales_order, err), "ZSW create_invoices")
+        return {'delivery_note': new_dn}
+    else:
+        print("No bookings found.")
+        return {'delivery_note': None}
+        
+def maintain_projects(tenant="AT"):
+    sql_query = """SELECT `name` FROM `tabSales Order`
+                   WHERE `modified` >= (DATE(NOW()) - INTERVAL 3 DAY)
+                     AND (`docstatus` = 2
+                          OR (`docstatus` = 1 AND `status` IN ('Closed', 'Completed')));"""
+    deactivate_sales_orders = frappe.db.sql(sql_query, as_dict=True)
+    if deactivate_sales_orders:
+        for sales_order in deactivate_sales_orders:
+            record = frappe.get_doc("Sales Order", sales_order['name'])
+            print("Closing project {0}".format(sales_order['name']))
+            update_project(sales_order=sales_order['name'], customer=record.customer, customer_name=record.customer_name, tenant=tenant, active=False)
     return

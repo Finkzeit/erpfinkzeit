@@ -2,7 +2,7 @@
 // For license information, please see license.txt
 /* eslint-disable */
 
-frappe.query_reports["Saldenliste sehr einfach"] = {
+frappe.query_reports["Saldenliste UVA"] = {
     "filters": [
         {
             "fieldname":"from_date",

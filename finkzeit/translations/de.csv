@@ -60,6 +60,8 @@ DocType: ZSW,Something like https://zsw.finkzeit.at/ws?WSDL,Etwas wie https://zs
 DocType: ZSW,Last sync,Letzte Synchronisation
 DocType: ZSW,Last sync [s],Letzte Synchronisation [Sek]
 DocType: ZSW,Last status,Letzter Status
+DocType: ZSW,Create ZSW Invoices,ZSW-Rechnungen erstellen
+DocType: ZSW,ZSW invoice creation started,ZSW-Rechnungslauf gestartet
 DocType: SoftCard File,SoftCard File,SoftCard Datei
 DocType: SoftCard File,Create SoftCard Export,SoftCard Export erstellen
 DocType: SoftCard File,Select customer,Kunde auswählen
@@ -67,3 +69,4 @@ DocType: SoftCard File,Creation of Export File started…,Export-Datei wird erst
 DocType: SoftCard File,Sales Invoices,Ausgangsrechnungen
 DocType: SoftCard File,Download Export File,Export-Datei herunterladen
 DocType: Budget Overhead,Budget Overhead,Budget-Overhead
+Page: Sales Dashboard,Sales Dashboard,Verkaufskennzahlen

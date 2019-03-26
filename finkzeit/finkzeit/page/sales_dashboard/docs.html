@@ -1,0 +1,24 @@
+<div class="card">
+    <div class="card-header">
+        {{ __("Documents") }}
+    </div>
+    <div class="card-body">
+      <table style="width: 100%;">
+        <tr>
+            <td><h3><span class="text-muted">{{ __("Open Quotations") }}</span></h3></td>
+            <td style="text-align: right;"><h3>{{ quotation_count }}</h3></td>
+            <td style="text-align: right;"><h3>EUR {{ quotation_amount }}</h3></td>
+        </tr>
+        <tr>
+            <td><h3><span class="text-muted">{{ __("Open Sales Orders") }}</span></h3></td>
+            <td style="text-align: right;"><h3>{{ sales_order_count }}</h3></td>
+            <td style="text-align: right;"><h3>EUR {{ sales_order_amount }}</h3></td>
+        </tr>
+        <tr>
+            <td><h3><span class="text-muted">{{ __("Open Sales Invoices") }}</span></h3></td>
+            <td style="text-align: right;"><h3>{{ sales_invoice_count }}</h3></td>
+            <td style="text-align: right;"><h3>EUR {{ sales_invoice_amount }}</h3></td>
+        </tr>
+      </table>
+    </div>
+</div>

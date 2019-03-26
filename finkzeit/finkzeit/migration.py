@@ -410,6 +410,6 @@ def send_customers_to_zsw(tenant, ignore_checked=1, select_customers=None):
             else:
                 active = False
         print("Updating {0} > {1} (active: {2}, kst: {3}".format(customer.name, zsw_ref, active, customer.kostenstelle))
-        create_update_customer(zsw_ref, customer.customer_name, active=active, kst=customer.kostenstelle)
+        create_update_customer(customer.name, customer.customer_name, active=active, kst=customer.kostenstelle, tenant=tenant)
     print("Done. Please check the ERP error log for potential errors.")
     return
