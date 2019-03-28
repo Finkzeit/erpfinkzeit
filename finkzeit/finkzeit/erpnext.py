@@ -27,6 +27,7 @@ def post_invoice(**kwargs):
         supplier = supplier[0]['name']
     supplier_record = frappe.get_doc("Supplier", supplier)
     if "011" in invoice['taxes_and_charges']:
+        #frappe.log_error("rewrite tax codes", "API")
         # rewrite tax codes export/material (011) --> (000) no tax
         no_tax_template = frappe.get_all("Purchase Taxes and Charges Template", filters=[['name', 'LIKE', '%000%']], fields=['name'])
         tax_template_name = no_tax_template[0]['name']
@@ -53,9 +54,9 @@ def post_invoice(**kwargs):
         'discount_amount': invoice['discount_amount'],
         'payment_terms_template': supplier_record.payment_terms
     })
-    #frappe.log_error("pinv for {0} created".format(invoice['name']), "debug pinv import")
     try:
         new_pinv = pinv.insert(ignore_permissions=True)
+        #frappe.log_error("pinv {1} for {0} created".format(invoice['name'], new_pinv.name), "debug pinv import")
         if new_pinv.grand_total == invoice['grand_total']:
             # grand total matches, auto submit
             new_pinv.submit()
@@ -85,7 +86,8 @@ def send_invoice(host, sales_invoice):
         'currency': sinv.currency,
         'apply_discount_on': sinv.apply_discount_on,
         'additional_discount_percentage': sinv.additional_discount_percentage,
-        'discount_amount': sinv.discount_amount
+        'discount_amount': sinv.discount_amount,
+        'taxes_and_charges': sinv.taxes_and_charges
     }
     # convert data to string for transmission
     text = json.dumps(data)
