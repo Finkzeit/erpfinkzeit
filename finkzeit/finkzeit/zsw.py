@@ -981,7 +981,7 @@ def deliver_sales_order(sales_order, tenant="AT"):
                     service_type)
                 if customer_contact:
                     description += "<br>{0}".format(customer_contact)
-                if invoice_type in ["W", "N"]:
+                if invoice_type in ["W", "N", "P"]:
                     # remote, free of charge
                     items.append(get_item(
                         item_code="3001",
