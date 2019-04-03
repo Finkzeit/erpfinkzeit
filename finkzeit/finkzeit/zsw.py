@@ -1046,8 +1046,11 @@ def deliver_sales_order(sales_order, tenant="AT"):
 def maintain_projects(tenant="AT"):
     sql_query = """SELECT `name` FROM `tabSales Order`
                    WHERE `modified` >= (DATE(NOW()) - INTERVAL 3 DAY)
-                     AND (`docstatus` = 2
-                          OR (`docstatus` = 1 AND `status` IN ('Closed', 'Completed')));"""
+                     AND (
+                          `docstatus` = 2
+                          OR (`docstatus` = 1 AND `ist_projekt` = 0)
+                          OR (`docstatus` = 1 AND `ist_projekt` = 1 AND `projekt_abgeschlossen` = 1) 
+                         );"""
     deactivate_sales_orders = frappe.db.sql(sql_query, as_dict=True)
     if deactivate_sales_orders:
         for sales_order in deactivate_sales_orders:
