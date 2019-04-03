@@ -378,7 +378,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
     except:
         city = "-"
     # check active
-    if active == 0 or active == "false":
+    if int(active) == 0 or active == "false":
         active = False
     # get technician data (must be from client, as trigger is before save)
     if technician:
@@ -419,7 +419,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
         if not wsLevelEArray[0]["extensions"]["WSExtension"]:
             wsLevelEArray[0]["extensions"]["WSExtension"] = []
         if active:
-            # create 
+            # create
             createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", zsw_project_name, 4, 3, False)
         else:
             # delete link
