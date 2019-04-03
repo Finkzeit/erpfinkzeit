@@ -626,9 +626,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                     content = p['val']
                                     # "qty level/item_code"
                                     _item = content.split("/")[1]
-                                    if _item != "0001":
-                                        item_code.append(_item)
-                                        qty.append(float(content.split(" ")[0]))
+                                    item_code.append(_item)
+                                    qty.append(float(content.split(" ")[0]))
                                 elif p['key'] == 11:
                                     qty.append(1.0)
                                     if p['val'] == "6/0":
@@ -935,10 +934,9 @@ def deliver_sales_order(sales_order, tenant="AT"):
                             content = p['val']
                             # "qty level/item_code"
                             _item = content.split("/")[1]
-                            if _item != "0001":
-                                item_code.append(_item)
-                                qty.append(float(content.split(" ")[0]))
-                                print("Found {0} x {1}".format(float(content.split(" ")[0]), _item))
+                            item_code.append(_item)
+                            qty.append(float(content.split(" ")[0]))
+                            print("Found {0} x {1}".format(float(content.split(" ")[0]), _item))
                         elif p['key'] == 11:
                             qty.append(1.0)
                             if p['val'] == "6/0":
