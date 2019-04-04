@@ -122,7 +122,7 @@ frappe.sales_dashboard = {
             },
             type: 'line', 
             height: 300,
-            colors: ['#2ECC40', '#01FF70', '#85144B', '#FF851B'],
+            colors: ['#229954', '#7DCEA0', '#CB4335', '#F1948A'],
 
             tooltipOptions: {
                 formatTooltipX: d => (d + '').toUpperCase(),
