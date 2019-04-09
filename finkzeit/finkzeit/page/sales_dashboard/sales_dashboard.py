@@ -90,10 +90,10 @@ def get_cashflows(cost_center):
         revenue_trend = "n/a"
         revenue_indicator = ""
     elif revenue_ytd >= revenue_py:
-        revenue_trend = "+{0:.1f}%".format(100.0 * revenue_ytd / revenue_py)
+        revenue_trend = "+{0:.1f}%".format(100.0 * ((revenue_ytd / revenue_py) - 1))
         revenue_indicator = "border-success"
     else:
-        revenue_trend = "-{0:.1f}%".format(100.0 * revenue_ytd / revenue_py)
+        revenue_trend = "{0:.1f}%".format(100.0 * ((revenue_ytd / revenue_py) - 1))
         revenue_indicator = "border-danger"
     expenses_ytd = get_cashflow_to_date(cost_center, py=False, income=False)
     expenses_py = get_cashflow_to_date(cost_center, py=True, income=False)
@@ -101,10 +101,10 @@ def get_cashflows(cost_center):
         expenses_trend = "n/a"
         expenses_indicator = ""
     elif expenses_ytd >= expenses_py:
-        expenses_trend = "+{0:.1f}%".format(100.0 * expenses_ytd / expenses_py)
+        expenses_trend = "+{0:.1f}%".format(100.0 * ((expenses_ytd / expenses_py) - 1))
         expenses_indicator = "border-danger"
     else:
-        expenses_trend = "-{0:.1f}%".format(100.0 * expenses_ytd / expenses_py)
+        expenses_trend = "{0:.1f}%".format(100.0 * ((expenses_ytd / expenses_py) - 1))
         expenses_indicator = "border-success"
     profit_ytd = revenue_ytd - expenses_ytd
     profit_py = revenue_py - expenses_py
@@ -112,10 +112,10 @@ def get_cashflows(cost_center):
         profit_trend = "n/a"
         profit_indicator = ""
     elif profit_ytd >= profit_py:
-        profit_trend = "+{0:.1f}%".format(100.0 * profit_ytd / profit_py)
+        profit_trend = "+{0:.1f}%".format(100.0 * ((profit_ytd / profit_py) - 1))
         profit_indicator = "border-success"
     else:
-        profit_trend = "-{0:.1f}%".format(100.0 * profit_ytd / profit_py)
+        profit_trend = "{0:.1f}%".format(100.0 * ((profit_ytd / profit_py) - 1))
         profit_indicator = "border-danger"
     cashflows = {
         'revenue': {
