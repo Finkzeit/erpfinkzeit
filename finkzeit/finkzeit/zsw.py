@@ -1010,6 +1010,7 @@ def deliver_sales_order(sales_order, tenant="AT"):
                     for i in range(0, len(item_code)):
                         items.append(get_short_item(
                             item_code=item_code[i],
+                            description= "{0}".format(booking['from']['timestamp'].split(" ")[0]),
                             qty=qty[i],
                             kst=kst,
                             income_account=income_account,
