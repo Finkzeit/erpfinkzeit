@@ -6,7 +6,7 @@ frappe.pages['sales_dashboard'].on_page_load = function(wrapper) {
     });
 
     frappe.sales_dashboard.make(page);
-    frappe.sales_dashboard.run();
+    frappe.sales_dashboard.run("");
     
     // add the application reference
     frappe.breadcrumbs.add("Finkzeit");
@@ -20,14 +20,28 @@ frappe.sales_dashboard = {
         me.body = $('<div></div>').appendTo(me.page.main);
         var data = "";
         $(frappe.render_template('sales_dashboard', data)).appendTo(me.body);
+        // enable KST-switcher for System Manager
+        if (frappe.user.has_role("System Manager")) {
+            var kst_switcher = document.getElementById("kst-switcher");
+            if (kst_switcher) {
+                kst_switcher.style.visibility = "visible";
+                // attach change handler
+                kst_switcher.addEventListener('change', function() {
+                    console.log("Loading " + kst_switcher.value);
+                    frappe.sales_dashboard.run(kst_switcher.value);
+                });
+            }
+            
+        }
         
     },
-    run: function() {
+    run: function(filter) {
         // get cashflows
         frappe.call({
             method: 'finkzeit.finkzeit.page.sales_dashboard.sales_dashboard.get_cashflow_for_user',
             args: {
-                'user': frappe.user.name
+                'user': frappe.user.name,
+                'filter': filter
             },
             callback: function(r) {
                 if (r.message) {

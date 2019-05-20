@@ -79,11 +79,11 @@ def get_cashflow(from_date, to_date, cost_center, income=True):
         return ((-1) * cashflow) + costs_overhead
 
 @frappe.whitelist()
-def get_cashflow_for_user(user):
+def get_cashflow_for_user(user, filter=""):
     cost_center = frappe.get_value("User", user, "cost_center")
-    return get_cashflows(cost_center)
+    return get_cashflows(cost_center, filter)
 
-def get_cashflows(cost_center):
+def get_cashflows(cost_center, filter=""):
     revenue_ytd = get_cashflow_to_date(cost_center, py=False, income=True)
     revenue_py = get_cashflow_to_date(cost_center, py=True, income=True)
     if revenue_py == 0:
@@ -117,6 +117,9 @@ def get_cashflows(cost_center):
     else:
         profit_trend = "{0:.1f}%".format(100.0 * ((profit_ytd / profit_py) - 1))
         profit_indicator = "border-danger"
+    # filters will overwrite cost center
+    if filter and filter != "":
+        cost_center = filter
     cashflows = {
         'revenue': {
             'ytd': "{0:,.0f}".format(revenue_ytd).replace(",", "'").replace(".", ",").replace("'", "."),
