@@ -786,7 +786,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
     return
 
 # parse to sales invoice item structure
-def get_item(item_code, description, qty, discount, kst, income_account, warehouse, against_sales_order=None):
+def get_item(item_code, description, qty, discount, kst, income_account, warehouse, against_sales_order=None, date="2000-01-01"):
     return {
         'item_code': item_code,
         'description': description,
@@ -796,10 +796,11 @@ def get_item(item_code, description, qty, discount, kst, income_account, warehou
         'group': 'empty',
         'income_account': income_account,
         'warehouse': warehouse,
-        'against_sales_order': against_sales_order
+        'against_sales_order': against_sales_order,
+        'date': date
     }
 
-def get_short_item(item_code, qty, kst, income_account, warehouse, against_sales_order=None):
+def get_short_item(item_code, qty, kst, income_account, warehouse, against_sales_order=None, date="2000-01-01"):
     return {
         'item_code': item_code,
         'qty': qty,
@@ -807,7 +808,8 @@ def get_short_item(item_code, qty, kst, income_account, warehouse, against_sales
         'group': 'empty',
         'income_account': income_account,
         'warehouse': warehouse,
-        'against_sales_order': against_sales_order
+        'against_sales_order': against_sales_order,
+        'date': date
     }
 
 def set_last_sync(date):
@@ -972,6 +974,7 @@ def deliver_sales_order(sales_order, tenant="AT"):
                     print("...no properties... ({0})".format(err))
                 # add item to list
                 booking_id = booking['fromBookingID']
+                date = datetime.strptime(booking['from']['timestamp'].split(" ")[0], "%d.%m.%Y")
                 if not override_duration:
                     duration = round((float(booking['duration']) / 60.0) + 0.04, 1) # in h
                 description = "{0} {1} ({3})<br>{2}".format(
@@ -991,7 +994,8 @@ def deliver_sales_order(sales_order, tenant="AT"):
                         kst=kst,
                         income_account=income_account,
                         warehouse=warehouse,
-                        against_sales_order=sales_order))
+                        against_sales_order=sales_order,
+                        date=date))
                 elif invoice_type == "J":
                     # remote, normal
                     do_invoice_remote = True
@@ -1003,7 +1007,8 @@ def deliver_sales_order(sales_order, tenant="AT"):
                         kst=kst,
                         income_account=income_account,
                         warehouse=warehouse,
-                        against_sales_order=sales_order))
+                        against_sales_order=sales_order,
+                        date=date))
 
                 # add material items
                 if (len(item_code) > 0) and (len(item_code) == len(qty)):
@@ -1015,17 +1020,18 @@ def deliver_sales_order(sales_order, tenant="AT"):
                             kst=kst,
                             income_account=income_account,
                             warehouse=warehouse,
-                            against_sales_order=sales_order))
+                            against_sales_order=sales_order,
+                            date=date))
                 else:
                     print("No invoicable items ({0}, {1}).".format(item_code, qty))
                 # mark as collected
                 collected_bookings.append(booking_id)
         # collected all items, create invoices
         print("Processed all bookings, found {0} items.".format(len(items)))
-        # create delivery note
+        # create delivery note with items sorted by date
         if len(items) > 0:
             new_dn = create_delivery_note(sales_order_object.customer, # customer 
-                items=items, # items
+                items=sorted(items, key=lambda val: val['date']),      # items, sorted by date
                 overall_discount=0, # overall_discount
                 remarks="Projektabrechnung", # remarks
                 taxes_and_charges=tax_rule, # taxes_and_charges
