@@ -378,7 +378,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
     except:
         city = "-"
     # check active
-    if active == 0 or active == "false":
+    if int(active) == 0 or active == "false":
         active = False
     # get technician data (must be from client, as trigger is before save)
     if technician:
@@ -419,7 +419,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
         if not wsLevelEArray[0]["extensions"]["WSExtension"]:
             wsLevelEArray[0]["extensions"]["WSExtension"] = []
         if active:
-            # create 
+            # create
             createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", zsw_project_name, 4, 3, False)
         else:
             # delete link
@@ -626,9 +626,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                     content = p['val']
                                     # "qty level/item_code"
                                     _item = content.split("/")[1]
-                                    if _item != "0001":
-                                        item_code.append(_item)
-                                        qty.append(float(content.split(" ")[0]))
+                                    item_code.append(_item)
+                                    qty.append(float(content.split(" ")[0]))
                                 elif p['key'] == 11:
                                     qty.append(1.0)
                                     if p['val'] == "6/0":
@@ -755,7 +754,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                         customer = customer_record.name,
                         items = items_onsite,
                         overall_discount = 0,
-                        remarks = "Support vor Ort",
+                        remarks = "Dienstleistung vor Ort",
                         taxes_and_charges = tax_rule,
                         from_licence = 0,
                         groups=None,
@@ -937,10 +936,9 @@ def deliver_sales_order(sales_order, tenant="AT"):
                             content = p['val']
                             # "qty level/item_code"
                             _item = content.split("/")[1]
-                            if _item != "0001":
-                                item_code.append(_item)
-                                qty.append(float(content.split(" ")[0]))
-                                print("Found {0} x {1}".format(float(content.split(" ")[0]), _item))
+                            item_code.append(_item)
+                            qty.append(float(content.split(" ")[0]))
+                            print("Found {0} x {1}".format(float(content.split(" ")[0]), _item))
                         elif p['key'] == 11:
                             qty.append(1.0)
                             if p['val'] == "6/0":
@@ -984,7 +982,7 @@ def deliver_sales_order(sales_order, tenant="AT"):
                     service_type)
                 if customer_contact:
                     description += "<br>{0}".format(customer_contact)
-                if invoice_type in ["W", "N"]:
+                if invoice_type in ["W", "N", "P"]:
                     # remote, free of charge
                     items.append(get_item(
                         item_code="3001",
@@ -1055,8 +1053,11 @@ def deliver_sales_order(sales_order, tenant="AT"):
 def maintain_projects(tenant="AT"):
     sql_query = """SELECT `name` FROM `tabSales Order`
                    WHERE `modified` >= (DATE(NOW()) - INTERVAL 3 DAY)
-                     AND (`docstatus` = 2
-                          OR (`docstatus` = 1 AND `status` IN ('Closed', 'Completed')));"""
+                     AND (
+                          `docstatus` = 2
+                          OR (`docstatus` = 1 AND `ist_projekt` = 0)
+                          OR (`docstatus` = 1 AND `ist_projekt` = 1 AND `projekt_abgeschlossen` = 1) 
+                         );"""
     deactivate_sales_orders = frappe.db.sql(sql_query, as_dict=True)
     if deactivate_sales_orders:
         for sales_order in deactivate_sales_orders:
