@@ -7,6 +7,12 @@
             <div class="card">
               <div class="card-header">
                 {{ __("Revenue and Expenses") }}&nbsp;<span class="text-muted" id="kst-placeholder"></span>
+                 <select id="kst-switcher" style="visibility: hidden;">
+                  <option value="FZV - FZAT">FZV - FZAT</option>
+                  <option value="FZT - FZAT">FZT - FZAT</option>
+                  <option value="FZW - FZAT">FZW - FZAT</option>
+                  <option value="%">%</option>
+                 </select> 
               </div>
               <div class="card-body">
                   <div id="main-chart"></div>
