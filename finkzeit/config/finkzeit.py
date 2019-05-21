@@ -68,6 +68,12 @@ def get_data():
                        "name": "Seriennummer",
                        "label": _("Seriennummer"),
                        "description": _("Seriennummer")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Wartungsvertrag",
+                       "label": _("Wartungsvertrag"),
+                       "description": _("Wartungsvertrag")
                    }				   
             ]
         },
