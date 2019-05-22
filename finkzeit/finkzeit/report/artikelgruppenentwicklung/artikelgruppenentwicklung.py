@@ -42,23 +42,23 @@ def execute(filters=None):
         mont = "Jan"
     
     # determine time range
-    if type == "Year":
+    if "Year" in type:
         ytd_start = "{0}-01-01".format(year)
         ytd_end = "{0}-12-31".format(year)
         py_start = "{0}-01-01".format(int(year) - 1)
         py_end = "{0}-12-31".format(int(year) - 1)
-    elif type == "Quarter":
-        if quarter == "Q1":
+    elif "Quarter" in type:
+        if "Q1" in quarter:
             ytd_start = "{0}-01-01".format(year)
             ytd_end = "{0}-03-31".format(year)
             py_start = "{0}-01-01".format(int(year) - 1)
             py_end = "{0}-03-31".format(int(year) - 1)          
-        elif quarter == "Q2":
+        elif "Q2" in quarter:
             ytd_start = "{0}-04-01".format(year)
             ytd_end = "{0}-06-31".format(year)
             py_start = "{0}-04-01".format(int(year) - 1)
             py_end = "{0}-06-31".format(int(year) - 1)    
-        if quarter == "Q3":
+        elif "Q3" in quarter:
             ytd_start = "{0}-07-01".format(year)
             ytd_end = "{0}-09-30".format(year)
             py_start = "{0}-07-01".format(int(year) - 1)
@@ -70,67 +70,66 @@ def execute(filters=None):
             py_end = "{0}-12-31".format(int(year) - 1)    
     else:
         # month mode
-        if quarter == "Jan":
+        if month == "Jan":
             ytd_start = "{0}-01-01".format(year)
             ytd_end = "{0}-01-31".format(year)
             py_start = "{0}-01-01".format(int(year) - 1)
             py_end = "{0}-01-31".format(int(year) - 1)        
-        if quarter == "Feb":
+        elif month == "Feb":
             ytd_start = "{0}-02-01".format(year)
             ytd_end = "{0}-02-28".format(year)
             py_start = "{0}-02-01".format(int(year) - 1)
             py_end = "{0}-02-28".format(int(year) - 1) 
-        if quarter == "Mar":
+        elif month == "Mar":
             ytd_start = "{0}-03-01".format(year)
             ytd_end = "{0}-03-31".format(year)
             py_start = "{0}-03-01".format(int(year) - 1)
             py_end = "{0}-03-31".format(int(year) - 1) 
-        if quarter == "Apr":
+        elif month == "Apr":
             ytd_start = "{0}-04-01".format(year)
             ytd_end = "{0}-04-30".format(year)
             py_start = "{0}-04-01".format(int(year) - 1)
             py_end = "{0}-04-30".format(int(year) - 1) 
-        if quarter == "May":
+        elif month == "May":
             ytd_start = "{0}-05-01".format(year)
             ytd_end = "{0}-05-31".format(year)
             py_start = "{0}-05-01".format(int(year) - 1)
             py_end = "{0}-05-31".format(int(year) - 1) 
-        if quarter == "Jun":
+        elif month == "Jun":
             ytd_start = "{0}-06-01".format(year)
             ytd_end = "{0}-06-30".format(year)
             py_start = "{0}-06-01".format(int(year) - 1)
             py_end = "{0}-06-30".format(int(year) - 1) 
-        if quarter == "Jul":
+        elif month == "Jul":
             ytd_start = "{0}-07-01".format(year)
             ytd_end = "{0}-07-31".format(year)
             py_start = "{0}-07-01".format(int(year) - 1)
             py_end = "{0}-07-31".format(int(year) - 1) 
-        if quarter == "Aug":
+        elif month == "Aug":
             ytd_start = "{0}-08-01".format(year)
             ytd_end = "{0}-08-31".format(year)
             py_start = "{0}-08-01".format(int(year) - 1)
             py_end = "{0}-08-31".format(int(year) - 1) 
-        if quarter == "Sep":
+        elif month == "Sep":
             ytd_start = "{0}-09-01".format(year)
             ytd_end = "{0}-09-30".format(year)
             py_start = "{0}-09-01".format(int(year) - 1)
             py_end = "{0}-09-30".format(int(year) - 1) 
-        if quarter == "Oct":
+        elif month == "Oct":
             ytd_start = "{0}-10-01".format(year)
             ytd_end = "{0}-10-31".format(year)
             py_start = "{0}-10-01".format(int(year) - 1)
             py_end = "{0}-10-31".format(int(year) - 1) 
-        if quarter == "Nov":
+        elif month == "Nov":
             ytd_start = "{0}-11-01".format(year)
             ytd_end = "{0}-11-30".format(year)
             py_start = "{0}-11-01".format(int(year) - 1)
             py_end = "{0}-11-30".format(int(year) - 1) 
-        if quarter == "Dec":
+        elif month == "Dec":
             ytd_start = "{0}-12-01".format(year)
             ytd_end = "{0}-12-31".format(year)
             py_start = "{0}-12-01".format(int(year) - 1)
             py_end = "{0}-12-31".format(int(year) - 1) 
-    
     
     # prepare query
     sql_query = """/* display sales ytd to each item */
