@@ -71,7 +71,8 @@ frappe.sales_dashboard = {
         frappe.call({
             method: 'finkzeit.finkzeit.page.sales_dashboard.sales_dashboard.get_documents_for_user',
             args: {
-                'user': frappe.user.name
+                'user': frappe.user.name,
+                'filter': filter
             },
             callback: function(r) {
                 if (r.message) {
@@ -90,7 +91,8 @@ frappe.sales_dashboard = {
         frappe.call({
             method: 'finkzeit.finkzeit.page.sales_dashboard.sales_dashboard.get_service_share_for_user',
             args: {
-                'user': frappe.user.name
+                'user': frappe.user.name,
+                'filter': filter
             },
             callback: function(r) {
                 if (r.message) {

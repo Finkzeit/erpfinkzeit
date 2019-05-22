@@ -152,11 +152,14 @@ def get_cashflows(cost_center, filter=""):
     return {'cashflows': cashflows}
 
 @frappe.whitelist()
-def get_documents_for_user(user):
+def get_documents_for_user(user, filter=""):
     cost_center = frappe.get_value("User", user, "cost_center")
-    return get_documents(cost_center)
+    return get_documents(cost_center, filter)
 
-def get_documents(cost_center):
+def get_documents(cost_center, filter=""):
+    # filter to override cost-center
+    if filter != "":
+        cost_center=filter
     # open quotations
     sql_query_quotation = """SELECT
                   IFNULL(COUNT(`tabQuotation`.`name`), 0) AS `count`,
@@ -223,11 +226,14 @@ def get_documents(cost_center):
     return {'documents': documents}
 
 @frappe.whitelist()
-def get_service_share_for_user(user):
+def get_service_share_for_user(user, filter=""):
     cost_center = frappe.get_value("User", user, "cost_center")
-    return get_service_share(cost_center)
+    return get_service_share(cost_center, filter)
 
-def get_service_share(cost_center):
+def get_service_share(cost_center, filter=""):
+    # filter to override cost-center
+    if filter != "":
+        cost_center=filter
     # time spans
     py = datetime.now() - relativedelta(years=1)
     ytd = datetime.now()
