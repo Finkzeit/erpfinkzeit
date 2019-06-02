@@ -84,6 +84,9 @@ def get_cashflow_for_user(user, filter=""):
     return get_cashflows(cost_center, filter)
 
 def get_cashflows(cost_center, filter=""):
+    # filters will overwrite cost center
+    if filter and filter != "":
+        cost_center = filter
     revenue_ytd = get_cashflow_to_date(cost_center, py=False, income=True)
     revenue_py = get_cashflow_to_date(cost_center, py=True, income=True)
     if revenue_py == 0:
@@ -117,9 +120,6 @@ def get_cashflows(cost_center, filter=""):
     else:
         profit_trend = "{0:.1f}%".format(100.0 * ((profit_ytd / profit_py) - 1))
         profit_indicator = "border-danger"
-    # filters will overwrite cost center
-    if filter and filter != "":
-        cost_center = filter
     cashflows = {
         'revenue': {
             'ytd': "{0:,.0f}".format(revenue_ytd).replace(",", "'").replace(".", ",").replace("'", "."),
@@ -152,11 +152,14 @@ def get_cashflows(cost_center, filter=""):
     return {'cashflows': cashflows}
 
 @frappe.whitelist()
-def get_documents_for_user(user):
+def get_documents_for_user(user, filter=""):
     cost_center = frappe.get_value("User", user, "cost_center")
-    return get_documents(cost_center)
+    return get_documents(cost_center, filter)
 
-def get_documents(cost_center):
+def get_documents(cost_center, filter=""):
+    # filter to override cost-center
+    if filter != "":
+        cost_center=filter
     # open quotations
     sql_query_quotation = """SELECT
                   IFNULL(COUNT(`tabQuotation`.`name`), 0) AS `count`,
@@ -223,11 +226,14 @@ def get_documents(cost_center):
     return {'documents': documents}
 
 @frappe.whitelist()
-def get_service_share_for_user(user):
+def get_service_share_for_user(user, filter=""):
     cost_center = frappe.get_value("User", user, "cost_center")
-    return get_service_share(cost_center)
+    return get_service_share(cost_center, filter)
 
-def get_service_share(cost_center):
+def get_service_share(cost_center, filter=""):
+    # filter to override cost-center
+    if filter != "":
+        cost_center=filter
     # time spans
     py = datetime.now() - relativedelta(years=1)
     ytd = datetime.now()
