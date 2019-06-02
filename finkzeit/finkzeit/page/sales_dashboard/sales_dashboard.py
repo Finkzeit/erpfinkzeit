@@ -84,6 +84,9 @@ def get_cashflow_for_user(user, filter=""):
     return get_cashflows(cost_center, filter)
 
 def get_cashflows(cost_center, filter=""):
+    # filters will overwrite cost center
+    if filter and filter != "":
+        cost_center = filter
     revenue_ytd = get_cashflow_to_date(cost_center, py=False, income=True)
     revenue_py = get_cashflow_to_date(cost_center, py=True, income=True)
     if revenue_py == 0:
@@ -117,9 +120,6 @@ def get_cashflows(cost_center, filter=""):
     else:
         profit_trend = "{0:.1f}%".format(100.0 * ((profit_ytd / profit_py) - 1))
         profit_indicator = "border-danger"
-    # filters will overwrite cost center
-    if filter and filter != "":
-        cost_center = filter
     cashflows = {
         'revenue': {
             'ytd': "{0:,.0f}".format(revenue_ytd).replace(",", "'").replace(".", ",").replace("'", "."),
