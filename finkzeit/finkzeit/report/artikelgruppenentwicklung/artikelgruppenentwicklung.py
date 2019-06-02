@@ -171,7 +171,8 @@ def execute(filters=None):
            LEFT JOIN `tabSales Invoice` ON `tabSales Invoice`.`name` = `tabSales Invoice Item`.`parent`
            WHERE 
              `tabSales Invoice Item`.`item_code` = `tabItem`.`item_code` AND `tabSales Invoice`.`posting_date` >= "{py_start}" AND `tabSales Invoice`.`posting_date` <= "{py_end}") AS `revenue_py`
-        FROM `tabItem`) AS `revenue_by_item`
+        FROM `tabItem`
+	WHERE `tabItem`.`is_sales_item` = 1) AS `revenue_by_item`
         GROUP BY `item_group`;""".format(ytd_start=ytd_start, ytd_end=ytd_end, py_start=py_start, py_end=py_end)
     
     # retrieve data
