@@ -1011,10 +1011,11 @@ def deliver_sales_order(sales_order, tenant="AT"):
                 # add material items
                 if (len(item_code) > 0) and (len(item_code) == len(qty)):
                     for i in range(0, len(item_code)):
-                        items.append(get_short_item(
+                        items.append(get_item(
                             item_code=item_code[i],
                             description= "{0}".format(booking['from']['timestamp'].split(" ")[0]),
                             qty=qty[i],
+                            discount=0,
                             kst=kst,
                             income_account=income_account,
                             warehouse=warehouse,
