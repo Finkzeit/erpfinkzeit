@@ -31,6 +31,12 @@ frappe.query_reports["Artikelgruppenentwicklung"] = {
             "fieldtype": "Select",
             "options": "Jan\nFeb\nMar\nApr\nMay\nJun\nJul\nAug\nSep\nOct\nNov\nDec",
             "default": "Jan"
+        },
+        {
+            "fieldname":"cost_center",
+            "label": __("Cost center"),
+            "fieldtype": "Link",
+            "options": "Cost Center",
         }
 	]
 }
