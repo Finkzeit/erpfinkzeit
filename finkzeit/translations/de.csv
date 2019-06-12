@@ -70,3 +70,6 @@ DocType: SoftCard File,Sales Invoices,Ausgangsrechnungen
 DocType: SoftCard File,Download Export File,Export-Datei herunterladen
 DocType: Budget Overhead,Budget Overhead,Budget-Overhead
 Page: Sales Dashboard,Sales Dashboard,Verkaufskennzahlen
+DocType: Calendar Feed Settings,Calendar Feed Settings,Kalender-Feed-Einstellungen
+DocType: Calendar Feed Settings,Show public events,Öffentliche Ereignisse anzeigen
+DocType: Calendar Feed Settings,Define a calendar secret,Zugangsgeheimnis hier eingeben

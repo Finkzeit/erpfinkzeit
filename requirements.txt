@@ -1,2 +1,3 @@
 frappe
 openpyxl
+icalendar

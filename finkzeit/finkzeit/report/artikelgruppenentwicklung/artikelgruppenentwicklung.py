@@ -6,10 +6,6 @@ import frappe
 from datetime import datetime
 
 def execute(filters=None):
-	columns, data = [], []
-	return columns, data
-
-def execute(filters=None):
     columns, data = [], []
     
     # prepare columns
@@ -18,7 +14,7 @@ def execute(filters=None):
         "Total YTD:Currency:100", 
         "Total PY:Currency:100",
         "Percent:Percent:50",
-        "QTY YTD:Int:50",
+        "QTY YTD:Float:50",
         "Cost YTD:Currency:100",
         "Profit YTD:Currency:100"
     ]
@@ -39,8 +35,12 @@ def execute(filters=None):
     if filters.month:
         month = filters.month
     else:
-        mont = "Jan"
-    
+        month = "Jan"
+    if filters.cost_center:
+        cost_center = filters.cost_center
+    else:
+        cost_center = "%"
+	
     # determine time range
     if "Year" in type:
         ytd_start = "{0}-01-01".format(year)
@@ -151,29 +151,29 @@ def execute(filters=None):
            FROM `tabSales Invoice Item` 
            LEFT JOIN `tabSales Invoice` ON `tabSales Invoice`.`name` = `tabSales Invoice Item`.`parent`
            WHERE 
-             `tabSales Invoice Item`.`item_code` = `tabItem`.`item_code` AND `tabSales Invoice`.`posting_date` >= "{ytd_start}" AND `tabSales Invoice`.`posting_date` <= "{ytd_end}") AS `revenue_ytd`,
+             `tabSales Invoice`.`docstatus` = 1 AND `tabSales Invoice Item`.`item_code` = `tabItem`.`item_code` AND `tabSales Invoice`.`posting_date` >= "{ytd_start}" AND `tabSales Invoice`.`posting_date` <= "{ytd_end}" AND IFNULL(`tabSales Invoice`.`kostenstelle`, "") LIKE '{cost_center}') AS `revenue_ytd`,
           (SELECT 
              SUM(`qty`)
            FROM `tabSales Invoice Item` 
            LEFT JOIN `tabSales Invoice` ON `tabSales Invoice`.`name` = `tabSales Invoice Item`.`parent`
            WHERE 
-             `tabSales Invoice Item`.`item_code` = `tabItem`.`item_code` AND `tabSales Invoice`.`posting_date` >= "{ytd_start}" AND `tabSales Invoice`.`posting_date` <= "{ytd_end}") AS `qty_ytd`,
+             `tabSales Invoice`.`docstatus` = 1 AND `tabSales Invoice Item`.`item_code` = `tabItem`.`item_code` AND `tabSales Invoice`.`posting_date` >= "{ytd_start}" AND `tabSales Invoice`.`posting_date` <= "{ytd_end}" AND IFNULL(`tabSales Invoice`.`kostenstelle`, "") LIKE '{cost_center}') AS `qty_ytd`,
           (SELECT 
              SUM(`qty`) * IFNULL(`thisItem`.`last_purchase_rate`, 0)
            FROM `tabSales Invoice Item` 
            LEFT JOIN `tabSales Invoice` ON `tabSales Invoice`.`name` = `tabSales Invoice Item`.`parent`
            LEFT JOIN `tabItem` AS `thisItem` ON `thisItem`.`item_code` = `tabSales Invoice Item`.`item_code`
            WHERE 
-             `tabSales Invoice Item`.`item_code` = `tabItem`.`item_code` AND `tabSales Invoice`.`posting_date` >= "{ytd_start}" AND `tabSales Invoice`.`posting_date` <= "{ytd_end}") AS `cost_ytd`,
+             `tabSales Invoice`.`docstatus` = 1 AND `tabSales Invoice Item`.`item_code` = `tabItem`.`item_code` AND `tabSales Invoice`.`posting_date` >= "{ytd_start}" AND `tabSales Invoice`.`posting_date` <= "{ytd_end}" AND IFNULL(`tabSales Invoice`.`kostenstelle`, "") LIKE '{cost_center}') AS `cost_ytd`,
           (SELECT 
              SUM(`net_amount`)
            FROM `tabSales Invoice Item` 
            LEFT JOIN `tabSales Invoice` ON `tabSales Invoice`.`name` = `tabSales Invoice Item`.`parent`
            WHERE 
-             `tabSales Invoice Item`.`item_code` = `tabItem`.`item_code` AND `tabSales Invoice`.`posting_date` >= "{py_start}" AND `tabSales Invoice`.`posting_date` <= "{py_end}") AS `revenue_py`
+             `tabSales Invoice`.`docstatus` = 1 AND `tabSales Invoice Item`.`item_code` = `tabItem`.`item_code` AND `tabSales Invoice`.`posting_date` >= "{py_start}" AND `tabSales Invoice`.`posting_date` <= "{py_end}" AND IFNULL(`tabSales Invoice`.`kostenstelle`, "") LIKE '{cost_center}') AS `revenue_py`
         FROM `tabItem`
 	WHERE `tabItem`.`is_sales_item` = 1) AS `revenue_by_item`
-        GROUP BY `item_group`;""".format(ytd_start=ytd_start, ytd_end=ytd_end, py_start=py_start, py_end=py_end)
+        GROUP BY `item_group`;""".format(ytd_start=ytd_start, ytd_end=ytd_end, py_start=py_start, py_end=py_end, cost_center=cost_center)
     
     # retrieve data
     data = frappe.db.sql(sql_query, as_list = True)

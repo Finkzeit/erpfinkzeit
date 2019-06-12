@@ -134,7 +134,13 @@ def get_data():
                        "name": "SoftCard File",
                        "label": _("SoftCard File"),
                        "description": _("SoftCard File")
-                   }			   
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Calendar Feed Settings",
+                       "label": _("Calendar Feed Settings"),
+                       "description": _("Calendar Feed Settings")
+                   }
             ]
         }
     ]
