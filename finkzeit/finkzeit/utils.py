@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2018-2019, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 #
 
 # imports
 from __future__ import unicode_literals
-import frappe
+import frappe, os
 from frappe import _
+from PyPDF2 import PdfFileWriter
 
 @frappe.whitelist()
 def run_calculation(quotation, buying_pricelist, currency="EUR"):
@@ -64,4 +65,16 @@ def update_primary():
 @frappe.whitelist()
 def wall(message):
     frappe.publish_realtime(event='msgprint',message=message)
+    return
+
+@frappe.whitelist()
+def print_to_file(doctype, docname, print_format, dest):
+    output = PdfFileWriter()
+    output = frappe.get_print(doctype, docname, print_format, as_pdf=True, output=output)
+    if dest != None:
+        destdir = os.path.dirname(dest)
+        if destdir != '' and not os.path.isdir(destdir):
+            os.makedirs(destdir)
+        with open(dest, "wb") as w:
+            output.write(w)
     return
