@@ -136,7 +136,13 @@ def enqueue_invoice_cycle():
         **kwargs)
     return
 
-def create_invoices():
+"""
+Perform an invoice cycle
+
+:param month (optional): month to process invoices on (1..12)
+:return: returns nothing
+"""
+def create_invoices(month=None):
     # create invoices
     sql_query = ("""SELECT `name` 
         FROM `tabLicence` 
@@ -147,7 +153,7 @@ def create_invoices():
     bind_source = None
     # loop through enabled licences
     for licence in enabled_licences:
-        new_sinvs = process_licence(licence['name'])
+        new_sinvs = process_licence(licence['name'], month)
         if new_sinvs:
             # loop through all processed sales invoices
             for sinv in new_sinvs:
@@ -169,12 +175,21 @@ def create_invoices():
     log.insert(ignore_permissions=True)
     return
 
+"""
+Create invoice from licence (if applicable)
+
+:param month (optional): month to process invoices on (1..12)
+:return: returns list of sales invoices or nothing
+"""
 @frappe.whitelist()
-def process_licence(licence_name):
+def process_licence(licence_name, month=None):
     licence = frappe.get_doc('Licence', licence_name)
     print("Processing licence {0}".format(licence.name))
     # check if licence is due according to invoices_per_year
-    current_month = datetime.now().month
+    if not month:
+        current_month = datetime.now().month
+    else:
+        current_month = month
     period = ""
     multiplier = 1
     if licence.invoices_per_year == 12:
@@ -257,7 +272,7 @@ def process_licence(licence_name):
     return sinv
 
 def month_in_words(month):
-    # translation does not work (started from de user)
+    # translation does not work (started from DE user)
     switcher = {
         1: _("Jänner"),
         2: _("Februar"),
