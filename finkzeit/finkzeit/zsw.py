@@ -462,14 +462,15 @@ def compress_level_e(level_e_array):
         
 """ interaction mechanisms """
 @frappe.whitelist()
-def update_customer(customer, customer_name, kst, zsw_reference=None, active=True, tenant="AT", technician=None):
+def update_customer(customer, customer_name, kst, zsw_reference=None, active=True, tenant="AT", technician=None, short_name=None):
     create_update_customer(
         customer=customer,
         customer_name=customer_name,
         active=active,
         kst=kst,
         tenant=tenant,
-        technician=technician
+        technician=technician,
+        short_name=short_name
     )
     return
 
