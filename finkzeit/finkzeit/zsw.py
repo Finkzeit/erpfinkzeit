@@ -324,7 +324,7 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
         # customer exists --> update
         print("Customer found, update")
         wsLevelEArray[0]["action"] = 3
-        wsLevelEArray[0]["wsLevel"]["text"] = customer_name
+        wsLevelEArray[0]["wsLevel"]["text"] = "{0}, {1}".format(customer_name, city)
         wsLevelEArray[0]["wsLevel"]["active"] = active
         # make sure extension key exists
         if not wsLevelEArray[0]["extensions"]:
