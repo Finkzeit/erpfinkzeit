@@ -667,9 +667,13 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                         booking_id = booking['fromBookingID']
                         if not override_duration:
                             duration = round((float(booking['duration']) / 60.0) + 0.04, 1) # in h
+                        try: # hotfix to catch undefined person as observed in August 2019
+                            person = employees[booking['person']]
+                        except:
+                            person = "-"
                         description = "{0} {1}<br>{2}".format(
                             booking['from']['timestamp'].split(" ")[0],
-                            employees[booking['person']],
+                            person,
                             booking['notice'] or "")
                         if customer_contact:
                             description += "<br>{0}".format(customer_contact)
