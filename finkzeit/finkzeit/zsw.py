@@ -1074,3 +1074,49 @@ def maintain_projects(tenant="AT"):
             print("Closing project {0}".format(sales_order['name']))
             update_project(sales_order=sales_order['name'], customer=record.customer, customer_name=record.customer_name, tenant=tenant, active=False)
     return
+
+def debug_bookings(start_date, end_date):
+    start_time = int(datetime.strptime(start_date, "%Y-%m-%d").strftime("%s"))
+    end_time = int(datetime.strptime(end_date, "%Y-%m-%d").strftime("%s"))
+    print("From {0} to {1} ({2} .. {3})".format(start_date, end_date, start_time, end_time))
+    print("Reading bookings...")
+    bookings = get_bookings(start_time, end_time)
+    print("Got {0} bookings. Collecting customers...".format(len(bookings)))
+    # collect customers
+    customers = []
+    for booking in bookings:
+        for level in booking['levels']['WSLevelIdentification']:
+            if level['levelID'] == 1:
+                customer = level['code']
+                if customer not in customers:
+                    customers.append(customer)
+                    #print("Found customer: ({0})".format(customer))
+    print("Has {0} customers with bookings. Checking bookings...".format(len(customers)))
+    # loop through all bookings
+    for booking in bookings:
+        override_duration = False
+        try:
+            for level in booking['levels']['WSLevelIdentification']:
+                if level['levelID'] == 1:
+                    customer = level['code']
+                if level['levelID'] == 2:
+                    # service type, e.g. "T01" (remote), "T03" (onsite), "T02" (project remote), "T04" (project onsite)
+                    service_type = level['code']
+                if level['levelID'] == 3:
+                    # invoicing_type, e.g. "J": invoice, "N"/"W": free of charge, "P": flat rate
+                    invoice_type = level['code']
+                if level['levelID'] == 4:
+                    # link to project (ZSW) sales order (ERP), e.g. "AB-00001" or "CHAB-00000"
+                    sales_order_reference = level['code']
+        except Exception as err:
+            print("...no levels... ({0})".format(err))
+        # add item to list
+        booking_id = booking['fromBookingID']
+        duration = round((float(booking['duration']) / 60.0) + 0.04, 1) # in h, ignore override
+        person = booking['person']
+        timestamp = booking['from']['timestamp']
+        print("{booking_id} ({timestamp}): customer {customer}, service type {service_type}, invoice {invoice_type}, duration {duration} h, by {person}".format(
+            booking_id=booking_id, customer=customer, service_type=service_type, invoice_type=invoice_type, duration=duration, person=person, 
+            timestamp=timestamp))
+
+    return
