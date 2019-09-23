@@ -14,7 +14,7 @@ def get_data():
                        "description": _("Sales Dashboard")
                    },
                    {
-					   "type": "report",
+                       "type": "report",
                        "doctype": "GL Entry",
                        "name": "Deckungsbeitrag",
                        "label": _("Deckungsbeitrag"),
@@ -50,7 +50,7 @@ def get_data():
                        "name": "Retailer",
                        "label": _("Retailer"),
                        "description": _("Retailer")
-                   }                   
+                   }
             ]
         },
         {
@@ -74,7 +74,13 @@ def get_data():
                        "name": "Wartungsvertrag",
                        "label": _("Wartungsvertrag"),
                        "description": _("Wartungsvertrag")
-                   }				   
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Parkordnung",
+                       "label": _("Parkordnung"),
+                       "description": _("Parkordnung")
+                   }
             ]
         },
         {
