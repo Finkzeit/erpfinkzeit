@@ -29,7 +29,7 @@ function check_period(date) {
         },
         async: false,
         callback: function (response) {
-            if (!response.message) {
+            if (response.message.length === 0) {
                 frappe.msgprint( __("Buchhaltungsperiode gesperrt.") );
                 frappe.validated = false;
             }
