@@ -132,3 +132,8 @@ scheduler_events = {
 # Fixtures (to import DocType customisations)
 # --------
 fixtures = ["Custom Field"]
+
+# Override PDF settings (smart-shrinking)
+from finkzeit.finkzeit.pdf import finkzeit_prepare_options
+from frappe.utils.pdf import prepare_options
+prepare_options = finkzeit_prepare_options
