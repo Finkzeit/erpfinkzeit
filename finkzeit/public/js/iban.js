@@ -224,7 +224,7 @@ var ctcnt = ilbced.length/8;
 // rearange country codes and related info
 var ilbc = new Array ();
 for (var j = 0; j < 8; j++) {
-    for (i = 0; i < ctcnt; i++) {
+    for (var i = 0; i < ctcnt; i++) {
         ilbc[ilbc.length]=ilbced[j+i*8];  }}
         
 // the magic core routine
