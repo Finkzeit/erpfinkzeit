@@ -108,7 +108,7 @@ frappe.sales_dashboard = {
         });
     },
     make_chart: function(cashflows) {
-        const chart = new frappeChart.Chart( "#main-chart", { 
+        const chart = new frappe.Chart( "#main-chart", { 
             data: {
                 labels: ["Jan", "Feb", "Mär", "Apr",
                     "Mai", "Jun", "Jul", "Aug",

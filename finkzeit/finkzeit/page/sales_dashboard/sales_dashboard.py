@@ -167,7 +167,7 @@ def get_documents(cost_center, filter=""):
                 FROM `tabQuotation`
                 LEFT JOIN `tabCustomer` ON `tabQuotation`.`customer` = `tabCustomer`.`name`
                 WHERE
-                  `tabQuotation`.`status` = 'Submitted'
+                  `tabQuotation`.`status` = 'Open'
                   AND `tabQuotation`.`docstatus` = 1
                   AND `tabCustomer`.`kostenstelle` LIKE '{cost_center}';""".format(cost_center=cost_center)
     try:
