@@ -21,7 +21,7 @@ frappe.sales_dashboard = {
         var data = "";
         $(frappe.render_template('sales_dashboard', data)).appendTo(me.body);
         // enable KST-switcher for System Manager
-        if (frappe.user.has_role("System Manager")) {
+        if ((frappe.user.has_role("System Manager")) || (frappe.user.has_role("Verwaltungsrat"))) {
             var kst_switcher = document.getElementById("kst-switcher");
             if (kst_switcher) {
                 kst_switcher.style.visibility = "visible";
