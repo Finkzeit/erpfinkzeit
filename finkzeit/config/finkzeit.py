@@ -148,5 +148,17 @@ def get_data():
                        "description": _("Calendar Feed Settings")
                    }
             ]
+        },
+        {
+            "label": _("Reports"),
+            "icon": "octicon octicon-repo",
+            "items": [
+                   {
+                       "type": "doctype",
+                       "name": "Report",
+                       "label": _("Report"),
+                       "description": _("Report")
+                   }
+            ]
         }
     ]
