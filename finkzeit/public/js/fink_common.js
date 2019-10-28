@@ -2,7 +2,8 @@
 //console.log("Welcome to Finkzeit");
 
 // mark navbar in specific colour
-window.onload = function () {
+window.onload = async function () {
+	await sleep(1000);
 	var navbars = document.getElementsByClassName("navbar");
 	if (navbars.length > 0) {
 		if (window.location.hostname.includes("erp-test")) {
@@ -35,4 +36,8 @@ function check_period(date) {
             }
         }
     });
+}
+
+function sleep(milliseconds) {
+   return new Promise(resolve => setTimeout(resolve, milliseconds));
 }
