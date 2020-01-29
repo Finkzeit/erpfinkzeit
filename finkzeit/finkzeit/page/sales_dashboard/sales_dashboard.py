@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2017-2019, Fink Zeitsysteme, libracore and contributors
+# Copyright (c) 2017-2020, Fink Zeitsysteme, libracore and contributors
 # License: AGPL v3. See LICENCE
 
 from __future__ import unicode_literals
@@ -9,20 +9,20 @@ from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from calendar import monthrange
 
-def get_cashflow_to_date(cost_center, py=False, income=True):
+def get_cashflow_to_date(cost_center, date, py=False, income=True):
     if py:
-        d = datetime.now() - relativedelta(years=1)
+        d = date - relativedelta(years=1)
     else:
-        d = datetime.now()
+        d = date
     return get_cashflow("{y}-01-01".format(y=d.year), 
         "{y}-{m}-{d}".format(y=d.year, m=d.month, d=d.day),
         cost_center, income)
                 
-def get_cashflow_per_month(cost_center, py=False, income=True):
+def get_cashflow_per_month(cost_center, date, py=False, income=True):
     if py:
-        d = datetime.now() - relativedelta(years=1)
+        d = date - relativedelta(years=1)
     else:
-        d = datetime.now()
+        d = date
     x, feb = monthrange(d.year,2)
     cashflows = [
         get_cashflow("{y}-01-01".format(y=d.year), "{y}-01-31".format(y=d.year), cost_center, income),
@@ -79,16 +79,23 @@ def get_cashflow(from_date, to_date, cost_center, income=True):
         return ((-1) * cashflow) + costs_overhead
 
 @frappe.whitelist()
-def get_cashflow_for_user(user, filter=""):
+def get_cashflow_for_user(user, filter="", date=""):
+    try:
+        date = datetime.strptime(date, "%Y-%m-%d")      # convert string to date
+    except:
+        date = datetime.now()
+    frappe.msgprint("{0}".format(date))
     cost_center = frappe.get_value("User", user, "cost_center")
-    return get_cashflows(cost_center, filter)
+    return get_cashflows(cost_center, filter, date)
 
-def get_cashflows(cost_center, filter=""):
+def get_cashflows(cost_center, filter="", date=None):
     # filters will overwrite cost center
     if filter and filter != "":
         cost_center = filter
-    revenue_ytd = get_cashflow_to_date(cost_center, py=False, income=True)
-    revenue_py = get_cashflow_to_date(cost_center, py=True, income=True)
+    if not date:
+        date = datetime.now()
+    revenue_ytd = get_cashflow_to_date(cost_center, date, py=False, income=True)
+    revenue_py = get_cashflow_to_date(cost_center, date, py=True, income=True)
     if revenue_py == 0:
         revenue_trend = "n/a"
         revenue_indicator = ""
@@ -98,8 +105,8 @@ def get_cashflows(cost_center, filter=""):
     else:
         revenue_trend = "{0:.1f}%".format(100.0 * ((revenue_ytd / revenue_py) - 1))
         revenue_indicator = "border-danger"
-    expenses_ytd = get_cashflow_to_date(cost_center, py=False, income=False)
-    expenses_py = get_cashflow_to_date(cost_center, py=True, income=False)
+    expenses_ytd = get_cashflow_to_date(cost_center, date, py=False, income=False)
+    expenses_py = get_cashflow_to_date(cost_center, date, py=True, income=False)
     if expenses_py == 0:
         expenses_trend = "n/a"
         expenses_indicator = ""
@@ -142,10 +149,10 @@ def get_cashflows(cost_center, filter=""):
             'indicator': profit_indicator,
             'title': _("Profit")
         },
-        'monthly_revenue_ytd': get_cashflow_per_month(cost_center, py=False, income=True),
-        'monthly_revenue_py': get_cashflow_per_month(cost_center, py=True, income=True),
-        'monthly_expenses_ytd': get_cashflow_per_month(cost_center, py=False, income=False),
-        'monthly_expenses_py': get_cashflow_per_month(cost_center, py=True, income=False),
+        'monthly_revenue_ytd': get_cashflow_per_month(cost_center, date, py=False, income=True),
+        'monthly_revenue_py': get_cashflow_per_month(cost_center, date, py=True, income=True),
+        'monthly_expenses_ytd': get_cashflow_per_month(cost_center, date, py=False, income=False),
+        'monthly_expenses_py': get_cashflow_per_month(cost_center, date, py=True, income=False),
         'cost_center': cost_center
     }
     print("{0}".format(cashflows))
@@ -153,8 +160,9 @@ def get_cashflows(cost_center, filter=""):
 
 @frappe.whitelist()
 def get_documents_for_user(user, filter=""):
+    # note: not date, only current document overview based on status
     cost_center = frappe.get_value("User", user, "cost_center")
-    return get_documents(cost_center, filter)
+    return get_documents(cost_center, filter, date)
 
 def get_documents(cost_center, filter=""):
     # filter to override cost-center
@@ -226,17 +234,23 @@ def get_documents(cost_center, filter=""):
     return {'documents': documents}
 
 @frappe.whitelist()
-def get_service_share_for_user(user, filter=""):
+def get_service_share_for_user(user, filter="", date=""):
     cost_center = frappe.get_value("User", user, "cost_center")
-    return get_service_share(cost_center, filter)
+    try:
+        date = datetime.strptime(date, "%Y-%m-%d")      # convert string to date
+    except:
+        date = datetime.now()
+    return get_service_share(cost_center, filter, date)
 
-def get_service_share(cost_center, filter=""):
+def get_service_share(cost_center, filter="", date=None):
     # filter to override cost-center
     if filter != "":
         cost_center=filter
+    if not date:
+        date = datetime.now()
     # time spans
-    py = datetime.now() - relativedelta(years=1)
-    ytd = datetime.now()
+    py = date - relativedelta(years=1)
+    ytd = date
     # service shares
     ytd_service = get_share("{y}-01-01".format(y=ytd.year),
         "{y}-{m}-{d}".format(y=ytd.year, m=ytd.month, d=ytd.day), cost_center, service=True)

@@ -31,17 +31,24 @@ frappe.sales_dashboard = {
                     frappe.sales_dashboard.run(kst_switcher.value);
                 });
             }
-            
         }
-        
+        // prepare date field
+        var date_switcher = document.getElementById("datePicker");
+        date_switcher.valueAsDate = new Date();
+        date_switcher.addEventListener('change', function() {
+            console.log("Travel in time to " + date_switcher.value);
+            frappe.sales_dashboard.run(kst_switcher.value);
+        });
     },
     run: function(filter) {
+        var date = document.getElementById('datePicker').value;
         // get cashflows
         frappe.call({
             method: 'finkzeit.finkzeit.page.sales_dashboard.sales_dashboard.get_cashflow_for_user',
             args: {
                 'user': frappe.user.name,
-                'filter': filter
+                'filter': filter,
+                'date': date
             },
             callback: function(r) {
                 if (r.message) {
@@ -72,7 +79,8 @@ frappe.sales_dashboard = {
             method: 'finkzeit.finkzeit.page.sales_dashboard.sales_dashboard.get_documents_for_user',
             args: {
                 'user': frappe.user.name,
-                'filter': filter
+                'filter': filter,
+                'date': date
             },
             callback: function(r) {
                 if (r.message) {
@@ -92,7 +100,8 @@ frappe.sales_dashboard = {
             method: 'finkzeit.finkzeit.page.sales_dashboard.sales_dashboard.get_service_share_for_user',
             args: {
                 'user': frappe.user.name,
-                'filter': filter
+                'filter': filter,
+                'date': date
             },
             callback: function(r) {
                 if (r.message) {
