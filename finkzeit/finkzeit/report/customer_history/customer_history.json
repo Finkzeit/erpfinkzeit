@@ -1,0 +1,38 @@
+{
+ "add_total_row": 0,
+ "creation": "2019-11-11 12:06:13.740444",
+ "disable_prepared_report": 0,
+ "disabled": 0,
+ "docstatus": 0,
+ "doctype": "Report",
+ "idx": 0,
+ "is_standard": "Yes",
+ "letter_head": "Standard",
+ "modified": "2019-11-11 12:06:13.740444",
+ "modified_by": "Administrator",
+ "module": "Finkzeit",
+ "name": "Customer History",
+ "owner": "Administrator",
+ "prepared_report": 0,
+ "query": "",
+ "ref_doctype": "Sales Invoice",
+ "report_name": "Customer History",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Administration"
+  },
+  {
+   "role": "All"
+  },
+  {
+   "role": "Mitarbeiter Administration"
+  },
+  {
+   "role": "Verwaltungsrat"
+  }
+ ]
+}

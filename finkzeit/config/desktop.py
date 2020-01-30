@@ -8,7 +8,7 @@ def get_data():
 			"module_name": "Finkzeit",
 			"color": "#f1f1f1",
 			"reverse": 1,
-			"icon": "octicon octicon-clock",
+			"icon": "icon finkzeit-blue",
 			"type": "module",
 			"label": _("Finkzeit")
 		}
