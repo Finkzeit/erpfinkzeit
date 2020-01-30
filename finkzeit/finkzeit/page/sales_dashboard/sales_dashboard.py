@@ -42,14 +42,14 @@ def get_cashflow_per_month(cost_center, date, py=False, income=True):
                   
 def get_cashflow(from_date, to_date, cost_center, income=True):
     if income:
-        t = "Income Account"
+        t = "('Income Account')"
     else:
-        t = "Expense Account"
-        # overhead costs    
+        t = "('Expense Account', 'Stock Adjustment')"
+        # overhead costs
         sql_query_costs_overhead = """SELECT 
                       ROUND((DATEDIFF('{to_date}', '{from_date}') / 30.42) * IFNULL(SUM(`tabBudget Overhead`.`rate_per_month`), 0), 0) AS `costs_overhead`
                     FROM `tabBudget Overhead`
-                    WHERE 
+                    WHERE
                       `tabBudget Overhead`.`docstatus` = 1
                       /* AND `tabBudget Overhead`.`group` LIKE '%Sales%' */
                       AND `tabBudget Overhead`.`cost_center` LIKE '{cost_center}'
@@ -65,7 +65,7 @@ def get_cashflow(from_date, to_date, cost_center, income=True):
             JOIN `tabAccount` ON `tabGL Entry`.`account` = `tabAccount`.`name`
             WHERE 
               `tabGL Entry`.`docstatus` = 1
-              AND `tabAccount`.`account_type` = '{t}'
+              AND `tabAccount`.`account_type` IN {t}
               AND `tabGL Entry`.`cost_center` LIKE '{cost_center}'
               AND `tabGL Entry`.`posting_date` >= '{from_date}'
               AND `tabGL Entry`.`posting_date` <= '{to_date}'
