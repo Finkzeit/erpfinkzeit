@@ -68,7 +68,8 @@ def get_cashflow(from_date, to_date, cost_center, income=True):
               AND `tabAccount`.`account_type` = '{t}'
               AND `tabGL Entry`.`cost_center` LIKE '{cost_center}'
               AND `tabGL Entry`.`posting_date` >= '{from_date}'
-              AND `tabGL Entry`.`posting_date` <= '{to_date}';""".format(t=t, cost_center=cost_center, from_date=from_date, to_date=to_date)
+              AND `tabGL Entry`.`posting_date` <= '{to_date}'
+              AND `tabGL Entry`.`voucher_type` != 'Period Closing Voucher';""".format(t=t, cost_center=cost_center, from_date=from_date, to_date=to_date)
     try:
         cashflow = frappe.db.sql(sql_query, as_dict = True)[0]['cashflow']
     except:
@@ -296,7 +297,8 @@ def get_share(from_date, to_date, cost_center, service=True):
               AND `tabAccount`.`account_number` IN ({service_mask})
               AND `tabGL Entry`.`cost_center` LIKE '{cost_center}'
               AND `tabGL Entry`.`posting_date` >= '{from_date}'
-              AND `tabGL Entry`.`posting_date` <= '{to_date}';""".format(
+              AND `tabGL Entry`.`posting_date` <= '{to_date}'
+              AND `tabGL Entry`.`voucher_type` != 'Period Closing Voucher';""".format(
         cost_center=cost_center, from_date=from_date, to_date=to_date, service_mask=service_mask)
     try:
         share = frappe.db.sql(sql_query, as_dict = True)[0]['share']
