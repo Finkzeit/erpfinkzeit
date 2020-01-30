@@ -162,7 +162,7 @@ def get_cashflows(cost_center, filter="", date=None):
 def get_documents_for_user(user, filter=""):
     # note: not date, only current document overview based on status
     cost_center = frappe.get_value("User", user, "cost_center")
-    return get_documents(cost_center, filter, date)
+    return get_documents(cost_center, filter)
 
 def get_documents(cost_center, filter=""):
     # filter to override cost-center
