@@ -84,7 +84,6 @@ def get_cashflow_for_user(user, filter="", date=""):
         date = datetime.strptime(date, "%Y-%m-%d")      # convert string to date
     except:
         date = datetime.now()
-    frappe.msgprint("{0}".format(date))
     cost_center = frappe.get_value("User", user, "cost_center")
     return get_cashflows(cost_center, filter, date)
 
