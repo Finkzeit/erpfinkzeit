@@ -10,14 +10,22 @@ from dateutil.relativedelta import relativedelta
 from calendar import monthrange
 
 def get_cashflow_to_date(cost_center, date, py=False, income=True):
-    if py:
-        d = date - relativedelta(years=1)
+    # use rolling date for KPI values
+    now = datetime.now()
+    if now.year == date.year:
+        # current year, use YTD
+        ytd = datetime(date.year, now.month, now.day)
     else:
-        d = date
+        # previous year, use full year
+        ytd = date
+    if py:
+        d = ytd - relativedelta(years=1)
+    else:
+        d = ytd
     return get_cashflow("{y}-01-01".format(y=d.year), 
         "{y}-{m}-{d}".format(y=d.year, m=d.month, d=d.day),
         cost_center, income)
-                
+
 def get_cashflow_per_month(cost_center, date, py=False, income=True):
     if py:
         d = date - relativedelta(years=1)
