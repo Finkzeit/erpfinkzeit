@@ -58,6 +58,7 @@ frappe.sales_dashboard = {
         }); 
     },
     run: function(filter, date) {
+        frappe.sales_dashboard.start_wait();
         // get cashflows
         frappe.call({
             method: 'finkzeit.finkzeit.page.sales_dashboard.sales_dashboard.get_cashflow_for_user',
@@ -86,7 +87,8 @@ frappe.sales_dashboard = {
                     // control: show cost center
                     var kst_container = document.getElementById("kst-placeholder");
                     kst_container.innerHTML = r.message.cashflows.cost_center;
-                } 
+                }
+                frappe.sales_dashboard.end_wait();
             }
         }); 
 
@@ -172,5 +174,11 @@ frappe.sales_dashboard = {
         });
         
         setTimeout(function() { chart.draw(!0)}, 1);
-    }
+    },
+    start_wait: function() {
+        document.getElementById("waitingScreen").classList.remove("hidden");
+    },
+    end_wait: function() {
+        document.getElementById("waitingScreen").classList.add("hidden");
+    },
 }
