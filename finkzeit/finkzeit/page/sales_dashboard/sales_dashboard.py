@@ -305,3 +305,12 @@ def get_share(from_date, to_date, cost_center, service=True):
     except:
         share = 0.0
     return share
+
+@frappe.whitelist()
+def get_fiscal_years():
+    sql_query = """SELECT `name` FROM `tabFiscal Year` WHERE `disabled` = 0 ORDER BY `name` DESC;"""
+    fiscal_years = frappe.db.sql(sql_query, as_dict=True)
+    fy = []
+    for fiscal_year in fiscal_years:
+        fy.append(fiscal_year['name'])
+    return {'fiscal_years': fy}

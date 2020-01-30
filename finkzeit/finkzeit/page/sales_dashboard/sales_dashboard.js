@@ -6,7 +6,7 @@ frappe.pages['sales_dashboard'].on_page_load = function(wrapper) {
     });
 
     frappe.sales_dashboard.make(page);
-    frappe.sales_dashboard.run("");
+    frappe.sales_dashboard.run("", new Date().getFullYear() + "-12-31");
     
     // add the application reference
     frappe.breadcrumbs.add("Finkzeit");
@@ -28,20 +28,36 @@ frappe.sales_dashboard = {
                 // attach change handler
                 kst_switcher.addEventListener('change', function() {
                     console.log("Loading " + kst_switcher.value);
-                    frappe.sales_dashboard.run(kst_switcher.value);
+                    frappe.sales_dashboard.run(kst_switcher.value, fiscal_year_switcher.value + "-12-31");
                 });
             }
         }
-        // prepare date field
-        var date_switcher = document.getElementById("datePicker");
-        date_switcher.valueAsDate = new Date();
-        date_switcher.addEventListener('change', function() {
-            console.log("Travel in time to " + date_switcher.value);
-            frappe.sales_dashboard.run(kst_switcher.value);
-        });
+        // add fiscal year switcher
+        var fiscal_year_switcher = document.getElementById("fiscal_year");
+        if (fiscal_year_switcher) {
+            // attach change handler
+            fiscal_year_switcher.addEventListener('change', function() {
+                console.log("Loading " + fiscal_year_switcher.value);
+                frappe.sales_dashboard.run(kst_switcher.value, fiscal_year_switcher.value + "-12-31");
+            });
+        }
+        // populate fiscal years
+        frappe.call({
+            method: 'finkzeit.finkzeit.page.sales_dashboard.sales_dashboard.get_fiscal_years',
+            callback: function(r) {
+                if (r.message) {
+                    var select = document.getElementById("fiscal_year");
+                    for (var i = 0; i < r.message.fiscal_years.length; i++) {
+                        var opt = document.createElement("option");
+                        opt.value = r.message.fiscal_years[i];
+                        opt.innerHTML = r.message.fiscal_years[i];
+                        select.appendChild(opt);
+                    }
+                } 
+            }
+        }); 
     },
-    run: function(filter) {
-        var date = document.getElementById('datePicker').value;
+    run: function(filter, date) {
         // get cashflows
         frappe.call({
             method: 'finkzeit.finkzeit.page.sales_dashboard.sales_dashboard.get_cashflow_for_user',
