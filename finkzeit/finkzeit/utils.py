@@ -8,6 +8,7 @@ from __future__ import unicode_literals
 import frappe, os
 from frappe import _
 from PyPDF2 import PdfFileWriter
+from frappe.utils.background_jobs import enqueue
 
 @frappe.whitelist()
 def run_calculation(quotation, buying_pricelist, currency="EUR"):
@@ -77,4 +78,27 @@ def print_to_file(doctype, docname, print_format, dest):
             os.makedirs(destdir)
         with open(dest, "wb") as w:
             output.write(w)
+    return
+
+@frappe.whitelist()
+def enqueue_submit_direct_debit_proposal(direct_debit_proposal):
+    # enqueue submitting (potential long worker)
+    kwargs={
+        'direct_debit_proposal': direct_debit_proposal
+    }
+
+    enqueue("finkzeit.finkzeit.utils.submit_direct_debit_proposal",
+        queue='long',
+        timeout=15000,
+        **kwargs)
+    return
+    
+def submit_direct_debit_proposal(direct_debit_proposal):
+    ddp = frappe.get_doc("Direct Debit Proposal", direct_debit_proposal)
+    try:
+        ddp.submit()
+        frappe.db.commit()
+    except Exception as err:
+        frappe.log_error("{0}".format(err), 
+            "submit_debit_direct_proposal {0}".format(direct_debit_proposal))
     return
