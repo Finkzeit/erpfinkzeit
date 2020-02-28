@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018-2019, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2018-2020, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 #
 
 # imports
 import frappe
 from frappe.utils.pdf import read_options_from_html
+from datetime import datetime
+from frappe.utils.file_manager import save_file
 
 # rewritten prepare options function
 def finkzeit_prepare_options(html, options):
@@ -38,3 +40,24 @@ def finkzeit_prepare_options(html, options):
 		options['page-size'] = frappe.db.get_single_value("Print Settings", "pdf_page_size") or "A4"
 	frappe.log_error("Shrinking removed")
 	return html, options
+
+# async background pdf creationg
+@frappe.whitelist()
+def enqueue_create_pdf(doctype, docname, printformat):
+    frappe.enqueue(method=create_pdf, queue='long', timeout=30,
+        **{'doctype': doctype, 'docname': docname, 'printformat': printformat})
+    return
+
+#background printing to attachment
+def create_pdf(doctype, docname, printformat):
+    doc = frappe.get_doc(doctype, docname)
+    # create html
+    html = frappe.get_print(doctype, docname, print_format=printformat)
+    # create pdf
+    pdf = frappe.utils.pdf.get_pdf(html)
+    # save and attach pdf
+    now = datetime.now()
+    ts = "{0:04d}-{1:02d}-{2:02d}".format(now.year, now.month, now.day)
+    file_name = "{0}_{1}.pdf".format(ts, docname.replace(" ", "_").replace("/", "_"))
+    save_file(file_name, pdf, doctype, docname, is_private=1)
+    return
