@@ -50,7 +50,6 @@ def enqueue_create_pdf(doctype, docname, printformat):
 
 #background printing to attachment
 def create_pdf(doctype, docname, printformat):
-    doc = frappe.get_doc(doctype, docname)
     # create html
     html = frappe.get_print(doctype, docname, print_format=printformat)
     # create pdf

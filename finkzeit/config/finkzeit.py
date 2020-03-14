@@ -122,6 +122,18 @@ def get_data():
                        "name": "bank_wizard",
                        "label": _("Bank Wizard"),
                        "description": _("Bank Wizard")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Rechtliches Dokument",
+                       "label": _("Rechtliches Dokument"),
+                       "description": _("Rechtliches Dokument")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Dokumententyp",
+                       "label": _("Dokumententyp"),
+                       "description": _("Dokumententyp")
                    }
             ]
         },
