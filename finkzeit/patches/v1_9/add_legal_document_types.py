@@ -10,7 +10,7 @@ def execute():
     add_document_type("Geheimhaltevereinbarung")
     add_document_type("Fingerabdruck")
     add_document_type("Anderes")
-	return
+    return
     
 def add_document_type(title):
     if not frappe.db.exists("Dokumententyp", title):
