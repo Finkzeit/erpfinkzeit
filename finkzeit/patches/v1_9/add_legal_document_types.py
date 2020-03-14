@@ -13,10 +13,14 @@ def execute():
     return
     
 def add_document_type(title):
-    if not frappe.db.exists("Dokumententyp", title):
-        new_document_type = frappe.get_doc({
-            "doctype": "Dokumententyp",
-            "title": title
-        })
-        new_document_type.insert()
-        return
+    # make sure doctype is enabled already
+    if frappe.db.exists("Doctype", "Dokumententyp"):
+        # check if the record already exists
+        if not frappe.db.exists("Dokumententyp", title):
+            # add new record
+            new_document_type = frappe.get_doc({
+                "doctype": "Dokumententyp",
+                "title": title
+            })
+            new_document_type.insert()
+    return
