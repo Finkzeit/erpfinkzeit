@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018-2019, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2018-2020, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 #
 
@@ -792,6 +792,176 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
         print("No bookings found.")
     return
 
+# this function is used to create sales invoices from bookings
+@frappe.whitelist()
+def create_generic_invoices(from_date=None, to_date=None):
+    # get start timestamp
+    print("Reading config...")
+    config = frappe.get_doc("ZSW", "ZSW")
+    employees = get_employees()
+    print("Got {0} employees.".format(len(employees)))
+    # get start time (at 0:00:00)
+    if from_date:
+        start_time = int((datetime.strptime(from_date, "%Y-%m-%d") - datetime(1970,1,1)).total_seconds())
+    else:
+        start_time = int(time())
+    # get end time (at 23:59:59)
+    if to_date:
+        end_time = int((datetime.strptime(to_date, "%Y-%m-%d") - datetime(1970,1,1)).total_seconds())
+    else:
+        end_time = int(time())
+    # shift times to find bookings (all booking pairs ar found on 0:00:00 on getBookingPairs
+    start_time -= (2 * 60 * 60)
+    end_time += (20 * 60 * 60)
+    if end_time < start_time:
+        # swap times
+        tmp_time = end_time
+        end_time = start_time
+        start_time = tmp_time
+    # get bookings
+    bookings = get_bookings(start_time, end_time)
+    collected_bookings = []
+    invoice_count = 0
+    if bookings:
+        print("Got {0} bookings.".format(len(bookings)))
+        # collect customers
+        customers = []
+        for booking in bookings:
+            try:
+                for level in booking['levels']['WSLevelIdentification']:
+                    if level['levelID'] == 1:
+                        customer = level['code']
+                        if customer not in customers:
+                            customers.append(customer)
+                            print("Found customer: ({0})".format(customer))
+            except:
+                print("No WSLevelIndentification found")
+        # loop through customers to create invoices
+        print("Has {0} customers with bookings".format(len(customers)))
+        for customer in customers:
+            # find customer record
+            try:
+                customer_record = frappe.get_doc("Customer", customer)
+            except:
+                # customer not found
+                frappe.log_error( "Customer {0} not found in ERPNext.".format(customer), "ZSW customer not found" )
+                continue
+            if customer_record:
+                # create lists to collect invoice items
+                items = []
+                # loop through all bookings
+                for booking in bookings:
+                    use_booking = False
+                    override_duration = False
+                    try:
+                        for level in booking['levels']['WSLevelIdentification']:
+                            if level['levelID'] == 1 and level['code'] == customer:
+                                # customer link on level 1
+                                use_booking = True
+                            if level['levelID'] == 2:
+                                # activity
+                                activity = level['code']
+                            if level['levelID'] == 3:
+                                # invoicing_type, e.g. "J": invoice, "N"/"W": free of charge, "P": flat rate
+                                invoice_type = level['code']
+                    except Exception as err:
+                        #print("...no levels... ({0})".format(err))
+                        pass
+                    if use_booking:
+                        # collect properties
+                        item_code = []
+                        qty = []
+                        customer_contact = None
+                        #print("Booking: {0}".format(booking))
+                        try:
+                            print("Properties: {0}".format(len(booking['properties']['WSProperty'])))
+                            #print("Property details: {0}".format(booking['properties']))
+                            for p in booking['properties']['WSProperty']:
+                                print("Reading properties...")
+                                if p['key'] == 2:
+                                    customer_contact = p['val']
+                                elif p['key'] == 14:
+                                    content = p['val']
+                                    # "qty level/item_code"
+                                    _item = content.split("/")[1]
+                                    item_code.append(_item)
+                                    qty.append(float(content.split(" ")[0]))
+                                elif p['key'] == 15:
+                                    override_duration = True
+                                    # field is stored as 01:30 (hh:mm)
+                                    print("Fetching custom duration...")
+                                    duration_fields = "{0}".format(p['val']).split(":")
+                                    duration = (float(duration_fields[0])) + (float(duration_fields[1]) / 60)
+                                    duration = round(duration, 2)
+                                    print("Duration override: {0}".format(duration))
+                        except Exception as err:
+                            #print("...no properties... ({0})".format(err))
+                            pass
+                        # add item to list
+                        booking_id = booking['fromBookingID']
+                        if not override_duration:
+                            duration = round((float(booking['duration']) / 60.0) + 0.04, 1) # in h
+                        try: # hotfix to catch undefined person as observed in August 2019
+                            person = employees[booking['person']]
+                        except:
+                            person = "-"
+                        description = "{0} {1}<br>{2}".format(
+                            booking['from']['timestamp'].split(" ")[0],
+                            person,
+                            booking['notice'] or "")
+                        if customer_contact:
+                            description += "<br>{0}".format(customer_contact)
+                        # add item
+                        if duration > 0:
+                            items.append(get_generic_item(
+                                item_code=activity,
+                                description=description,
+                                qty=duration))
+
+                        # add material items
+                        if (len(item_code) > 0) and (len(item_code) == len(qty)):
+                            for i in range(0, len(item_code)):
+                                items.append(get_generic_item(
+                                    item_code=item_code[i],
+                                    qty=qty[i]))
+                        else:
+                            print("No invoicable items ({0}, {1}).".format(item_code, qty))
+                        # mark as collected
+                        collected_bookings.append(booking_id)
+                # collected all items, create invoices
+                print("Customer {0} aggregated, {1} items.".format(customer, len(items)))
+                # create invoice
+                new_sales_invoice = frappe.get_doc({
+                    'doctype': 'Sales Invoice',
+                    'customer': customer,
+                    'items': items
+                })
+                try:
+                    sinv = new_sales_invoice.insert()
+                    print("Sales invoice {0} created for {1}.".format(sinv.name, customer))
+                    frappe.db.commit()
+                except Exception as err:
+                    print("Error inserting sales invoice: {0}".format(err))
+                    frappe.log_error("Error inserting invoice: {0}".format(err), "ZSW: Error inserting invoice")
+                invoice_count += 1
+            else:
+                err = "Customer not found in ERP: {0}".format(erp_customer)
+                print(err)
+                frappe.log_error(err, "ZSW customer not found")
+        # finished, mark bookings as invoices
+        mark_bookings(collected_bookings)
+        # update last status
+        config = frappe.get_doc("ZSW", "ZSW")
+        try:
+            config.last_status = "{0} {1} invoices created".format(
+                datetime.now(), invoice_count)
+            config.save()
+        except Exception as err:
+            frappe.log_error( "Unable to set status. ({0})".format(err), "ZSW create_invoices")
+    else:
+        print("No bookings found.")
+    return
+
 # parse to sales invoice item structure
 def get_item(item_code, description, qty, discount, kst, income_account, warehouse, against_sales_order=None, date="2000-01-01"):
     return {
@@ -819,6 +989,31 @@ def get_short_item(item_code, qty, kst, income_account, warehouse, against_sales
         'date': date
     }
 
+def get_generic_item(item_code, qty, description=None):
+    # check if the item exists in the ERP system
+    if not frappe.db.exists("Item", item_code):
+        # create item
+        new_item = frappe.get_doc({
+            'doctype': 'Item',
+            'item_code': item_code,
+            'item_name': item_code,
+            'description': item_code,
+            'item_group': frappe.utils.nestedset.get_root_of("Item Group")
+        })
+        try:
+            new_item.insert()
+        except Exception as err:
+            frappe.log_error("Failed to insert item {0}: {1}.".format(item_code, err), 
+                "ZSW: failed to insert item")
+    if not description:
+        description = frappe.get_value("Item", item_code, "description")
+        
+    return {
+        'item_code': item_code,
+        'qty': qty,
+        'description': description
+    }
+    
 def set_last_sync(date):
     dt = datetime.strptime(date, "%Y-%m-%d")
     timestamp = (dt - datetime(1970, 1, 1)).total_seconds()
