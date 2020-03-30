@@ -462,7 +462,7 @@ def compress_level_e(level_e_array):
         
 """ interaction mechanisms """
 @frappe.whitelist()
-def update_customer(customer, customer_name, kst, zsw_reference=None, active=True, tenant="AT", technician=None, short_name=None):
+def update_customer(customer, customer_name, kst="Main", zsw_reference=None, active=True, tenant="AT", technician=None, short_name=None):
     create_update_customer(
         customer=customer,
         customer_name=customer_name,
@@ -1315,3 +1315,13 @@ def debug_bookings(start_date, end_date):
             timestamp=timestamp))
 
     return
+
+def get_all_level_definitions():
+    level_definitions = client.service.getAllLevelDefinitions(getSession())
+    print("{0}".format(level_definitions))        
+    return level_definitions
+
+def get_levels_by_level_id(level_id):
+    levels = client.service.getLevelsByLevelID(getSession(), level_id)
+    print("{0}".format(levels))
+    return levels
