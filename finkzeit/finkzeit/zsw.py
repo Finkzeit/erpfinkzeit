@@ -242,7 +242,7 @@ def mark_bookings(bookings):
 
     return True
 
-def create_update_customer(customer, customer_name, active, kst="FZV", tenant="AT", technician=None, short_name=None):
+def create_update_customer(customer, customer_name, active, kst=None, tenant="AT", technician=None, short_name=None):
     # collect information
     zsw_reference = get_zsw_reference(customer, tenant)
     adr_ids = frappe.get_all("Dynamic Link",
@@ -319,6 +319,8 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
     wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': zsw_reference }] }
     wsLevelEArray = client.service.getLevelsEByIdentification(s, wsLevelIdentArray, wsTsNow)
     #print("Level E: {0}".format(wsLevelEArray))
+    # prepare properties
+    available_properties = get_all_property_definitions()
     # check if customer exists
     if wsLevelEArray:
         # customer exists --> update
@@ -334,13 +336,20 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
             wsLevelEArray[0]["extensions"] = {'WSExtension': []}
         if not wsLevelEArray[0]["extensions"]["WSExtension"]:
             wsLevelEArray[0]["extensions"]["WSExtension"] = []
-        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_ortKunde", city)
-        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_strasseKunde", street)
-        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_plzKunde", pincode)
-        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_mailadresseKunde", email)
-        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_telefonnummer", phone)
-        createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
-        createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_projektverantwortlicher", zsw_technician, 2, 0, False)
+        if "p_ortKunde" in available_properties:
+            createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_ortKunde", city)
+        if "p_strasseKunde" in available_properties:
+            createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_strasseKunde", street)
+        if "p_plzKunde" in available_properties:
+            createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_plzKunde", pincode)
+        if "p_mailadresseKunde" in available_properties:
+            createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_mailadresseKunde", email)
+        if "p_telefonnummer" in available_properties:
+            createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_telefonnummer", phone)
+        if "p_wartungsvertrag" in available_properties:
+            createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
+        if "p_projektverantwortlicher" in available_properties:
+            createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_projektverantwortlicher", zsw_technician, 2, 0, False)
         # compress level
         contentDict = compress_level_e(wsLevelEArray[0])
         client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
@@ -353,18 +362,26 @@ def create_update_customer(customer, customer_name, active, kst="FZV", tenant="A
             'extensions': { 'WSExtension': [   ]}
           }]
         }
-        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]['extensions']['WSExtension'], 'p_ortKunde', city)
-        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_strasseKunde", street)
-        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_plzKunde", pincode)
-        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_mailadresseKunde", email)
-        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_telefonnummer", phone)
-        createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
-        createOrUpdateWSExtension_link(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_projektverantwortlicher", zsw_technician, 2, 0, False)
+        if "p_ortKunde" in available_properties:
+            createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]['extensions']['WSExtension'], 'p_ortKunde', city)
+        if "p_strasseKunde" in available_properties:
+            createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_strasseKunde", street)
+        if "p_plzKunde" in available_properties:
+            createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_plzKunde", pincode)
+        if "p_mailadresseKunde" in available_properties:
+            createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_mailadresseKunde", email)
+        if "p_telefonnummer" in available_properties:
+            createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_telefonnummer", phone)
+        if "p_wartungsvertrag" in available_properties:
+            createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
+        if "p_projektverantwortlicher" in available_properties:
+            createOrUpdateWSExtension_link(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_projektverantwortlicher", zsw_technician, 2, 0, False)
         client.service.createLevelsE(session, wsLevelEArray)
 
     # add link (or ignore if it exists already)
     try:
-        client.service.quickAddGroupMember(session, kst_code, link)
+        if kst:
+            client.service.quickAddGroupMember(session, kst_code, link)
     except Exception as err:
         frappe.log_error( "Unable to add link ({0})<br>Session: {1}, kst: {2}, link: {3}".format(
             err, session, kst_code, link), "ZSW update customer" )
@@ -462,7 +479,7 @@ def compress_level_e(level_e_array):
         
 """ interaction mechanisms """
 @frappe.whitelist()
-def update_customer(customer, customer_name, kst, zsw_reference=None, active=True, tenant="AT", technician=None, short_name=None):
+def update_customer(customer, customer_name, kst="Main", zsw_reference=None, active=True, tenant="AT", technician=None, short_name=None):
     create_update_customer(
         customer=customer,
         customer_name=customer_name,
@@ -1315,3 +1332,21 @@ def debug_bookings(start_date, end_date):
             timestamp=timestamp))
 
     return
+
+def get_all_level_definitions():
+    level_definitions = client.service.getAllLevelDefinitions(getSession())
+    print("{0}".format(level_definitions))        
+    return level_definitions
+
+def get_levels_by_level_id(level_id):
+    levels = client.service.getLevelsByLevelID(getSession(), level_id)
+    print("{0}".format(levels))
+    return levels
+
+def get_all_property_definitions():
+    property_definitions = client.service.getAllPropertyDefinitions(getSession())
+    print("{0}".format(property_definitions))  
+    properties = []
+    for p in property_definitions:
+        properties.append(p['scriptVariable'])      
+    return properties
