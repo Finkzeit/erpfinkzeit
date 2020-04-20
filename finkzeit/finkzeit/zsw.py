@@ -520,6 +520,20 @@ def enqueue_create_invoices(tenant="AT", from_date=None, to_date=None, kst_filte
         **kwargs)
     return
 
+@frappe.whitelist()
+def enqueue_create_generic_invoices(from_date=None, to_date=None):
+    # enqueue invoice creation (potential high workload)
+    kwargs={
+        'from_date': from_date,
+        'to_date': to_date
+    }
+
+    enqueue("finkzeit.finkzeit.zsw.create_generic_invoices",
+        queue='long',
+        timeout=15000,
+        **kwargs)
+    return
+    
 def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, service_filter=None):
     # get start timestamp
     print("Reading config...")
