@@ -24,6 +24,7 @@ frappe.sales_dashboard = {
         var kst_switcher = document.getElementById("kst-switcher");
         if ((frappe.user.has_role("System Manager")) || (frappe.user.has_role("Verwaltungsrat"))) {
             if (kst_switcher) {
+                var allow_kst_switch = 1;
                 kst_switcher.style.visibility = "visible";
                 // attach change handler
                 kst_switcher.addEventListener('change', function() {
@@ -39,7 +40,7 @@ frappe.sales_dashboard = {
             fiscal_year_switcher.addEventListener('change', function() {
                 console.log("Loading " + fiscal_year_switcher.value);
                 var kst = "";
-                if (kst_switcher) { kst = kst_switcher.value; }
+                if (allow_kst_switch) { kst = kst_switcher.value; }
                 frappe.sales_dashboard.run(kst, fiscal_year_switcher.value + "-12-31");
             });
         }
