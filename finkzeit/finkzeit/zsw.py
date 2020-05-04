@@ -458,6 +458,8 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
 def get_zsw_reference(customer, tenant):
     if tenant.lower() == "ch":
         zsw_reference = "CH{0}".format(customer[2:])
+    elif tenant.lower() == "zsw":
+        zsw_reference = customer
     else:
         zsw_reference = "{0}".format(customer[2:])
     return zsw_reference
@@ -465,6 +467,8 @@ def get_zsw_reference(customer, tenant):
 def get_zsw_project_name(sales_order, tenant):
     if tenant.lower() == "ch":
         zsw_project_name = "CH{0}".format(sales_order)
+    elif tenant.lower() == "zsw":
+        zsw_project_name = sales_order
     else:
         zsw_project_name = "{0}".format(sales_order)
     return zsw_project_name
@@ -562,7 +566,9 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
         print("Has {0} customers with bookings".format(len(customers)))
         for customer in customers:
             erp_customer = customer
-            if tenant.lower() != "at":
+            if tenant.lower() == "zsw":
+                erp_customer = erp_customer
+            elif tenant.lower() != "at":
                 # crop country digits
                 erp_customer = erp_customer[2:]
             else:
@@ -571,7 +577,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                     print("Skip customer {0} (out of range)".format(customer))
                     continue
             # create ERP-type customer key
-            erp_customer = "K-{0}".format(erp_customer)
+            if tenant.lower() != "zsw":
+                erp_customer = "K-{0}".format(erp_customer)
             # find customer record
             try:
                 customer_record = frappe.get_doc("Customer", erp_customer)
