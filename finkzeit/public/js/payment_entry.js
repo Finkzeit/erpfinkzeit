@@ -8,7 +8,6 @@ frappe.ui.form.on('Payment Entry', {
 });
 
 function get_customer_credit_balance(frm) {
-    console.log("update");
 	if ((frm.doc.docstatus === 0) && (frm.doc.party_type === "Customer") && (frm.doc.party)) {
 	    frappe.call({
         	method: 'finkzeit.finkzeit.credit_controller.get_credit_account_balance',

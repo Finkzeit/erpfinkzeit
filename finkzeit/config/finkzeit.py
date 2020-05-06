@@ -124,18 +124,6 @@ def get_data():
                        "description": _("Bank Wizard")
                    },
                    {
-                       "type": "doctype",
-                       "name": "Rechtliches Dokument",
-                       "label": _("Rechtliches Dokument"),
-                       "description": _("Rechtliches Dokument")
-                   },
-                   {
-                       "type": "doctype",
-                       "name": "Dokumententyp",
-                       "label": _("Dokumententyp"),
-                       "description": _("Dokumententyp")
-                   },
-                   {
                        "type": "report",
                        "doctype": "Payment Entry",
                        "name": "Customer Credit Overview",
@@ -150,6 +138,24 @@ def get_data():
                        "label": _("Customer Credit Ledger"),
                        "description": _("Customer Credit Ledger"),
                        "is_query_report": True
+                   }
+            ]
+        },
+        {
+            "label": _("Rechtliches"),
+            "icon": "octicon octicon-broadcast",
+            "items": [
+                   {
+                       "type": "doctype",
+                       "name": "Rechtliches Dokument",
+                       "label": _("Rechtliches Dokument"),
+                       "description": _("Rechtliches Dokument")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Dokumententyp",
+                       "label": _("Dokumententyp"),
+                       "description": _("Dokumententyp")
                    }
             ]
         },

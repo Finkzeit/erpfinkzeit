@@ -23,11 +23,34 @@ def get_columns():
 
 def get_values(filters):
     # get customers
+    credit_account = frappe.get_value("Finkzeit Settings", "Finkzeit Settings", "credit_account")
     sql_query = """SELECT 
-                     `name` AS `customer`, 
-                     `customer_name` AS `customer_name`
-                   FROM `tabCustomer`
-                   ORDER BY `name` ASC;"""
+                DISTINCT(`raw`.`party`) AS `customer`, 
+                `tabCustomer`.`customer_name`
+            FROM
+            (SELECT 
+                `tabPayment Entry`.`party`
+            FROM `tabPayment Entry Deduction`
+            LEFT JOIN `tabPayment Entry` ON `tabPayment Entry`.`name` = `tabPayment Entry Deduction`.`parent`
+            WHERE 
+                `tabPayment Entry Deduction`.`account` = "{account}"
+                AND `tabPayment Entry`.`docstatus` = 1
+            UNION SELECT
+                `tabPayment Entry`.`credit_party`
+            FROM `tabPayment Entry`
+            WHERE 
+                `tabPayment Entry`.`paid_to` = "{account}"
+                AND `tabPayment Entry`.`docstatus` = 1
+            UNION SELECT
+                `tabJournal Entry Account`.`credit_party`
+            FROM `tabJournal Entry Account`
+            LEFT JOIN `tabJournal Entry` ON `tabJournal Entry`.`name` = `tabJournal Entry Account`.`parent`
+            WHERE 
+                `tabJournal Entry Account`.`account` = "{account}"
+                AND `tabJournal Entry`.`docstatus` = 1
+            ) AS `raw`
+            LEFT JOIN `tabCustomer` ON `tabCustomer`.`name` = `raw`.`party`
+            ORDER BY `customer` ASC;""".format(account=credit_account)
     customers = frappe.db.sql(sql_query, as_dict=True)
     # enrich balances
     data = []
