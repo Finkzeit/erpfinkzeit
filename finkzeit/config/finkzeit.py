@@ -134,6 +134,22 @@ def get_data():
                        "name": "Dokumententyp",
                        "label": _("Dokumententyp"),
                        "description": _("Dokumententyp")
+                   },
+                   {
+                       "type": "report",
+                       "doctype": "Payment Entry",
+                       "name": "Customer Credit Overview",
+                       "label": _("Customer Credit Overview"),
+                       "description": _("Customer Credit Overview"),
+                       "is_query_report": True
+                   },
+                   {
+                       "type": "report",
+                       "doctype": "Payment Entry",
+                       "name": "Customer Credit Ledger",
+                       "label": _("Customer Credit Ledger"),
+                       "description": _("Customer Credit Ledger"),
+                       "is_query_report": True
                    }
             ]
         },
@@ -158,6 +174,12 @@ def get_data():
                        "name": "Calendar Feed Settings",
                        "label": _("Calendar Feed Settings"),
                        "description": _("Calendar Feed Settings")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Finkzeit Settings",
+                       "label": _("Finkzeit Settings"),
+                       "description": _("Finkzeit Settings")
                    }
             ]
         },

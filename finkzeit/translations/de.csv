@@ -73,3 +73,10 @@ Page: Sales Dashboard,Sales Dashboard,Verkaufskennzahlen
 DocType: Calendar Feed Settings,Calendar Feed Settings,Kalender-Feed-Einstellungen
 DocType: Calendar Feed Settings,Show public events,Öffentliche Ereignisse anzeigen
 DocType: Calendar Feed Settings,Define a calendar secret,Zugangsgeheimnis hier eingeben
+DocType: Finkzeit Settings,Finkzeit Settings,Finzeit-Einstellungen
+DocType: Finkzeit Settings,Credit Account,Guthabenkonto
+DocType: Journal Entry,Credit Party,Guthaben gegen Kunde
+Report: Customer Credit Overview,Customer Credit Overview,Übersicht Kundenguthaben
+Report: Customer Credit Ledger,Customer Credit Ledger,Kundenguthabenkonto
+DocType: Payment Entry,Customer credit balance,Kundenguthaben
+DocType: Customer,Customer credit,Kundenguthaben
