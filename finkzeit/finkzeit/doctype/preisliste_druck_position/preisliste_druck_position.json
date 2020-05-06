@@ -1,0 +1,74 @@
+{
+ "creation": "2020-05-05 08:45:55.618155",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "row_type",
+  "item",
+  "item_name",
+  "title",
+  "text",
+  "price_list_rate",
+  "reduced_rate"
+ ],
+ "fields": [
+  {
+   "default": "Item",
+   "fieldname": "row_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Type",
+   "options": "Item\nStructure",
+   "reqd": 1
+  },
+  {
+   "depends_on": "eval:doc.row_type == \"Item\"",
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "fetch_from": "item.item_name",
+   "fieldname": "item_name",
+   "fieldtype": "Data",
+   "label": "Item name",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.row_type == \"Structure\"",
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title"
+  },
+  {
+   "depends_on": "eval:doc.row_type == \"Structure\"",
+   "fieldname": "text",
+   "fieldtype": "Text Editor",
+   "label": "Text"
+  },
+  {
+   "fieldname": "price_list_rate",
+   "fieldtype": "Currency",
+   "label": "Base rate"
+  },
+  {
+   "fieldname": "reduced_rate",
+   "fieldtype": "Currency",
+   "label": "Price incl. rabate"
+  }
+ ],
+ "istable": 1,
+ "modified": "2020-05-06 11:12:30.814234",
+ "modified_by": "Administrator",
+ "module": "Finkzeit",
+ "name": "Preisliste Druck Position",
+ "owner": "Administrator",
+ "permissions": [],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
