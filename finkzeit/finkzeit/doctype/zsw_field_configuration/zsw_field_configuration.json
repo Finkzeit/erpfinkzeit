@@ -1,0 +1,40 @@
+{
+ "creation": "2020-05-07 21:21:11.001735",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "erp_doctype",
+  "zsw_level"
+ ],
+ "fields": [
+  {
+   "default": "Customer",
+   "fieldname": "erp_doctype",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "ERP Data Structure",
+   "options": "Customer\nItem (Activity)\nItem (Material)\nSales Order\nInvoicing Type",
+   "reqd": 1
+  },
+  {
+   "default": "1",
+   "fieldname": "zsw_level",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "ZSW Level",
+   "reqd": 1
+  }
+ ],
+ "istable": 1,
+ "modified": "2020-05-07 21:59:43.955787",
+ "modified_by": "Administrator",
+ "module": "Finkzeit",
+ "name": "ZSW Field Configuration",
+ "owner": "Administrator",
+ "permissions": [],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
