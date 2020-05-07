@@ -403,6 +403,7 @@ def create_update_item(item_code, item_name, active, target):
         }]
     }
     # connect to ZSW
+    #print("Writing {0}".format(level))
     s = getSession()
     # create or update sales order
     client.service.createLevels(session, level, True)
@@ -529,7 +530,7 @@ def update_project(sales_order, customer, customer_name, tenant="AT", technician
     return
 
 @frappe.whitelist()
-def update_material(item_code, item_name_name, active=True):
+def update_material(item_code, item_name, active=True):
     create_update_item(
         item_code=item_code,
         item_name=item_name,
@@ -539,7 +540,7 @@ def update_material(item_code, item_name_name, active=True):
     return
 
 @frappe.whitelist()
-def update_activity(item_code, item_name_name, active=True):
+def update_activity(item_code, item_name, active=True):
     create_update_item(
         item_code=item_code,
         item_name=item_name,
@@ -555,8 +556,13 @@ def sync_materials():
     materials = frappe.get_all("Item", 
         filters={'sync_as_material_to_zsw': 1}, 
         fields=['item_code', 'item_name', 'disabled'])
+    print("Syncing {0} materials...".format(len(materials)))
     for m in materials:
-        update_material(m['item_code'], m['item_name'], m['disabled'])
+        if m['disabled'] == 0:
+            active = True
+        else:
+            active = False
+        update_material(m['item_code'], m['item_name'], active)
     return
 
 """
@@ -566,8 +572,13 @@ def sync_activities():
     activities = frappe.get_all("Item", 
         filters={'sync_as_activity_to_zsw': 1}, 
         fields=['item_code', 'item_name', 'disabled'])
+    print("Syncing {0} activities...".format(len(activities)))
     for a in activities:
-        update_activity(a['item_code'], a['item_name'], a['disabled'])
+        if a['disabled'] == 0:
+            active = True
+        else:
+            active = False
+        update_activity(a['item_code'], a['item_name'], active)
     return
     
 @frappe.whitelist()
