@@ -7,6 +7,7 @@
   "row_type",
   "item",
   "item_name",
+  "description",
   "title",
   "text",
   "price_list_rate",
@@ -58,10 +59,17 @@
    "fieldname": "reduced_rate",
    "fieldtype": "Currency",
    "label": "Price incl. rabate"
+  },
+  {
+   "fetch_from": "item.description",
+   "fetch_if_empty": 1,
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
   }
  ],
  "istable": 1,
- "modified": "2020-05-06 11:12:30.814234",
+ "modified": "2020-05-07 13:16:56.229617",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Preisliste Druck Position",
