@@ -316,7 +316,7 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
     s = getSession()
     # create or update customer
     wsTsNow = client.service.getTime(s)
-    wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': zsw_reference }] }
+    wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': get_zsw_level("Customer"), 'code': zsw_reference }] }
     wsLevelEArray = client.service.getLevelsEByIdentification(s, wsLevelIdentArray, wsTsNow)
     #print("Level E: {0}".format(wsLevelEArray))
     # prepare properties
@@ -358,7 +358,7 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
         wsLevelEArray = { 'WSExtensibleLevel' : 
           [{
             'action': 1,
-            'wsLevel': { 'active': active, 'levelID': 1, 'code': zsw_reference, 'text': customer_name },
+            'wsLevel': { 'active': active, 'levelID': get_zsw_level("Customer"), 'code': zsw_reference, 'text': customer_name },
             'extensions': { 'WSExtension': [   ]}
           }]
         }
@@ -389,6 +389,28 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
     disconnect()
     return
 
+def create_update_item(item_code, item_name, active, target):
+    if active == 1 or active == "1":
+        active = True
+    elif active == 0 or active == "0":
+        active = False
+    # create project (=level) information
+    level = {'WSLevel':[{
+          'active': active,
+          'code': item_code,
+          'levelID': get_zsw_level(target),
+          'text': item_name
+        }]
+    }
+    # connect to ZSW
+    #print("Writing {0}".format(level))
+    s = getSession()
+    # create or update sales order
+    client.service.createLevels(session, level, True)
+    # close connection
+    disconnect()
+    return
+    
 def create_update_sales_order(sales_order, customer, customer_name, tenant="AT", technician=None, active=True):
     # collect city
     so = frappe.get_doc("Sales Order", sales_order)
@@ -419,7 +441,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
     level = {'WSLevel':[{
           'active': active,
           'code': zsw_project_name,
-          'levelID': 4,
+          'levelID': get_zsw_level("Sales Order"),
           'text': "{0}, {1}".format(customer_name, city)
         }]
     }
@@ -429,7 +451,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
     client.service.createLevels(session, level, True)
     # retrieve E-level
     wsTsNow = client.service.getTime(s)
-    wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': get_zsw_reference(customer, tenant) }] }
+    wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': get_zsw_level("Sales Order"), 'code': get_zsw_reference(customer, tenant) }] }
     wsLevelEArray = client.service.getLevelsEByIdentification(s, wsLevelIdentArray, wsTsNow)
     if wsLevelEArray:
         #print("Level E Array: {0}".format(wsLevelEArray[0]) )
@@ -508,6 +530,58 @@ def update_project(sales_order, customer, customer_name, tenant="AT", technician
     return
 
 @frappe.whitelist()
+def update_material(item_code, item_name, active=True):
+    create_update_item(
+        item_code=item_code,
+        item_name=item_name,
+        active=active,
+        target="Item (Material)"
+    )
+    return
+
+@frappe.whitelist()
+def update_activity(item_code, item_name, active=True):
+    create_update_item(
+        item_code=item_code,
+        item_name=item_name,
+        active=active,
+        target="Item (Activity)"
+    )
+    return
+
+"""
+  This function will sync all materials to ZSW
+"""
+def sync_materials():
+    materials = frappe.get_all("Item", 
+        filters={'sync_as_material_to_zsw': 1}, 
+        fields=['item_code', 'item_name', 'disabled'])
+    print("Syncing {0} materials...".format(len(materials)))
+    for m in materials:
+        if m['disabled'] == 0:
+            active = True
+        else:
+            active = False
+        update_material(m['item_code'], m['item_name'], active)
+    return
+
+"""
+  This function will sync all activities to ZSW
+"""
+def sync_activities():
+    activities = frappe.get_all("Item", 
+        filters={'sync_as_activity_to_zsw': 1}, 
+        fields=['item_code', 'item_name', 'disabled'])
+    print("Syncing {0} activities...".format(len(activities)))
+    for a in activities:
+        if a['disabled'] == 0:
+            active = True
+        else:
+            active = False
+        update_activity(a['item_code'], a['item_name'], active)
+    return
+    
+@frappe.whitelist()
 def enqueue_create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, service_filter=None):
     # enqueue invoice creation (potential high workload)
     kwargs={
@@ -524,6 +598,20 @@ def enqueue_create_invoices(tenant="AT", from_date=None, to_date=None, kst_filte
         **kwargs)
     return
 
+@frappe.whitelist()
+def enqueue_create_generic_invoices(from_date=None, to_date=None):
+    # enqueue invoice creation (potential high workload)
+    kwargs={
+        'from_date': from_date,
+        'to_date': to_date
+    }
+
+    enqueue("finkzeit.finkzeit.zsw.create_generic_invoices",
+        queue='long',
+        timeout=15000,
+        **kwargs)
+    return
+    
 def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, service_filter=None):
     # get start timestamp
     print("Reading config...")
@@ -557,7 +645,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
         customers = []
         for booking in bookings:
             for level in booking['levels']['WSLevelIdentification']:
-                if level['levelID'] == 1:
+                if level['levelID'] == get_zsw_level("Customer"):
                     customer = level['code']
                     if customer not in customers:
                         customers.append(customer)
@@ -620,15 +708,15 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                     override_duration = False
                     try:
                         for level in booking['levels']['WSLevelIdentification']:
-                            if level['levelID'] == 1 and level['code'] == customer:
+                            if level['levelID'] == get_zsw_level("Customer") and level['code'] == customer:
                                 use_booking = True
-                            if level['levelID'] == 2:
+                            if level['levelID'] == get_zsw_level("Item (Activity)"):
                                 # service type, e.g. "T01" (remote), "T03" (onsite), "T02" (project remote), "T04" (project onsite)
                                 service_type = level['code']
-                            if level['levelID'] == 3:
+                            if level['levelID'] == get_zsw_level("Invoicing Type"):
                                 # invoicing_type, e.g. "J": invoice, "N"/"W": free of charge, "P": flat rate
                                 invoice_type = level['code']
-                            if level['levelID'] == 4:
+                            if level['levelID'] == get_zsw_level("Sales Order"):
                                 # link to project (ZSW) sales order (ERP), e.g. "AB-00001" or "CHAB-00000"
                                 sales_order_reference = level['code']
                     except Exception as err:
@@ -853,7 +941,7 @@ def create_generic_invoices(from_date=None, to_date=None):
         for booking in bookings:
             try:
                 for level in booking['levels']['WSLevelIdentification']:
-                    if level['levelID'] == 1:
+                    if level['levelID'] == get_zsw_level("Customer"):
                         customer = level['code']
                         if customer not in customers:
                             customers.append(customer)
@@ -879,13 +967,13 @@ def create_generic_invoices(from_date=None, to_date=None):
                     override_duration = False
                     try:
                         for level in booking['levels']['WSLevelIdentification']:
-                            if level['levelID'] == 1 and level['code'] == customer:
+                            if level['levelID'] == get_zsw_level("Customer") and level['code'] == customer:
                                 # customer link on level 1
                                 use_booking = True
-                            if level['levelID'] == 2:
+                            if level['levelID'] == get_zsw_level("Item (Activity)"):
                                 # activity
                                 activity = level['code']
-                            if level['levelID'] == 3:
+                            if level['levelID'] == get_zsw_level("Invoicing Type"):
                                 # invoicing_type, e.g. "J": invoice, "N"/"W": free of charge, "P": flat rate
                                 invoice_type = level['code']
                     except Exception as err:
@@ -1077,7 +1165,7 @@ def test_connect():
 def test_customer():
     s = getSession()
     #wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': "1234500" }] }
-    wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': "21762" }] }
+    wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': get_zsw_level("Customer"), 'code': "21762" }] }
     wsLevelEArray = client.service.getLevelsEByIdentification(session, wsLevelIdentArray, None)
     contentStr = "{0}".format(wsLevelEArray[0])
     contentDict = eval(contentStr)
@@ -1130,16 +1218,16 @@ def deliver_sales_order(sales_order, tenant="AT"):
             # collect WS levels
             try:
                 for level in booking['levels']['WSLevelIdentification']:
-                    if level['levelID'] == 1:
+                    if level['levelID'] == get_zsw_level("Customer"):
                         use_booking = True
                         customer_zsw_code = level['code']
-                    if level['levelID'] == 2:
+                    if level['levelID'] == get_zsw_level("Item (Activity)"):
                         # service type, e.g. "T02" (project remote), "T04" (project onsite)
                         service_type = level['code']
-                    if level['levelID'] == 3:
+                    if level['levelID'] == get_zsw_level("Invoicing Type"):
                         # invoicing_type, e.g. "J": invoice, "N": free of charge, "P": flat rate
                         invoice_type = level['code']
-                    if level['levelID'] == 4:
+                    if level['levelID'] == get_zsw_level("Sales Order"):
                         # link to project (ZSW) sales order (ERP), e.g. "AB-00001" or "CHAB-00000"
                         sales_order_reference = level['code']
             except Exception as err:
@@ -1305,7 +1393,7 @@ def debug_bookings(start_date, end_date):
     customers = []
     for booking in bookings:
         for level in booking['levels']['WSLevelIdentification']:
-            if level['levelID'] == 1:
+            if level['levelID'] == get_zsw_level("Customer"):
                 customer = level['code']
                 if customer not in customers:
                     customers.append(customer)
@@ -1316,15 +1404,15 @@ def debug_bookings(start_date, end_date):
         override_duration = False
         try:
             for level in booking['levels']['WSLevelIdentification']:
-                if level['levelID'] == 1:
+                if level['levelID'] == get_zsw_level("Customer"):
                     customer = level['code']
-                if level['levelID'] == 2:
+                if level['levelID'] == get_zsw_level("Item (Activity)"):
                     # service type, e.g. "T01" (remote), "T03" (onsite), "T02" (project remote), "T04" (project onsite)
                     service_type = level['code']
-                if level['levelID'] == 3:
+                if level['levelID'] == get_zsw_level("Invoicing Type"):
                     # invoicing_type, e.g. "J": invoice, "N"/"W": free of charge, "P": flat rate
                     invoice_type = level['code']
-                if level['levelID'] == 4:
+                if level['levelID'] == get_zsw_level("Sales Order"):
                     # link to project (ZSW) sales order (ERP), e.g. "AB-00001" or "CHAB-00000"
                     sales_order_reference = level['code']
         except Exception as err:
@@ -1357,3 +1445,24 @@ def get_all_property_definitions():
     for p in property_definitions:
         properties.append(p['scriptVariable'])      
     return properties
+
+"""
+ This function returns the ZSW level for an ERPNext data structure
+ Data structures are: "Customer", "Item (Activity)", "Item (Material)", "Sales Order", "Invoicing Type"
+"""
+def get_zsw_level(erp_structure):
+    levels = frappe.db.sql("""SELECT `zsw_level` FROM `tabZSW Field Configuration` WHERE `erp_doctype` = '{erp_structure}' LIMIT 1;""".format(erp_structure=erp_structure), as_dict=True)
+    if levels:
+        return levels[0]['zsw_level']
+    else:
+        # revert to default values
+        if erp_structure == "Customer":
+            return 1
+        elif erp_structure == "Item (Activity)":
+            return 2
+        elif erp_structure == "Invoicing Type":
+            return 3
+        elif erp_structure == "Sales Order":
+            return 4
+        else:
+            return None

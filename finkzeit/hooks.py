@@ -29,7 +29,8 @@ app_include_js = ["/assets/finkzeit/js/fink_common.js", "/assets/finkzeit/js/iba
 # include js in doctype views
 doctype_js = {
   "Supplier": "public/js/supplier.js",
-  "Customer": "public/js/customer.js"
+  "Customer": "public/js/customer.js",
+  "Payment Entry": "public/js/payment_entry.js"
 }
 # doctype_js = {"doctype" : "public/js/doctype.js"}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}

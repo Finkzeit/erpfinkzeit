@@ -76,3 +76,15 @@ DocType: Calendar Feed Settings,Define a calendar secret,Zugangsgeheimnis hier e
 DocType: Preisliste Druck,Text above Table,Eingangstext
 DocType: Preisliste Druck,Text below Table,Schlusstext
 DocType: Preisliste Druck,Price with discount,Rabattierter Preis
+DocType: Finkzeit Settings,Finkzeit Settings,Finzeit-Einstellungen
+DocType: Finkzeit Settings,Credit Account,Guthabenkonto
+DocType: Journal Entry,Credit Party,Guthaben gegen Kunde
+Report: Customer Credit Overview,Customer Credit Overview,Übersicht Kundenguthaben
+Report: Customer Credit Ledger,Customer Credit Ledger,Kundenguthabenkonto
+DocType: Payment Entry,Customer credit balance,Kundenguthaben
+DocType: Customer,Customer credit,Kundenguthaben
+DocType: ZSW,Field configuration,Feldkonfiguration
+DocType: ZSw,ERP Data Structure,ERP Datenstruktur
+DocType: ZSW,ZSW Level,ZSW-Ebene
+DocType: ZSW,Sync as activity to ZSW,Als Aktivität an ZSW übertragen
+DocType: ZSW,Sync as material to ZSW,Als Material an ZSW übertragen
