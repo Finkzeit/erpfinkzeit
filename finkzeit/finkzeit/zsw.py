@@ -1460,6 +1460,8 @@ def get_zsw_level(erp_structure):
             return 1
         elif erp_structure == "Item (Activity)":
             return 2
+        elif erp_structure == "Item (Material)":
+            return 7
         elif erp_structure == "Invoicing Type":
             return 3
         elif erp_structure == "Sales Order":
