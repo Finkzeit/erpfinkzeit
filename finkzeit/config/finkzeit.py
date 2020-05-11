@@ -80,6 +80,12 @@ def get_data():
                        "name": "Parkordnung",
                        "label": _("Parkordnung"),
                        "description": _("Parkordnung")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Preisliste Druck",
+                       "label": _("Preisliste Druck"),
+                       "description": _("Preisliste Druck")
                    }
             ]
         },

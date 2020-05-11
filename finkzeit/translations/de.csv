@@ -73,3 +73,6 @@ Page: Sales Dashboard,Sales Dashboard,Verkaufskennzahlen
 DocType: Calendar Feed Settings,Calendar Feed Settings,Kalender-Feed-Einstellungen
 DocType: Calendar Feed Settings,Show public events,Öffentliche Ereignisse anzeigen
 DocType: Calendar Feed Settings,Define a calendar secret,Zugangsgeheimnis hier eingeben
+DocType: Preisliste Druck,Text above Table,Eingangstext
+DocType: Preisliste Druck,Text below Table,Schlusstext
+DocType: Preisliste Druck,Price with discount,Rabattierter Preis
