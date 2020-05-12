@@ -6,6 +6,11 @@ frappe.ui.form.on('Preisliste Druck', {
 		if (!frm.doc.company) {
 		    cur_frm.set_value('company', frappe.defaults.get_default("Company"));
 		}
+        if (frm.doc.docstatus === 0) {
+		    frm.add_custom_button(__("Update"), function() {
+                update_details(frm);
+            });
+		}
 	}
 });
 
@@ -92,4 +97,31 @@ function get_pricing_rule(frm, dt, dn, item, price_list_rate) {
 function set_rates(frm, dt, dn, item, price_list_rate, reduced_rate) {
     frappe.model.set_value(dt, dn, "price_list_rate", price_list_rate);
     frappe.model.set_value(dt, dn, "reduced_rate", reduced_rate);
+}
+
+function update_details(frm) {
+    for (var i = 0; i < frm.doc.items.length; i++) {
+        if (frm.doc.items[i].row_type === "Item") {
+            // update prices
+            get_rates(frm, frm.doc.items[i].doctype, frm.doc.items[i].name, frm.doc.items[i].item);
+            // update description
+            update_description(frm, frm.doc.items[i].doctype, frm.doc.items[i].name, frm.doc.items[i].item);
+        }
+    }
+}
+
+function update_description(frm, dt, dn, item) {
+    frappe.call({
+        "method": "frappe.client.get",
+        "args": {
+            "doctype": "Item",
+            "name": item
+        },
+        "callback": function(response) {
+            var item = response.message;
+            if (item) {
+                frappe.model.set_value(dt, dn, "description", item.description);
+            } 
+        }
+    });
 }

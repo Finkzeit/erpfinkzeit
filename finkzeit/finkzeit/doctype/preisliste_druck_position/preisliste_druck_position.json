@@ -14,7 +14,8 @@
   "description",
   "section_structure_elements",
   "title",
-  "text"
+  "text",
+  "has_page_break"
  ],
  "fields": [
   {
@@ -88,10 +89,17 @@
    "depends_on": "eval:doc.row_type == \"Structure\"",
    "fieldname": "section_structure_elements",
    "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.row_type == \"Structure\"",
+   "fieldname": "has_page_break",
+   "fieldtype": "Check",
+   "label": "Page break before"
   }
  ],
  "istable": 1,
- "modified": "2020-05-11 13:43:17.059053",
+ "modified": "2020-05-12 21:28:00.135834",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Preisliste Druck Position",
