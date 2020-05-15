@@ -1446,6 +1446,22 @@ def get_all_property_definitions():
         properties.append(p['scriptVariable'])      
     return properties
 
+def get_customers():
+    customers = get_levels_by_level_id(get_zsw_level("Customer"))
+    return customers
+    
+def get_sales_orders():
+    sales_orders = get_levels_by_level_id(get_zsw_level("Sales Order"))
+    return sales_orders
+
+def get_activities():
+    activities = get_levels_by_level_id(get_zsw_level("Item (Activity)"))
+    return activities
+    
+def get_materials():
+    materials = get_levels_by_level_id(get_zsw_level("Item (Material)"))
+    return materials
+
 """
  This function returns the ZSW level for an ERPNext data structure
  Data structures are: "Customer", "Item (Activity)", "Item (Material)", "Sales Order", "Invoicing Type"
