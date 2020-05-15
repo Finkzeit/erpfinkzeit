@@ -451,7 +451,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
     client.service.createLevels(session, level, True)
     # retrieve E-level
     wsTsNow = client.service.getTime(s)
-    wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': get_zsw_level("Sales Order"), 'code': get_zsw_reference(customer, tenant) }] }
+    wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': get_zsw_level("Customer"), 'code': get_zsw_reference(customer, tenant) }] }
     wsLevelEArray = client.service.getLevelsEByIdentification(s, wsLevelIdentArray, wsTsNow)
     if wsLevelEArray:
         #print("Level E Array: {0}".format(wsLevelEArray[0]) )
