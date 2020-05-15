@@ -18,7 +18,8 @@ def get_columns():
     return [
         {"label": _("Customer"), "fieldname": "customer", "fieldtype": "Link", "options": "Customer", "width": 100},
         {"label": _("Customer name"), "fieldname": "customer_name", "fieldtype": "Data", "width": 150},
-        {"label": _("Balance"), "fieldname": "balance", "fieldtype": "Currency", "width": 100}
+        {"label": _("Balance"), "fieldname": "balance", "fieldtype": "Currency", "width": 100},
+        {"label": _(""), "fieldname": "empty", "fieldtype": "Data", "width": 10}
     ]
 
 def get_values(filters):

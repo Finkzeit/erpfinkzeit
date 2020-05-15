@@ -21,7 +21,8 @@ def get_columns():
     return [
         {"label": _("Date"), "fieldname": "date", "fieldtype": "Date", "width": 100},
         {"label": _("Amount"), "fieldname": "amount", "fieldtype": "Currency", "width": 100},
-        {"label": _("Balance"), "fieldname": "balance", "fieldtype": "Currency", "width": 100}
+        {"label": _("Balance"), "fieldname": "balance", "fieldtype": "Currency", "width": 100},
+        {"label": _(""), "fieldname": "empty", "fieldtype": "Data", "width": 10}
     ]
 
 def get_values(filters):
