@@ -7,10 +7,20 @@ frappe.listview_settings['Licence'] = {
 }
 
 function create_invoice_cycle() {
-    frappe.call({
-        "method": "finkzeit.finkzeit.doctype.licence.licence.enqueue_invoice_cycle",
-        "callback": function(response) {
-            frappe.show_alert( __("Creation of Invoices started...") );
+    // prompt before creating invoices
+    frappe.confirm(
+        __('Are you sure you want to create licence invoices?'),
+        function () {
+            // on yes
+            frappe.call({
+                "method": "finkzeit.finkzeit.doctype.licence.licence.enqueue_invoice_cycle",
+                "callback": function(response) {
+                    frappe.show_alert( __("Creation of Invoices started...") );
+                }
+            });
+        },
+        function () {
+            // on no, do nothing
         }
-    });
+    )
 }
