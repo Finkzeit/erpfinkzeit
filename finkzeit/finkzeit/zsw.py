@@ -582,14 +582,15 @@ def sync_activities():
     return
     
 @frappe.whitelist()
-def enqueue_create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, service_filter=None):
+def enqueue_create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, service_filter=None, ignore_pricing_rule=1):
     # enqueue invoice creation (potential high workload)
     kwargs={
         'tenant': tenant,
         'from_date': from_date,
         'to_date': to_date,
         'kst_filter': kst_filter,
-        'service_filter': service_filter
+        'service_filter': service_filter,
+        'ignore_pricing_rule': ignore_pricing_rule
     }
 
     enqueue("finkzeit.finkzeit.zsw.create_invoices",
@@ -612,7 +613,7 @@ def enqueue_create_generic_invoices(from_date=None, to_date=None):
         **kwargs)
     return
     
-def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, service_filter=None):
+def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, service_filter=None, ignore_pricing_rule=1):
     # get start timestamp
     print("Reading config...")
     config = frappe.get_doc("ZSW", "ZSW")
@@ -866,7 +867,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                         print_descriptions=1,
                         update_stock=1,
                         auto_submit=True,
-                        ignore_pricing_rule=1)
+                        ignore_pricing_rule=ignore_pricing_rule)
                     invoice_count += 1
                 # invoice T03
                 if len(items_onsite) > 0:
@@ -882,7 +883,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                         print_descriptions=1,
                         update_stock=1,
                         auto_submit=False,
-                        ignore_pricing_rule=1,
+                        ignore_pricing_rule=ignore_pricing_rule,
                         append=True)
                     invoice_count += 1
             else:
