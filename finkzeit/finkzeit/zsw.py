@@ -1054,7 +1054,7 @@ def create_generic_invoices(from_date=None, to_date=None):
                     frappe.db.commit()
                 except Exception as err:
                     print("Error inserting sales invoice: {0}".format(err))
-                    frappe.log_error("Error inserting invoice: {0}".format(err), "ZSW: Error inserting invoice")
+                    frappe.log_error("Error inserting invoice: {0} (customer {1})".format(err, customer), "ZSW: Error inserting invoice")
                 invoice_count += 1
             else:
                 err = "Customer not found in ERP: {0}".format(erp_customer)
