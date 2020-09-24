@@ -4,3 +4,5 @@
 *.swp
 tags
 finkzeit/docs/current
+__pycache__
+

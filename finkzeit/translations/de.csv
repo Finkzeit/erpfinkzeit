@@ -90,3 +90,4 @@ DocType: ZSw,ERP Data Structure,ERP Datenstruktur
 DocType: ZSW,ZSW Level,ZSW-Ebene
 DocType: ZSW,Sync as activity to ZSW,Als Aktivität an ZSW übertragen
 DocType: ZSW,Sync as material to ZSW,Als Material an ZSW übertragen
+DocType: Licence,Are you sure you want to create licence invoices?,Möchten Sie wirklich jetzt den Lizenzrechnungslauf durchführen?

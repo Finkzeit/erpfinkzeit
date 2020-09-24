@@ -19,6 +19,7 @@ def get_columns():
         {"label": _("Customer"), "fieldname": "customer", "fieldtype": "Link", "options": "Customer", "width": 100},
         {"label": _("Customer name"), "fieldname": "customer_name", "fieldtype": "Data", "width": 150},
         {"label": _("Balance"), "fieldname": "balance", "fieldtype": "Currency", "width": 100},
+        {"label": _("Phone"), "fieldname": "phone", "fieldtype": "Data", "width": 150},
         {"label": _(""), "fieldname": "empty", "fieldtype": "Data", "width": 10}
     ]
 
@@ -27,7 +28,16 @@ def get_values(filters):
     credit_account = frappe.get_value("Finkzeit Settings", "Finkzeit Settings", "credit_account")
     sql_query = """SELECT 
                 DISTINCT(`raw`.`party`) AS `customer`, 
-                `tabCustomer`.`customer_name`
+                `tabCustomer`.`customer_name`,
+                (SELECT `tabAddress`.`phone` 
+                 FROM `tabAddress` 
+                 WHERE `tabAddress`.`name` IN (SELECT `tabDynamic Link`.`parent`
+                                              FROM `tabDynamic Link`
+                                              WHERE `tabDynamic Link`.`parenttype` = "Address"
+                                                AND `tabDynamic Link`.`link_doctype` = "Customer"
+                                                AND `tabDynamic Link`.`link_name` = `tabCustomer`.`name`)
+                 ORDER BY `tabAddress`.`is_primary_address` DESC
+                 LIMIT 1) AS `phone`
             FROM
             (SELECT 
                 `tabPayment Entry`.`party`
@@ -61,7 +71,8 @@ def get_values(filters):
             data.append({
                 'customer': customers[i]['customer'],
                 'customer_name': customers[i]['customer_name'],
-                'balance': balance
+                'balance': balance,
+                'phone': customers[i]['phone']
             })
     # return data
     return data
