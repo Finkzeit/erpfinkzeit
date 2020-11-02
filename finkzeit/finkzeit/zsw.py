@@ -42,7 +42,7 @@ def getSession():
             client.service.closeSession(session)
             session = None
     except:
-        print("Faild creating new session")
+        print("Failed creating new session")
         session = None
 
     # return the resulting session can bei either None or all OK
