@@ -600,11 +600,12 @@ def enqueue_create_invoices(tenant="AT", from_date=None, to_date=None, kst_filte
     return
 
 @frappe.whitelist()
-def enqueue_create_generic_invoices(from_date=None, to_date=None):
+def enqueue_create_generic_invoices(from_date=None, to_date=None, with_time=False):
     # enqueue invoice creation (potential high workload)
     kwargs={
         'from_date': from_date,
-        'to_date': to_date
+        'to_date': to_date,
+        'with_time': with_time
     }
 
     enqueue("finkzeit.finkzeit.zsw.create_generic_invoices",
@@ -907,7 +908,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
 
 # this function is used to create sales invoices from bookings
 @frappe.whitelist()
-def create_generic_invoices(from_date=None, to_date=None):
+def create_generic_invoices(from_date=None, to_date=None, with_time=False):
     # get start timestamp
     print("Reading config...")
     config = frappe.get_doc("ZSW", "ZSW")
@@ -1018,10 +1019,18 @@ def create_generic_invoices(from_date=None, to_date=None):
                             person = employees[booking['person']]
                         except:
                             person = "-"
-                        description = "{0} {1}<br>{2}".format(
-                            booking['from']['timestamp'].split(" ")[0],
-                            person,
-                            booking['notice'] or "")
+                        if with_time:
+                            description = "{d} {p} ({hh:02d}:{mm:02d})<br>{n}".format(
+                                d=booking['from']['timestamp'].split(" ")[0],
+                                p=person,
+                                n=booking['notice'] or "",
+                                hh=int(booking['from']['hour'] or 0),
+                                mm=int(booking['from']['min'] or 0))
+                        else:
+                            description = "{0} {1}<br>{2}".format(
+                                booking['from']['timestamp'].split(" ")[0],
+                                person,
+                                booking['notice'] or "")
                         if customer_contact:
                             description += "<br>{0}".format(customer_contact)
                         # add item
