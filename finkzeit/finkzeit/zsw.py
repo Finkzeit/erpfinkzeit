@@ -699,7 +699,18 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                     else:
                         income_account = u"4220 - Leistungserlöse 20 % USt - FZAT"
                         tax_rule = "Verkaufssteuern Inland 20p (022) - FZAT"
-
+                # find special conditions for phone support
+                discount = 0
+                sql_query = """SELECT `tabPricing Rule`.`discount_percentage` 
+                    FROM `tabPricing Rule Item Code`
+                    LEFT JOIN `tabPricing Rule` ON `tabPricing Rule`.`name` = `tabPricing Rule Item Code`.`parent`
+                    WHERE `tabPricing Rule Item Code`.`item_code` = "{item_code}"
+                      AND `tabPricing Rule`.`customer` = "{customer}"
+                      AND `tabPricing Rule`.`disable` = 0
+                    ORDER BY `tabPricing Rule`.`priority` DESC;""".format(item_code="3014", customer=customer_record.name)
+                discount_match = frappe.db.sql(sql_query, as_dict=True)
+                if discount_match and len(discount_match) > 0:
+                    discount = discount_match[0]['discount_percentage']
                 # create lists to collect invoice items
                 items_remote = []
                 items_onsite = []
@@ -813,7 +824,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                     item_code="3014",
                                     description=description,
                                     qty=duration,
-                                    discount=0,
+                                    discount=discount,
                                     kst=kst,
                                     income_account=income_account,
                                     warehouse=warehouse))
