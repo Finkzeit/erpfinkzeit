@@ -42,7 +42,7 @@ def getSession():
             client.service.closeSession(session)
             session = None
     except:
-        print("Faild creating new session")
+        print("Failed creating new session")
         session = None
 
     # return the resulting session can bei either None or all OK
@@ -600,11 +600,12 @@ def enqueue_create_invoices(tenant="AT", from_date=None, to_date=None, kst_filte
     return
 
 @frappe.whitelist()
-def enqueue_create_generic_invoices(from_date=None, to_date=None):
+def enqueue_create_generic_invoices(from_date=None, to_date=None, with_time=False):
     # enqueue invoice creation (potential high workload)
     kwargs={
         'from_date': from_date,
-        'to_date': to_date
+        'to_date': to_date,
+        'with_time': with_time
     }
 
     enqueue("finkzeit.finkzeit.zsw.create_generic_invoices",
@@ -698,7 +699,18 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                     else:
                         income_account = u"4220 - Leistungserlöse 20 % USt - FZAT"
                         tax_rule = "Verkaufssteuern Inland 20p (022) - FZAT"
-
+                # find special conditions for phone support
+                discount = 0
+                sql_query = """SELECT `tabPricing Rule`.`discount_percentage` 
+                    FROM `tabPricing Rule Item Code`
+                    LEFT JOIN `tabPricing Rule` ON `tabPricing Rule`.`name` = `tabPricing Rule Item Code`.`parent`
+                    WHERE `tabPricing Rule Item Code`.`item_code` = "{item_code}"
+                      AND `tabPricing Rule`.`customer` = "{customer}"
+                      AND `tabPricing Rule`.`disable` = 0
+                    ORDER BY `tabPricing Rule`.`priority` DESC;""".format(item_code="3014", customer=customer_record.name)
+                discount_match = frappe.db.sql(sql_query, as_dict=True)
+                if discount_match and len(discount_match) > 0:
+                    discount = discount_match[0]['discount_percentage']
                 # create lists to collect invoice items
                 items_remote = []
                 items_onsite = []
@@ -812,7 +824,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                     item_code="3014",
                                     description=description,
                                     qty=duration,
-                                    discount=0,
+                                    discount=discount,
                                     kst=kst,
                                     income_account=income_account,
                                     warehouse=warehouse))
@@ -907,7 +919,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
 
 # this function is used to create sales invoices from bookings
 @frappe.whitelist()
-def create_generic_invoices(from_date=None, to_date=None):
+def create_generic_invoices(from_date=None, to_date=None, with_time=False):
     # get start timestamp
     print("Reading config...")
     config = frappe.get_doc("ZSW", "ZSW")
@@ -1018,10 +1030,18 @@ def create_generic_invoices(from_date=None, to_date=None):
                             person = employees[booking['person']]
                         except:
                             person = "-"
-                        description = "{0} {1}<br>{2}".format(
-                            booking['from']['timestamp'].split(" ")[0],
-                            person,
-                            booking['notice'] or "")
+                        if with_time:
+                            description = "{d} {p} ({hh:02d}:{mm:02d})<br>{n}".format(
+                                d=booking['from']['timestamp'].split(" ")[0],
+                                p=person,
+                                n=booking['notice'] or "",
+                                hh=int(booking['from']['hour'] or 0),
+                                mm=int(booking['from']['min'] or 0))
+                        else:
+                            description = "{0} {1}<br>{2}".format(
+                                booking['from']['timestamp'].split(" ")[0],
+                                person,
+                                booking['notice'] or "")
                         if customer_contact:
                             description += "<br>{0}".format(customer_contact)
                         # add item
