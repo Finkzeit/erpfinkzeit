@@ -57,8 +57,8 @@ def get_data(from_date, to_date, report_type):
          AND `tabAccount`.`report_type` LIKE '{report_type}'
          AND `tabAccount`.`account_number` IN (SELECT `account_number` 
                     FROM `tabAccount` AS `tA1` 
-                    WHERE `tA1`.`account_number` IN ({accno_all}))
-       GROUP BY `tabGL Entry`.`account`;""".format(from_date=from_date, to_date=to_date, report_type=report_type, accno_all=accno_all).replace("[","").replace("]","")
+                    WHERE `tA1`.`account_number` IN ('{accno_all}'))
+       GROUP BY `tabGL Entry`.`account`;""".format(from_date=from_date, to_date=to_date, report_type=report_type, accno_all="', '".join(accno_all))
        
     # run query
     data = frappe.db.sql(sql_query, as_dict = True)
