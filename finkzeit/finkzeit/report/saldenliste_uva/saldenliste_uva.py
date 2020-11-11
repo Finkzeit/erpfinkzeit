@@ -35,6 +35,13 @@ def execute(filters=None):
     return columns, data
 
 def get_data(from_date, to_date, report_type):   
+    #prepare account number lists
+    accno_xxx = ["2500", "2505", "2510", "3510", "3511", "3512"]
+    accno_022 = ["4020", "4220", "4290", "4452", "4843", "4844", "4850", "4851", "7810"]
+    accno_029 = ["4840", "4841", "4842"]
+    accno_000 = ["4000", "4005", "4200", "4250", "4455"] + accno_022 + accno_029
+    accno_all = accno_xxx + accno_000
+    
     # prepare query
     sql_query = """SELECT 
           `tabAccount`.`account_number` AS `Kontonummer`,
@@ -50,27 +57,24 @@ def get_data(from_date, to_date, report_type):
          AND `tabAccount`.`report_type` LIKE '{report_type}'
          AND `tabAccount`.`account_number` IN (SELECT `account_number` 
                     FROM `tabAccount` AS `tA1` 
-                    WHERE `tA1`.`account_number` IN ("2500", "2505", "2510", "3510", "3511", "3512", "7810") 
-                    OR `tA1`.`account_number` LIKE "4%"
-                    AND `tA1`.`account_number` NOT IN ("4880"))
-       GROUP BY `tabGL Entry`.`account`;""".format(from_date=from_date, to_date=to_date, report_type=report_type)
+                    WHERE `tA1`.`account_number` IN ({accno_all}))
+       GROUP BY `tabGL Entry`.`account`;""".format(from_date=from_date, to_date=to_date, report_type=report_type, accno_all=accno_all).replace("[","").replace("]","").replace("'", "`")
        
     # run query
     data = frappe.db.sql(sql_query, as_dict = True)
     
     # extend summary lines
-    vat_keys = {'000': 0.0, '022': 0.0, '029': 0}
+    vat_keys = {'000': 0.0, '022': 0.0, '029': 0.0}
     for i in range(len(data)):
-        if data[i]['Kontonummer'].startswith("4") or data[i]['Kontonummer'].startswith("7") and not data[i]['Kontonummer'] == "4880":
+        if data[i]['Kontonummer'] in accno_000:
             vat_keys['000'] += data[i]['Periodensaldo']
-        if data[i]['Kontonummer'] in ["4020", "4220", "4452", "4843", "4844", "4850", "4851", "7810"]:
+        if data[i]['Kontonummer'] in accno_022:
             vat_keys['022'] += data[i]['Periodensaldo']
-        if data[i]['Kontonummer'] in ["4840", "4841", "4842"]:
+        if data[i]['Kontonummer'] in accno_029:
             vat_keys['029'] += data[i]['Periodensaldo']
     data.append({'Kontonummer': '', 'Konto': '', 'Soll': None, 'Haben': None, 'Periodensaldo': None, 'Typ': ''})
     data.append({'Kontonummer': '[000]', 'Konto': '', 'Soll': None, 'Haben': None, 'Periodensaldo': vat_keys['000'], 'Typ': ''})
     data.append({'Kontonummer': '[022]', 'Konto': '', 'Soll': None, 'Haben': None, 'Periodensaldo': vat_keys['022'], 'Typ': ''})
     data.append({'Kontonummer': '[029]', 'Konto': '', 'Soll': None, 'Haben': None, 'Periodensaldo': vat_keys['029'], 'Typ': ''})
     
-    # return data
     return data
