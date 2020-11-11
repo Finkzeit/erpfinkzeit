@@ -10,12 +10,12 @@ def execute(filters=None):
 
     # prepare columns
     columns = [
-        "Kontonummer::50",
-        "Konto:Link/Account:200",
-        "Soll:Currency:100",
-        "Haben:Currency:100",
-        "Periodensaldo:Currency:100",
-        "Typ::150"
+        "Kontonummer::105",
+        "Konto:Link/Account:355",
+        "Soll:Currency:85",
+        "Haben:Currency:85",
+        "Periodensaldo:Currency:105",
+        "Typ::105"
     ]
 
     # prepare filters
