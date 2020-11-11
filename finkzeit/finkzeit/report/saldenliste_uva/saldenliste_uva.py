@@ -10,7 +10,7 @@ def execute(filters=None):
 
     # prepare columns
     columns = [
-        "Nr::50",
+        "Kontonummer::50",
         "Konto:Link/Account:200",
         "Soll:Currency:100",
         "Haben:Currency:100",
