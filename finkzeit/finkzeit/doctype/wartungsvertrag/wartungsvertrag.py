@@ -24,13 +24,31 @@ def create_support_contract_invoices(increase_percentage):
         if contract_data.invoices and len(contract_data.invoices) > 0:
             net_amount = ((100 + increase_percentage) / 100) * contract_data.invoices[-1].amount
         customer = contract_data.customer
+        region = frappe.get_value("Customer", customer, "steuerregion")
+        if region == "AT":
+            tax_key = """`name` LIKE '%022%'"""
+        elif region == "EU":
+            tax_key = """`name` LIKE '%021%'"""
+        elif region == "CH":
+            tax_key = """`name` LIKE '%302%'"""
+        elif region == "DRL":
+            tax_key = """`name` LIKE '%022%' OR `name` LIKE '%221%'"""
+        tax_query = """SELECT `name`
+                       FROM `tabSales Taxes and Charges Template`
+                       WHERE {key}
+                       ORDER BY `modified` LIMIT 1;""".format(key=tax_key)
+        try:
+            tax_code = frappe.db.sql(tax_query, as_dict=True)[0]['name']
+        except:
+            tax_code = None
         remarks = settings.default_increase_text.format(increase_percentage)
         # create new invoice
         sinv = frappe.get_doc({
             'doctype': "Sales Invoice",
             'customer': customer,
             'eingangstext': remarks,
-            'ignore_pricing_rule': 1
+            'ignore_pricing_rule': 1,
+            'taxes_and_charges': tax_code
         })
         sinv.append('items', {
             'item_code': settings.contract_item,
