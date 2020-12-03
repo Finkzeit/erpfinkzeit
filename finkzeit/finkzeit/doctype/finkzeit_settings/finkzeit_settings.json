@@ -4,7 +4,10 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "credit_account"
+  "credit_account",
+  "section_contracts",
+  "default_increase_text",
+  "contract_item"
  ],
  "fields": [
   {
@@ -13,10 +16,26 @@
    "label": "Credit Account",
    "options": "Account",
    "permlevel": 1
+  },
+  {
+   "fieldname": "section_contracts",
+   "fieldtype": "Section Break",
+   "label": "Contracts"
+  },
+  {
+   "fieldname": "default_increase_text",
+   "fieldtype": "Small Text",
+   "label": "Default increase text"
+  },
+  {
+   "fieldname": "contract_item",
+   "fieldtype": "Link",
+   "label": "Contract item",
+   "options": "Item"
   }
  ],
  "issingle": 1,
- "modified": "2020-05-06 20:18:15.419531",
+ "modified": "2020-12-03 15:09:03.362410",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Finkzeit Settings",
