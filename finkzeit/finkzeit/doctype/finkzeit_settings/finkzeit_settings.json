@@ -24,7 +24,7 @@
   },
   {
    "fieldname": "default_increase_text",
-   "fieldtype": "Small Text",
+   "fieldtype": "Text Editor",
    "label": "Default increase text"
   },
   {
@@ -35,7 +35,7 @@
   }
  ],
  "issingle": 1,
- "modified": "2020-12-03 15:09:03.362410",
+ "modified": "2020-12-03 16:04:07.260467",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Finkzeit Settings",

@@ -43,24 +43,27 @@ def create_support_contract_invoices(increase_percentage):
             tax_code = None
         remarks = settings.default_increase_text.format(increase_percentage)
         # create new invoice
-        sinv = frappe.get_doc({
-            'doctype': "Sales Invoice",
-            'customer': customer,
-            'eingangstext': remarks,
-            'ignore_pricing_rule': 1,
-            'taxes_and_charges': tax_code
-        })
-        sinv.append('items', {
-            'item_code': settings.contract_item,
-            'qty': 1,
-            'rate': net_amount,
-            'conversion_factor': 1
-        })
-        sinv.insert()
-        # link new invoice into contract
-        contract_data.append('invoices', {
-            'sales_invoice': sinv.name
-        })
-        contract_data.save()
-        frappe.db.commit()
+        try:
+            sinv = frappe.get_doc({
+                'doctype': "Sales Invoice",
+                'customer': customer,
+                'eingangstext': remarks,
+                'ignore_pricing_rule': 1,
+                'taxes_and_charges': tax_code
+            })
+            sinv.append('items', {
+                'item_code': settings.contract_item,
+                'qty': 1,
+                'rate': net_amount,
+                'conversion_factor': 1
+            })
+            sinv.insert()
+            # link new invoice into contract
+            contract_data.append('invoices', {
+                'sales_invoice': sinv.name
+            })
+            contract_data.save()
+            frappe.db.commit()
+        except  Exception as err:
+            frappe.log_error("Unable to create invoice for {0} ({1}): {2}".format(customer, contract['name'], err), "Wartungsabrechnung")
     return
