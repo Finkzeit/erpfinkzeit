@@ -11,7 +11,7 @@ class Wartungsvertrag(Document):
     pass
 
 @frappe.whitelist()
-def create_support_contract_invoices(increase_percentage):
+def create_support_contract_invoices(increase_percentage, year):
     applicable_contracts = frappe.get_all("Wartungsvertrag", filters={'status': 'Active'}, fields=['name'])
     settings = frappe.get_doc("Finkzeit Settings", "Finkzeit Settings")
     if not settings.default_increase_text or not settings.contract_item:
@@ -39,9 +39,12 @@ def create_support_contract_invoices(increase_percentage):
                        ORDER BY `modified` LIMIT 1;""".format(key=tax_key)
         try:
             tax_code = frappe.db.sql(tax_query, as_dict=True)[0]['name']
+            # prepare taxes and charges
+            taxes_and_charges_template = frappe.get_doc("Sales Taxes and Charges Template", tax_code)
         except:
             tax_code = None
-        remarks = settings.default_increase_text.format(increase_percentage)
+            taxes_and_charges_template = None
+        remarks = settings.default_increase_text.format(increase_percentage, year)
         # create new invoice
         try:
             sinv = frappe.get_doc({
@@ -49,7 +52,8 @@ def create_support_contract_invoices(increase_percentage):
                 'customer': customer,
                 'eingangstext': remarks,
                 'ignore_pricing_rule': 1,
-                'taxes_and_charges': tax_code
+                'taxes_and_charges': tax_code,
+                'taxes': taxes_and_charges_template.taxes if taxes_and_charges_template else None,
             })
             sinv.append('items', {
                 'item_code': settings.contract_item,
