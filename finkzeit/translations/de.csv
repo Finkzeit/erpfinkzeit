@@ -99,3 +99,4 @@ DocType: Wartungsvertrag,Contracts,Verträge
 DocType: Wartungsvertrag,Default increase text,Standard-Erhöhungstext
 DocType: Wartungsvertrag,Contract item,Vertragsartikel
 DocType: Wartungsvertrag,Please configure the contract creation under Finkzeit Settings,Bitte konfigurieren Sie die Wartungsvertragsabrechnung in den Finkzeit Enstellungen
+Report: Asset Summary,Opening Value,Anfangswert
