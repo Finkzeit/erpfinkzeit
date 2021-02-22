@@ -4,6 +4,7 @@
 from __future__ import unicode_literals
 import frappe
 from datetime import datetime
+from frappe import _
 
 def execute(filters=None):
     columns, data = [], []
