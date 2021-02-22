@@ -9,15 +9,7 @@ def execute(filters=None):
     columns, data = [], []
 
     # prepare columns
-    columns = [
-        "Nr::50",
-        "Konto:Link/Account:200",
-        "Anfangssaldo:Currency:100",
-        "Soll:Currency:100",
-        "Haben:Currency:100",
-        "Schlusssaldo:Currency:100",
-        "Typ::150"
-    ]
+    columns = get_columns()
 
     # prepare filters
     from_date = "2000-01-01"
@@ -35,6 +27,17 @@ def execute(filters=None):
 
     return columns, data
 
+def get_columns():
+    return [
+        {"label": _("Nr"), "fieldname": "Kontonummer", "fieldtype": "Data", "width": 50},
+        {"label": _("Konto"), "fieldname": "Konto", "fieldtype": "Link", "options", "Account", "width": 200},
+        {"label": _("Anfangssaldo"), "fieldname": "Kontonummer", "fieldtype": "Currency", "width": 100},
+        {"label": _("Soll"), "fieldname": "Soll", "fieldtype": "Currency", "width": 100},
+        {"label": _("Haben"), "fieldname": "Haben", "fieldtype": "Currency", "width": 100},
+        {"label": _("Schlusssaldo"), "fieldname": "Schlusssaldo", "fieldtype": "Currency", "width": 100},
+        {"label": _("Typ"), "fieldname": "Typ", "fieldtype": "Data", "width": 150},
+    ]
+    
 def get_data(from_date, to_date, report_type):   
     # prepare query
     sql_query = """
@@ -74,6 +77,6 @@ def get_data(from_date, to_date, report_type):
        ) AS `raw`
        WHERE (`raw`.`Anfangssaldo` + `raw`.`Soll` - `raw`.`Haben`) != 0;""".format(from_date=from_date, to_date=to_date, report_type=report_type)
  
-    # run query, as list, otherwise export to Excel fails 
-    data = frappe.db.sql(sql_query, as_list = True)
+    # run query
+    data = frappe.db.sql(sql_query, as_dict = True)
     return data
