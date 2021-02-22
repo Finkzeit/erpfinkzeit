@@ -30,7 +30,7 @@ def execute(filters=None):
 def get_columns():
     return [
         {"label": _("Nr"), "fieldname": "Kontonummer", "fieldtype": "Data", "width": 50},
-        {"label": _("Konto"), "fieldname": "Konto", "fieldtype": "Link", "options", "Account", "width": 200},
+        {"label": _("Konto"), "fieldname": "Konto", "fieldtype": "Link", "options": "Account", "width": 200},
         {"label": _("Anfangssaldo"), "fieldname": "Kontonummer", "fieldtype": "Currency", "width": 100},
         {"label": _("Soll"), "fieldname": "Soll", "fieldtype": "Currency", "width": 100},
         {"label": _("Haben"), "fieldname": "Haben", "fieldtype": "Currency", "width": 100},
