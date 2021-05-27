@@ -363,7 +363,10 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
             createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_lizenzname", licence_name)
         # compress level
         contentDict = compress_level_e(wsLevelEArray[0])
-        client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
+        try:
+            client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
+        except Exception as err:
+            frappe.log_error("{0} on {1}".format(err, contentDict), "ZSW create_update customer error")
     else:
         print("Customer not found")
         wsLevelEArray = { 'WSExtensibleLevel' : 
