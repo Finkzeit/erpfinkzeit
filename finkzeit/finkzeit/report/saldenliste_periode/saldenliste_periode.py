@@ -4,20 +4,13 @@
 from __future__ import unicode_literals
 import frappe
 from datetime import datetime
+from frappe import _
 
 def execute(filters=None):
     columns, data = [], []
 
     # prepare columns
-    columns = [
-        "Nr::50",
-        "Konto:Link/Account:200",
-        "Anfangssaldo:Currency:100",
-        "Soll:Currency:100",
-        "Haben:Currency:100",
-        "Schlusssaldo:Currency:100",
-        "Typ::150"
-    ]
+    columns = get_columns()
 
     # prepare filters
     from_date = "2000-01-01"
@@ -35,10 +28,22 @@ def execute(filters=None):
 
     return columns, data
 
+def get_columns():
+    return [
+        {"label": _("Nr"), "fieldname": "Kontonummer", "fieldtype": "Data", "width": 50},
+        {"label": _("Konto"), "fieldname": "Konto", "fieldtype": "Link", "options": "Account", "width": 200},
+        {"label": _("Anfangssaldo"), "fieldname": "Anfangssaldo", "fieldtype": "Currency", "width": 100},
+        {"label": _("Soll"), "fieldname": "Soll", "fieldtype": "Currency", "width": 100},
+        {"label": _("Haben"), "fieldname": "Haben", "fieldtype": "Currency", "width": 100},
+        {"label": _("Schlusssaldo"), "fieldname": "Schlusssaldo", "fieldtype": "Currency", "width": 100},
+        {"label": _("Typ"), "fieldname": "Typ", "fieldtype": "Data", "width": 150},
+    ]
+    
 def get_data(from_date, to_date, report_type):   
     # prepare query
     sql_query = """
-       SELECT * FROM
+       SELECT *, (`raw`.`Anfangssaldo` + `raw`.`Soll` - `raw`.`Haben`) AS `Schlusssaldo` 
+       FROM
        (SELECT 
           `tabAccount`.`account_number` AS `Kontonummer`,
           `tabAccount`.`name` AS `Konto`, 
@@ -65,21 +70,14 @@ def get_data(from_date, to_date, report_type):
              AND `t4`.`posting_date` >= '{from_date}'
             AND `t4`.`account` = `tabAccount`.`name`
           ), 0) AS `Haben`,
-          IFNULL((SELECT 
-             ROUND((SUM(`t2`.`debit`) - SUM(`t2`.`credit`)), 2)
-           FROM `tabGL Entry` AS `t2`
-           WHERE 
-             `t2`.`posting_date` <= '{to_date}'
-            AND `t2`.`account` LIKE CONCAT(`tabAccount`.`account_number`, "%")
-          ), 0) AS `Schlusssaldo`,
           `tabAccount`.`report_type` AS `Typ`
        FROM `tabAccount`
        WHERE 
          `tabAccount`.`is_group` = 0
          AND `tabAccount`.`report_type` LIKE '{report_type}'
        ) AS `raw`
-       WHERE `raw`.`Schlusssaldo` != 0;""".format(from_date=from_date, to_date=to_date, report_type=report_type)
+       /* WHERE (`raw`.`Anfangssaldo` + `raw`.`Soll` - `raw`.`Haben`) != 0 */;""".format(from_date=from_date, to_date=to_date, report_type=report_type)
  
-    # run query, as list, otherwise export to Excel fails 
-    data = frappe.db.sql(sql_query, as_list = True)
+    # run query
+    data = frappe.db.sql(sql_query, as_dict = True)
     return data
