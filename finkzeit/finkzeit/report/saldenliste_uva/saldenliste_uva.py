@@ -16,7 +16,8 @@ def execute(filters=None):
         {'label': "Haben", 'fieldname': 'haben', 'fieldtype': 'Currency', 'width': 85},
         {'label': "Periodensaldo", 'fieldname': 'periodensaldo', 'fieldtype': 'Currency', 'width': 105},
         {'label': "Typ", 'fieldname': 'typ', 'fieldtype': 'Data', 'width': 105},
-        {'label': "KZ", 'fieldname': 'kz', 'fieldtype': 'Data', 'width': 50}
+        {'label': "KZ", 'fieldname': 'kz', 'fieldtype': 'Data', 'width': 100},
+        {'label': "", 'fieldname': 'blank', 'fieldtype': 'Data', 'width': 20}
     ]
 
     # prepare filters
