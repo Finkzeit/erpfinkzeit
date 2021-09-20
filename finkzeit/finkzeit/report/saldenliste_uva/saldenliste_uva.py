@@ -10,12 +10,14 @@ def execute(filters=None):
 
     # prepare columns
     columns = [
-        "Kontonummer::105",
-        "Konto:Link/Account:355",
-        "Soll:Currency:85",
-        "Haben:Currency:85",
-        "Periodensaldo:Currency:105",
-        "Typ::105"
+        {'label': "Kontonummer", 'fieldname': 'kontonummer', 'fieldtype': 'Data', 'width': 105},
+        {'label': "Konto", 'fieldname': 'konto', 'fieldtype': 'Link', 'options': 'Account', 'width': 355},
+        {'label': "Soll", 'fieldname': 'soll', 'fieldtype': 'Currency', 'width': 85},
+        {'label': "Haben", 'fieldname': 'haben', 'fieldtype': 'Currency', 'width': 85},
+        {'label': "Periodensaldo", 'fieldname': 'periodensaldo', 'fieldtype': 'Currency', 'width': 105},
+        {'label': "Typ", 'fieldname': 'typ', 'fieldtype': 'Data', 'width': 105},
+        {'label': "KZ", 'fieldname': 'kz', 'fieldtype': 'Data', 'width': 100},
+        {'label': "", 'fieldname': 'blank', 'fieldtype': 'Data', 'width': 20}
     ]
 
     # prepare filters
@@ -37,19 +39,19 @@ def execute(filters=None):
 def get_data(from_date, to_date, report_type):   
     #prepare account number lists
     accno_xxx = ["2500", "2505", "2510", "3510", "3511", "3512"]
-    accno_022 = ["4020", "4220", "4290", "4452", "4843", "4844", "4850", "4851", "7810"]
+    accno_022 = ["4020", "4220", "4452", "4843", "4844", "4850", "4851", "7810"]
     accno_029 = ["4840", "4841", "4842"]
-    accno_000 = ["4000", "4005", "4200", "4250", "4455"] + accno_022 + accno_029
+    accno_000 = ["4000", "4005", "4200", "4250", "4290", "4455", "4500"] + accno_022 + accno_029
     accno_all = accno_xxx + accno_000
     
     # prepare query
     sql_query = """SELECT 
-          `tabAccount`.`account_number` AS `Kontonummer`,
-          `tabGL Entry`.`account` AS `Konto`, 
-          ROUND(SUM(`tabGL Entry`.`debit`), 2) AS `Soll`, 
-          ROUND(SUM(`tabGL Entry`.`credit`), 2) AS `Haben`,
-          ROUND((SUM(`tabGL Entry`.`debit`) - SUM(`tabGL Entry`.`credit`)), 2) AS `Periodensaldo`,
-          `tabAccount`.`report_type` AS `Typ`
+          `tabAccount`.`account_number` AS `kontonummer`,
+          `tabGL Entry`.`account` AS `konto`, 
+          ROUND(SUM(`tabGL Entry`.`debit`), 2) AS `soll`, 
+          ROUND(SUM(`tabGL Entry`.`credit`), 2) AS `haben`,
+          ROUND((SUM(`tabGL Entry`.`debit`) - SUM(`tabGL Entry`.`credit`)), 2) AS `periodensaldo`,
+          `tabAccount`.`report_type` AS `typ`
        FROM `tabGL Entry`
        JOIN `tabAccount` ON `tabGL Entry`.`account` = `tabAccount`.`name`
        WHERE `tabGL Entry`.`posting_date` >= '{from_date}' 
@@ -63,18 +65,29 @@ def get_data(from_date, to_date, report_type):
     # run query
     data = frappe.db.sql(sql_query, as_dict = True)
     
+    # compile aggregation keys
+    for d in data:
+        keys = []
+        if d.kontonummer in accno_000:
+            keys.append("000")
+        if d.kontonummer in accno_022:
+            keys.append("022")
+        if d.kontonummer in accno_029:
+            keys.append("029")
+        d['kz'] = ", ".join(keys)
+    
     # extend summary lines
     vat_keys = {'000': 0.0, '022': 0.0, '029': 0.0}
     for i in range(len(data)):
-        if data[i]['Kontonummer'] in accno_000:
-            vat_keys['000'] += data[i]['Periodensaldo']
-        if data[i]['Kontonummer'] in accno_022:
-            vat_keys['022'] += data[i]['Periodensaldo']
-        if data[i]['Kontonummer'] in accno_029:
-            vat_keys['029'] += data[i]['Periodensaldo']
-    data.append({'Kontonummer': '', 'Konto': '', 'Soll': None, 'Haben': None, 'Periodensaldo': None, 'Typ': ''})
-    data.append({'Kontonummer': '[000]', 'Konto': '', 'Soll': None, 'Haben': None, 'Periodensaldo': vat_keys['000'], 'Typ': ''})
-    data.append({'Kontonummer': '[022]', 'Konto': '', 'Soll': None, 'Haben': None, 'Periodensaldo': vat_keys['022'], 'Typ': ''})
-    data.append({'Kontonummer': '[029]', 'Konto': '', 'Soll': None, 'Haben': None, 'Periodensaldo': vat_keys['029'], 'Typ': ''})
+        if data[i]['kontonummer'] in accno_000:
+            vat_keys['000'] += data[i]['periodensaldo']
+        if data[i]['kontonummer'] in accno_022:
+            vat_keys['022'] += data[i]['periodensaldo']
+        if data[i]['kontonummer'] in accno_029:
+            vat_keys['029'] += data[i]['periodensaldo']
+    data.append({'kontonummer': '', 'konto': '', 'soll': None, 'haben': None, 'periodensaldo': None, 'typ': '', 'kz': None})
+    data.append({'kontonummer': '[000]', 'konto': '', 'soll': None, 'haben': None, 'periodensaldo': vat_keys['000'], 'typ': '', 'kz': "000"})
+    data.append({'kontonummer': '[022]', 'konto': '', 'soll': None, 'haben': None, 'periodensaldo': vat_keys['022'], 'typ': '', 'kz': "022"})
+    data.append({'kontonummer': '[029]', 'konto': '', 'soll': None, 'haben': None, 'periodensaldo': vat_keys['029'], 'typ': '', 'kz': "029"})
     
     return data

@@ -76,7 +76,7 @@ def get_data(from_date, to_date, report_type):
          `tabAccount`.`is_group` = 0
          AND `tabAccount`.`report_type` LIKE '{report_type}'
        ) AS `raw`
-       WHERE (`raw`.`Anfangssaldo` + `raw`.`Soll` - `raw`.`Haben`) != 0;""".format(from_date=from_date, to_date=to_date, report_type=report_type)
+       /* WHERE (`raw`.`Anfangssaldo` + `raw`.`Soll` - `raw`.`Haben`) != 0 */;""".format(from_date=from_date, to_date=to_date, report_type=report_type)
  
     # run query
     data = frappe.db.sql(sql_query, as_dict = True)
