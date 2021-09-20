@@ -52,7 +52,8 @@ def post_invoice(**kwargs):
         'apply_discount_on': invoice['apply_discount_on'],
         'additional_discount_percentage': invoice['additional_discount_percentage'],
         'discount_amount': invoice['discount_amount'],
-        'payment_terms_template': supplier_record.payment_terms
+        'payment_terms_template': supplier_record.payment_terms,
+        'is_proposed': 1
     })
     try:
         new_pinv = pinv.insert(ignore_permissions=True)
