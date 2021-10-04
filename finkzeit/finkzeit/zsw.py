@@ -252,7 +252,7 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
         for adr_id in adr_ids:
             address = frappe.get_doc("Address", adr_id['parent'])
             if address.is_primary_address:
-                continue
+                break
         city = address.city or "-"
         street = address.address_line1 or "-"
         pincode = address.pincode or "-"
