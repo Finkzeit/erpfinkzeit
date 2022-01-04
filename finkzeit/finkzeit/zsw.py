@@ -673,8 +673,13 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
             if tenant.lower() == "zsw":
                 erp_customer = erp_customer
             elif tenant.lower() != "at":
-                # crop country digits
-                erp_customer = erp_customer[2:]
+                if tenant.lower() == "ch" and erp_customer.lower().startswith("ch"):
+                    # crop country digits
+                    erp_customer = erp_customer[2:]
+                else:
+                    # customer outside tenant range, skip
+                    print("Skip customer {0} (out of range)".format(customer))
+                    continue
             else:
                 if erp_customer.lower().startswith("ch"):
                     # customer outside tenant range, skip
