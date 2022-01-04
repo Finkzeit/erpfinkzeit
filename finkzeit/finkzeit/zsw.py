@@ -320,6 +320,8 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
         kst_code = 87
     elif "FZCH" in kst:
         kst_code = 114
+    elif "FZO" in kst:
+        kst_code = 150
     else:
         kst_code = 13
     s = getSession()
