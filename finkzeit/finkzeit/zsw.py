@@ -263,7 +263,7 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
     # technician: crop from technician field (email ID without @...)
     customer_record = frappe.get_doc("Customer", customer)
     if technician:
-        zsw_technician = technician.split("@")[0]
+        zsw_technician = get_technician_id(technician)
     else:
         zsw_technician = ""
     # contact
@@ -365,6 +365,7 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
             createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_lizenzname", licence_name)
         # compress level
         contentDict = compress_level_e(wsLevelEArray[0])
+        print("{0}".format(contentDict))
         try:
             client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
         except Exception as err:
@@ -447,7 +448,8 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
             customer_record.save()
         except Exception as err:
             frappe.log_error( "Unable to update customer {0}: {1}".format(customer, err), "ZSW create_update_sales_order" )
-        zsw_technician = technician.split('@')[0]
+
+        zsw_technician = get_technician_id(technician)
     else:
         zsw_technician = ""
     # prepare information
@@ -1526,3 +1528,15 @@ def get_zsw_level(erp_structure):
             return 4
         else:
             return None
+
+""" 
+ Returns the ID (ZSW) for the technician
+"""
+def get_technician_id(technician):
+    try:
+        user_record = frappe.get_doc("User", technician)
+        zsw_technician = user_record.username
+    except:
+        # fallback to first part of mail
+        zsw_technician = technician.split('@')[0]
+    return technician
