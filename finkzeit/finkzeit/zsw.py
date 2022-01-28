@@ -428,7 +428,7 @@ def create_update_item(item_code, item_name, active, target):
     disconnect()
     return
     
-def create_update_sales_order(sales_order, customer, customer_name, tenant="AT", technician=None, active=True):
+def create_update_sales_order(sales_order, customer, customer_name, tenant="AT", technician=None, active=True, debug=False):
     # collect city
     so = frappe.get_doc("Sales Order", sales_order)
     try:
@@ -486,7 +486,8 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
             createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", zsw_project_name, 4, 3, True)
         createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_projektverantwortlicher", zsw_technician, 2, 0, False)
         contentDict = compress_level_e(wsLevelEArray[0])
-        #print("Content: {0}".format(contentDict))
+        if debug:
+            print("Content: {0}".format(contentDict))
         client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
     else:
         frappe.log_error( "Trying to link to customer that does not exist: {0} ({1})".format(customer, sales_order), "ZSW create_update_sales_order")
