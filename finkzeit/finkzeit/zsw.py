@@ -484,6 +484,8 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
         else:
             # delete link
             createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_auftrag_projekt", zsw_project_name, 4, 3, True)
+        if debug:
+            print("Project responsible: {0}".format(zsw_technician))
         createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_projektverantwortlicher", zsw_technician, 2, 0, False)
         contentDict = compress_level_e(wsLevelEArray[0])
         if debug:
@@ -1540,4 +1542,4 @@ def get_technician_id(technician):
     except:
         # fallback to first part of mail
         zsw_technician = technician.split('@')[0]
-    return technician
+    return zsw_technician
