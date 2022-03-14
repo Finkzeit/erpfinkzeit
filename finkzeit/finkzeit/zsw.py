@@ -291,6 +291,7 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
                     `tabSales Invoice`.`posting_date` >= (DATE_SUB(NOW(), INTERVAL 13 MONTH))
                     AND `tabSales Invoice Item`.`item_code` IN ("3010")
                     AND `tabSales Invoice`.`customer` = '{customer}'
+                    AND `tabSales Invoice`.`is_return` = 0
                    ORDER BY `tabSales Invoice`.`posting_date` DESC;""".format(customer=customer)
     contract = frappe.db.sql(sql_query, as_dict=True)
     if len(contract) > 0:
