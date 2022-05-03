@@ -108,16 +108,6 @@ class Licence(Document):
                 content += make_line("     value: {0}".format(right.restriction_value or ""))    
         return { 'content': content }
         
-    def before_save(self):
-        total_amount = 0.0
-        for item in self.invoice_items:
-            item.amount = float(item.qty) * float(item.rate * ((100.0 - float(item.discount or 0)) / 100.0))
-            total_amount += item.amount
-            if not item.group:
-                item.group = "empty"
-        self.total_amount = total_amount
-        self.total_amount_with_discount = total_amount * ((100.0 - float(self.overall_discount or 0)) / 100.0)
-        return
     pass
 
 # adds Windows-compatible line endings (to make the xml look nice)    
