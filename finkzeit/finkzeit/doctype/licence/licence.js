@@ -146,6 +146,9 @@ frappe.ui.form.on('Licence Item', {
     discount: function(frm, cdt, cdn) {
         update_totals(frm);
     },
+    all_in: function(frm, cdt, cdn) {
+        update_totals(frm);
+    },
     invoice_items_remove: function(frm, cdt, cdn) {
         update_totals(frm);
     }
