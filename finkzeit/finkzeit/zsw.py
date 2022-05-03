@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018-2020, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2018-2022, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 #
 
@@ -834,7 +834,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                             print("Dropped {0} ({1}) by not matching service level filter".format(booking_id, service_type))
                             continue
                         if service_type == "T01":
-                            if invoice_type in ["W", "N"]:
+                            if invoice_type in ["W", "N", "A"]:
                                 # remote, free of charge
                                 items_remote.append(get_item(
                                     item_code="3014",
