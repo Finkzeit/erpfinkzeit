@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018-2020, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2018-2022, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 #
 
