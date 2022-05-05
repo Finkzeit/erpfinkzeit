@@ -1555,7 +1555,7 @@ def update_customer_all_in(licence, calc_rate, tenant="AT"):
     zsw_reference = get_zsw_reference(licence_doc.customer, tenant)
     
     if licence_doc.enable_all_in == 1:
-        all_in_ms = (licence_doc.final_all_in_rate / calc_rate) * 3600000
+        all_in_ms = licence_doc.final_all_in_rate * 3600000 / float(calc_rate)
     else:
         all_in_ms = 0
         
