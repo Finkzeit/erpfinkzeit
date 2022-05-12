@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018-2020, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2018-2022, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 #
 
@@ -834,7 +834,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                             print("Dropped {0} ({1}) by not matching service level filter".format(booking_id, service_type))
                             continue
                         if service_type == "T01":
-                            if invoice_type in ["W", "N"]:
+                            if invoice_type in ["W", "N", "A"]:
                                 # remote, free of charge
                                 items_remote.append(get_item(
                                     item_code="3014",
@@ -1546,3 +1546,47 @@ def get_technician_id(technician):
         # fallback to first part of mail
         zsw_technician = technician.split('@')[0]
     return zsw_technician
+
+"""
+ Updates a customer level with the included all in time.
+"""
+@frappe.whitelist()
+def update_customer_all_in(licence, calc_rate, tenant="AT"):
+    # collect information
+    licence_doc = frappe.get_doc("Licence", licence)
+    zsw_reference = get_zsw_reference(licence_doc.customer, tenant)
+    
+    if licence_doc.enable_all_in == 1:
+        all_in_ms = int(licence_doc.final_all_in_rate * 3600000 / float(calc_rate))
+    else:
+        all_in_ms = 0
+        
+    s = getSession()
+    # create or update customer
+    wsTsNow = client.service.getTime(s)
+    wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': get_zsw_level("Customer"), 'code': zsw_reference }] }
+    wsLevelEArray = client.service.getLevelsEByIdentification(s, wsLevelIdentArray, wsTsNow)
+    # prepare properties
+    available_properties = get_all_property_definitions()
+    # check if customer exists
+    if wsLevelEArray:
+        # customer exists --> update
+        print("Customer found, update")
+        wsLevelEArray[0]["action"] = 3
+        
+        if "p_all_in_std" in available_properties:
+            createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_all_in_std", all_in_ms)
+
+        # compress level
+        contentDict = compress_level_e(wsLevelEArray[0])
+        print("{0}".format(contentDict))
+        try:
+            client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
+        except Exception as err:
+            frappe.log_error("{0} on {1}".format(err, contentDict), "ZSW update_customer_all_in customer error")
+    else:
+        print("Customer not found")
+
+    # close connection
+    disconnect()
+    return

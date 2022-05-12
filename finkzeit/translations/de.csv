@@ -47,6 +47,17 @@ DocType: Licence,Access Rights,Zugriffsrechte
 DocType: Licence,Grant,Erlauben
 DocType: Licence,Restrictions,Einschränkungen
 DocType: Licence,Has Restrictions,Hat Einschränkungen
+DocType: Licence,All-In Service,All-In Service
+DocType: Licence,All-In Item,All-In Artikel
+DocType: Licence,Calculation Base,Kalkulationsbasis
+DocType: Licence,All-In Percent,All-In Prozent
+DocType: Licence,All-In Rate,All-In-Einzelpreis
+DocType: Licence,All-In Discount,All-In-Sonderrabatt
+DocType: Licence,Final All-In Rate,Engültiger All-In-Preis
+DocType: Licence,All-In Support,All-In Support
+DocType: Licence,Is All-In Support,Ist All-In-Support-Artikel
+DocType: Licence,Param a,Parameter a
+DocType: Licence,Param e,Parameter e
 Report: Quotation Overview,Quotation Overview,Angebotsübersicht
 DocType: Invoice Cycle Log,Invoice Cycle Log,Rechnungslauf-Protokoll
 DocType: Invoice Cycle Log,Download Post PDF,Post-PDF herunterladen
