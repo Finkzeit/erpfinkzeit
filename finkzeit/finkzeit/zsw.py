@@ -1345,7 +1345,7 @@ def deliver_sales_order(sales_order, tenant="AT"):
                     service_type)
                 if customer_contact:
                     description += "<br>{0}".format(customer_contact)
-                if invoice_type in ["W", "N", "P"]:
+                if invoice_type in ["W", "N", "P"] and duration > 0:
                     # remote, free of charge
                     items.append(get_item(
                         item_code="3001",
@@ -1357,7 +1357,7 @@ def deliver_sales_order(sales_order, tenant="AT"):
                         warehouse=warehouse,
                         against_sales_order=sales_order,
                         date=date))
-                elif invoice_type == "J":
+                elif invoice_type == "J" and duration > 0:
                     # remote, normal
                     do_invoice_remote = True
                     items.append(get_item(
@@ -1370,6 +1370,8 @@ def deliver_sales_order(sales_order, tenant="AT"):
                         warehouse=warehouse,
                         against_sales_order=sales_order,
                         date=date))
+                else:
+                    print("skipping {0} for qty = 0 or unkown invoice type".format(description[:10]))
 
                 # add material items
                 if (len(item_code) > 0) and (len(item_code) == len(qty)):
