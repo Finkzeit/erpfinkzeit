@@ -59,11 +59,20 @@ def post_invoice(**kwargs):
         # assert that all items exist
         for item in invoice['items']:
             if not frappe.db.exists("Item", item['item_code']):
+                # assert that item group exists
+                if not frappe.db.exists("Item Group", item['item_group']):
+                    new_item_group = frappe.get_doc({
+                        'doctype': 'Item Group',
+                        'item_group_name', item['item_group'],
+                        'parent_item_group': 'Alle Artikelgruppen'
+                    })
+                    new_item_group.insert(ignore_permissions=True)
                 new_item = frappe.get_doc({
                     'doctype': 'Item',
                     'item_code': item['item_code'],
                     'item_name': item['item_name'],
                     'description': item['description'],
+                    'item_group': item['item_group'],
                     'is_stock_item': 0,
                     'disabled': 0
                 })
@@ -87,6 +96,7 @@ def send_invoice(host, sales_invoice):
             'item_code': item.item_code,
             'item_name': item.item_name,
             'description': item.description,
+            'item_group': item.item_group,
             'qty': item.qty,
             'rate': item.rate
         })
