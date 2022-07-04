@@ -63,7 +63,7 @@ def post_invoice(**kwargs):
                     'doctype': 'Item',
                     'item_code': item['item_code'],
                     'item_name': item['item_name'],
-                    'description': item['description']
+                    'description': item['description'],
                     'is_stock_item': 0,
                     'disabled': 0
                 })
