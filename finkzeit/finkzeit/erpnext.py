@@ -56,6 +56,19 @@ def post_invoice(**kwargs):
         'is_proposed': 1
     })
     try:
+        # assert that all items exist
+        for item in invoice['items']:
+            if not frappe.db.exists("Item", item['item_code']):
+                new_item = frappe.get_doc({
+                    'doctype': 'Item',
+                    'item_code': item['item_code'],
+                    'item_name': item['item_name'],
+                    'description': item['description']
+                    'is_stock_item': 0,
+                    'disabled': 0
+                })
+                new_item.insert(ignore_permissions=True)
+        # insert purchase invoice
         new_pinv = pinv.insert(ignore_permissions=True)
         #frappe.log_error("pinv {1} for {0} created".format(invoice['name'], new_pinv.name), "debug pinv import")
         if new_pinv.grand_total == invoice['grand_total']:
@@ -72,6 +85,8 @@ def send_invoice(host, sales_invoice):
     for item in sinv.items:
         items.append({
             'item_code': item.item_code,
+            'item_name': item.item_name,
+            'description': item.description,
             'qty': item.qty,
             'rate': item.rate
         })
