@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018-2019, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2018-2022, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 #
 
@@ -17,7 +17,10 @@ from erpnextswiss.erpnextswiss.page.bank_wizard.bank_wizard import get_default_s
 @frappe.whitelist(allow_guest=True)
 def post_invoice(**kwargs):
     result = "{0}".format(kwargs)
-    invoice = json.loads(kwargs['data'])
+    if type(kwargs['data']) == dict:
+        invoice = kwargs['data']
+    else:
+        invoice = json.loads(kwargs['data'])
     #frappe.log_error("Invoice: {0}".format(invoice), "API")
     supplier = frappe.get_all("Supplier", filters=[['supplier_name', 'LIKE', invoice['company']]], fields=['name'])
     if not supplier:
@@ -88,14 +91,14 @@ def post_invoice(**kwargs):
         frappe.log_error("Unable to insert {0}: {1}".format(invoice['name'], err), "ERPNext PINV API insert error" )
     return result
 
-def send_invoice(host, sales_invoice):
+def send_invoice(host, sales_invoice, no_description=False):
     sinv = frappe.get_doc("Sales Invoice", sales_invoice)
     items = []
     for item in sinv.items:
         items.append({
             'item_code': item.item_code,
             'item_name': item.item_name,
-            'description': item.description,
+            'description': item.description if not no_description else "-",
             'item_group': item.item_group,
             'qty': item.qty,
             'rate': item.rate
@@ -127,7 +130,11 @@ def send_invoice(host, sales_invoice):
         except Exception as err:
             frappe.log_error( "Unable to mark invoice {0} as sent: {1}".format(sales_invoice, err), "erpnext send_invoice" )
     else:
-        frappe.log_error( "An error occured when sending invoice {0} to {1}: {2}".format(sales_invoice, host, r.status_code), "erpnext send_invoice" )
+        if r.status_code == 400 and not no_description:
+            # try without description (sometimes, the description content leads to issues in deciding)
+            send_invoice(host, sales_invoice, no_description=True)
+        else:
+            frappe.log_error( "An error occured when sending invoice {0} to {1}: {2}".format(sales_invoice, host, r.status_code), "erpnext send_invoice" )
     return
 
 # function to send invoices to an ERPNext customer
