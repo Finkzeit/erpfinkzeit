@@ -137,3 +137,10 @@ scheduler_events = {
 # Fixtures (to import DocType customisations)
 # --------
 fixtures = ["Custom Field"]
+
+# add Jinja environment
+jenv = {
+    "methods": [
+        "has_zsw:finkzeit.finkzeit.utils.has_zsw"
+        ]
+}
