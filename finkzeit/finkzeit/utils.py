@@ -109,16 +109,24 @@ Checks if a customer has received ZSW invoices in the last 12 months. Returns 0 
 This has a Jinja endpoint.
 """
 def has_zsw(customer):
+    #item_count = frappe.db.sql("""
+    #    SELECT 
+    #        COUNT(`tabSales Invoice Item`.`name`) AS `count`
+    #    FROM `tabSales Invoice Item` 
+    #    LEFT JOIN `tabSales Invoice` ON 
+    #        `tabSales Invoice`.`name` = `tabSales Invoice Item`.`parent` 
+    #    WHERE 
+    #        `tabSales Invoice`.`docstatus` = 1 
+    #        AND `tabSales Invoice`.`customer` = "{customer}" 
+    #        AND `tabSales Invoice`.`posting_date` >= DATE_SUB(NOW(), INTERVAL 12 MONTH) 
+    #        AND `tabSales Invoice Item`.`item_name` LIKE "%ZSW%";
+    #""".format(customer=customer), as_dict=True)
     item_count = frappe.db.sql("""
         SELECT 
-            COUNT(`tabSales Invoice Item`.`name`) AS `count`
-        FROM `tabSales Invoice Item` 
-        LEFT JOIN `tabSales Invoice` ON 
-            `tabSales Invoice`.`name` = `tabSales Invoice Item`.`parent` 
+            COUNT(`tabLicence`.`name`) AS `count`
+        FROM `tabLicence` 
         WHERE 
-            `tabSales Invoice`.`docstatus` = 1 
-            AND `tabSales Invoice`.`customer` = "{customer}" 
-            AND `tabSales Invoice`.`posting_date` >= DATE_SUB(NOW(), INTERVAL 12 MONTH) 
-            AND `tabSales Invoice Item`.`item_name` LIKE "%ZSW%";
+            `tabLicence`.`enabled` = 1 
+            AND `tabLicence`.`customer` = "{customer}";
     """.format(customer=customer), as_dict=True)
     return item_count[0]['count']
