@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2020, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2019-2022, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
@@ -35,6 +35,7 @@ def execute(filters=None):
 
     return columns, data
 
+@frappe.whitelist()
 def get_data(from_date, to_date, report_type):   
     # prepare query
     sql_query = """
@@ -80,6 +81,5 @@ def get_data(from_date, to_date, report_type):
        ) AS `raw`
        WHERE `raw`.`Schlusssaldo` != 0;""".format(from_date=from_date, to_date=to_date, report_type=report_type)
  
-    # run query, as list, otherwise export to Excel fails 
-    data = frappe.db.sql(sql_query, as_list = True)
+    data = frappe.db.sql(sql_query, as_dict = True)
     return data
