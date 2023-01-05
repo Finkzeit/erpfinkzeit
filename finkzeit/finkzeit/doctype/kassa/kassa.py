@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 import frappe
 from frappe.model.document import Document
 from collections import OrderedDict
+from erpnextswiss.erpnextswiss.attach_pdf import execute
 
 class Kassa(Document):
     def validate(self):
@@ -126,6 +127,10 @@ class Kassa(Document):
             })
             journal_entry_record = journal_entry.insert()
             journal_entry_record.submit()
+        
+        # create and attach the print pdf
+        execute("Kassa", kassa['name'], title=kassa['name'].replace("ä", "ae"), print_format="Kassa")
+        frappe.db.commit()
         
         return
     
