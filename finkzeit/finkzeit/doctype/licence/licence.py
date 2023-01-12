@@ -284,7 +284,7 @@ def month_in_words(month):
 def get_item(licence_item, multiplier, kst, income_account):
     return {
         'item_code': licence_item.item_code,
-        'rate': (float(licence_item.rate) * ((100.0 - float(licence_item.discount or 0)) / 100.0)),
+        'rate': round((float(licence_item.rate) * ((100.0 - float(licence_item.discount or 0)) / 100.0)), 2),
         'qty': licence_item.qty * multiplier,
         'discount_percentage': licence_item.discount,
         'cost_center': kst,
