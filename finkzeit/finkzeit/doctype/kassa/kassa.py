@@ -129,7 +129,7 @@ class Kassa(Document):
             journal_entry_record.submit()
         
         # create and attach the print pdf
-        execute("Kassa", kassa['name'], title=kassa['name'].replace("ä", "ae"), print_format="Kassa")
+        execute("Kassa", self.name, title=self.name.replace("ä", "ae"), print_format="Kassa")
         frappe.db.commit()
         
         return
