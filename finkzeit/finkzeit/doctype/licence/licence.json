@@ -16,6 +16,7 @@
   "section_invoice",
   "invoice_items",
   "section_all_in_service",
+  "print_all_in_info",
   "enable_all_in",
   "all_in_item",
   "param_a",
@@ -376,9 +377,15 @@
    "hidden": 1,
    "label": "Param e",
    "read_only": 1
+  },
+  {
+   "default": "0",
+   "fieldname": "print_all_in_info",
+   "fieldtype": "Check",
+   "label": "Print All-In Info on Support Invoice"
   }
  ],
- "modified": "2022-05-03 11:47:43.534695",
+ "modified": "2023-04-03 17:36:37.782685",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Licence",

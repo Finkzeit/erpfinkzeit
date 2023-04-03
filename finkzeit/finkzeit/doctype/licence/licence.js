@@ -38,7 +38,32 @@ frappe.ui.form.on('Licence', {
     },
     all_in_discount: function(frm) {
         update_totals(frm);
-    }
+    },
+    print_all_in_info: function(frm) {
+        if (!locals.prevent_loop) {
+            locals.prevent_loop = true;
+            if (frm.doc.print_all_in_info) {
+                cur_frm.set_value('enable_all_in', 0);
+            } else {
+                cur_frm.set_value('enable_all_in', 1);
+            }
+        } else {
+            locals.prevent_loop = null;
+        }
+    },
+    enable_all_in: function(frm) {
+        if (!locals.prevent_loop) {
+            locals.prevent_loop = true;
+            if (frm.doc.print_all_in_info) {
+                cur_frm.set_value('print_all_in_info', 0);
+            } else {
+                cur_frm.set_value('print_all_in_info', 2);
+            }
+        } else {
+            locals.prevent_loop = null;
+        }
+    },
+    
 });
 
 function generate_licence_file(frm) {

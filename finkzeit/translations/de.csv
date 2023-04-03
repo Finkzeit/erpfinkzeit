@@ -56,6 +56,7 @@ DocType: Licence,All-In Discount,All-In-Sonderrabatt
 DocType: Licence,Final All-In Rate,Engültiger All-In-Preis
 DocType: Licence,All-In Support,All-In Support
 DocType: Licence,Is All-In Support,Ist All-In-Support-Artikel
+DocType: Licence,Print All-In Info on Support Invoice,All-In Info auf Support-Rechnung drucken
 DocType: Licence,Param a,Parameter a
 DocType: Licence,Param e,Parameter e
 Report: Quotation Overview,Quotation Overview,Angebotsübersicht
