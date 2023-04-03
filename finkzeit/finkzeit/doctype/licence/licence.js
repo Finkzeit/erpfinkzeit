@@ -201,5 +201,5 @@ function update_totals(frm) {
     cur_frm.set_value('all_in_percent', 100 * all_in_fraction);
     var all_in_rate = calculation_base * all_in_fraction;
     cur_frm.set_value('all_in_rate', all_in_rate);
-    cur_frm.set_value('final_all_in_rate', all_in_rate * (100 - parseFloat(frm.doc.all_in_discount || 0)) / 100);
+    cur_frm.set_value('final_all_in_rate', (parseInt(10 * (all_in_rate * (100 - parseFloat(frm.doc.all_in_discount || 0)) / 100)) / 10));
 }
