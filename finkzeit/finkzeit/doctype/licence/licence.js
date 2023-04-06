@@ -44,8 +44,6 @@ frappe.ui.form.on('Licence', {
             locals.prevent_loop = true;
             if (frm.doc.print_all_in_info) {
                 cur_frm.set_value('enable_all_in', 0);
-            } else {
-                cur_frm.set_value('enable_all_in', 1);
             }
         } else {
             locals.prevent_loop = null;
@@ -56,8 +54,6 @@ frappe.ui.form.on('Licence', {
             locals.prevent_loop = true;
             if (frm.doc.print_all_in_info) {
                 cur_frm.set_value('print_all_in_info', 0);
-            } else {
-                cur_frm.set_value('print_all_in_info', 2);
             }
         } else {
             locals.prevent_loop = null;
