@@ -1,0 +1,108 @@
+{
+ "autoname": "field:code",
+ "creation": "2023-07-27 20:10:54.928114",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "code",
+  "col_main",
+  "transponder_configuration",
+  "sec_customer",
+  "customer",
+  "customer_name",
+  "col_customer",
+  "licence",
+  "licence_name"
+ ],
+ "fields": [
+  {
+   "fieldname": "code",
+   "fieldtype": "Data",
+   "label": "Code",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "transponder_configuration",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Transponder Configuration",
+   "options": "Transponder Configuration",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "transponder_configuration.customer",
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer",
+   "options": "Customer",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "transponder_configuration.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer name",
+   "read_only": 1
+  },
+  {
+   "fetch_from": "transponder_configuration.licence",
+   "fieldname": "licence",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Licence",
+   "options": "Licence",
+   "read_only": 1
+  },
+  {
+   "fieldname": "col_main",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "sec_customer",
+   "fieldtype": "Section Break",
+   "label": "Customer"
+  },
+  {
+   "fieldname": "col_customer",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fetch_from": "transponder_configuration.licence_name",
+   "fieldname": "licence_name",
+   "fieldtype": "Data",
+   "label": "Licence name",
+   "read_only": 1
+  }
+ ],
+ "modified": "2023-07-27 20:29:03.795755",
+ "modified_by": "Administrator",
+ "module": "Finkzeit",
+ "name": "Transponder",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
