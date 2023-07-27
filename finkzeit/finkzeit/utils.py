@@ -9,6 +9,7 @@ import frappe, os
 from frappe import _
 from PyPDF2 import PdfFileWriter
 from frappe.utils.background_jobs import enqueue
+from frappe.utils import flt
 
 @frappe.whitelist()
 def run_calculation(quotation, buying_pricelist, currency="EUR"):
@@ -130,3 +131,81 @@ def has_zsw(customer):
             AND `tabLicence`.`customer` = "{customer}";
     """.format(customer=customer), as_dict=True)
     return item_count[0]['count']
+
+"""
+Book a payment entry against multiple customers
+"""
+@frappe.whitelist()
+def book_avis(company, intermediate_account, currency_deviation_account, invoices, amount, reference):
+    if type(invoices) == str:
+        invoices = json.loads(invoices)
+    amount = flt(amount)
+    
+    # find exchange rate for intermediate account
+    intermediate_currency = frappe.get_cached_value("Account", intermediate_account, "account_currency")
+    if frappe.get_cached_value("Company", company, "default_currency") == intermediate_currency:
+        current_exchange_rate = 1
+    else:
+        exchange_rates = frappe.db.sql("""
+            SELECT `exchange_rate`
+            FROM `tabCurrency Exchange`
+            WHERE `from_currency` = "{currency}"
+            ORDER BY `date` DESC
+            LIMIT 1;
+            """.format(currency=intermediate_currency), as_dict=True)
+        if len(exchange_rates) > 0:
+            current_exchange_rate = exchange_rates[0]['exchange_rate']
+        else:
+            current_exchange_rate = 1
+    # create base document
+    jv = frappe.get_doc({
+        'doctype': 'Journal Entry',
+        'posting_date': datetime.now(),
+        'company': company,
+        'multi_currency': 1,
+        'user_remark': reference,
+        'accounts': [
+            {
+                'account': intermediate_account,
+                'account_currency': intermediate_currency,
+                'debit_in_account_currency': amount,
+                'debit': round(amount * current_exchange_rate, 2),
+                'exchange_rate': current_exchange_rate
+            }
+        ]
+    })
+    
+    # extend invoices
+    base_total_debit = flt(amount) * current_exchange_rate
+    base_total_credit = 0
+    for invoice in invoices:
+        debit_account = frappe.get_value("Sales Invoice", invoice.get('sales_invoice'), 'debit_to')
+        exchange_rate = frappe.get_value("Sales Invoice", invoice.get('sales_invoice'), 'conversion_rate')
+        jv.append('accounts', {
+            'account': debit_account,
+            'account_currency': intermediate_currency,
+            'party_type': 'Customer',
+            'party': invoice.get('customer'),
+            'exchange_rate': exchange_rate,
+            'reference_type': 'Sales Invoice',
+            'reference_name': invoice.get('sales_invoice'),
+            'credit_in_account_currency': invoice.get('outstanding_amount'),
+            'credit': round(invoice.get('outstanding_amount') * exchange_rate, 2)
+        })
+        base_total_credit += invoice.get('outstanding_amount') * exchange_rate
+    
+    # other currencies: currency deviation
+    jv.set_total_debit_credit()
+    currency_deviation = round(jv.total_debit - jv.total_credit, 2)
+    jv.append('accounts', {
+        'account': currency_deviation_account,
+        'credit': currency_deviation
+    })
+    
+    jv.set_total_debit_credit()
+    # insert and submit
+    jv.flags.ignore_validate = True
+    jv.insert()
+    jv.submit()
+    
+    return jv.name
