@@ -51,35 +51,18 @@ frappe.ui.form.on('Transponder Configuration', {
         if (frm.doc.app_read_key) {
             cur_frm.set_df_property('app_read_key', 'read_only', 1);
         }
+        if (!frm.doc.__islocal) {
+            // lock classic fields
+            cur_frm.set_df_property('sector', 'read_only', 1);
+            cur_frm.set_df_property('skip_bytes', 'read_only', 1);
+            cur_frm.set_df_property('read_bytes', 'read_only', 1);
+            cur_frm.set_df_property('app_id', 'read_only', 1);
+            cur_frm.set_df_property('file_byte', 'read_only', 1);
+        }
         // buttons
         frm.add_custom_button(__("Keys erzeugen"), function() {
             create_keys(frm);
         });
-        frm.add_custom_button(__("Projekt-PW"), function() {
-            copy_key(frm, 'project_pw');
-        }, __("Keys"));
-        frm.add_custom_button(__("Wavenet-PW"), function() {
-            copy_key(frm, 'wavenet_pw');
-        }, __("Keys"));
-        frm.add_custom_button(__("Lock-PW"), function() {
-            copy_key(frm, 'lock_pw');
-        }, __("Keys"));
-        frm.add_custom_button(__("Key A"), function() {
-            copy_key(frm, 'key_a');
-        }, __("Keys"));
-        frm.add_custom_button(__("Key B"), function() {
-            copy_key(frm, 'key_b');
-        }, __("Keys"));
-        frm.add_custom_button(__("Master Key"), function() {
-            copy_key(frm, 'master_key');
-        }, __("Keys"));
-        frm.add_custom_button(__("App Master Key"), function() {
-            copy_key(frm, 'app_master_key');
-        }, __("Keys"));
-        frm.add_custom_button(__("App Read Key"), function() {
-            copy_key(frm, 'app_read_key');
-        }, __("Keys"));
-        
     },
     mfcl: function(frm) {
         if (frm.doc.mfcl === 1) {
@@ -133,6 +116,30 @@ frappe.ui.form.on('Transponder Configuration', {
                 }
             });
         }
+    },
+    btn_project_pw: function(frm) {
+        copy_key(frm, 'project_pw');
+    },
+    btn_wavenet_pw: function(frm) {
+        copy_key(frm, 'wavenet_pw');
+    },
+    btn_lock_pw: function(frm) {
+        copy_key(frm, 'lock_pw');
+    },
+    btn_key_a: function(frm) {
+        copy_key(frm, 'key_a');
+    },
+    btn_key_b: function(frm) {
+        copy_key(frm, 'key_b');
+    },
+    btn_master_key: function(frm) {
+        copy_key(frm, 'master_key');
+    },
+    btn_app_master_key: function(frm) {
+        copy_key(frm, 'app_master_key');
+    },
+    btn_app_read_key: function(frm) {
+        copy_key(frm, 'app_read_key');
     }
 });
 

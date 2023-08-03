@@ -53,7 +53,7 @@ Provide either
 -licence: part of licence title
 Returns a list of configurations
 
- /api/method/finkzeit.finkzeit.doctype.transponder_config.transponder_config.get_transponder_config_list?s=test
+ /api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.get_transponder_config_list?s=test
 """
 @frappe.whitelist()
 def get_transponder_config_list(s=None, customer=None, customer_name=None, licence=None):
@@ -100,7 +100,7 @@ def get_transponder_config_list(s=None, customer=None, customer_name=None, licen
 """
 Get a configuration file
 
- /api/method/finkzeit.finkzeit.doctype.transponder_config.transponder_config.get_transponder_config?config=TK-00001
+ /api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.get_transponder_config?config=TK-00001
 """
 @frappe.whitelist()
 def get_transponder_config(config):
@@ -133,7 +133,7 @@ Provide details as
 -deister_uid:   Deister UID (optional)
 -em_uid:    EM UID (optional)
 
- /api/method/finkzeit.finkzeit.doctype.transponder_config.transponder_config.create_transponder?config=TK-00001&code=123456
+ /api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.create_transponder?config=TK-00001&code=123456
 """
 @frappe.whitelist()
 def create_transponder(config, code, hitag_uid=None, mfcl_uid=None, mfdf_uid=None, legic_uid=None, deister_uid=None, em_uid=None):
