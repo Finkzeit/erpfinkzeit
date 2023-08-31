@@ -54,6 +54,24 @@ def get_data():
             ]
         },
         {
+            "label": _("Transponder"),
+            "icon": "fa fa-file-text-o",
+            "items": [
+                   {
+                       "type": "doctype",
+                       "name": "Transponder Configuration",
+                       "label": _("Transponder Configuration"),
+                       "description": _("Transponder Configuration")
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Transponder",
+                       "label": _("Transponder"),
+                       "description": _("Transponder")
+                   }
+            ]
+        },
+        {
             "label": _("Lists"),
             "icon": "octicon octicon-list-ordered",
             "items": [

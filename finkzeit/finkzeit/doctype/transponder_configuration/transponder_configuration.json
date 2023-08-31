@@ -1,0 +1,400 @@
+{
+ "autoname": "naming_series:",
+ "creation": "2023-07-27 19:46:00.271295",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "sec_info",
+  "form",
+  "customer_key",
+  "col_info_1",
+  "customer",
+  "customer_name",
+  "licence",
+  "licence_name",
+  "col_info_2",
+  "remarks",
+  "sec_tech",
+  "ht1",
+  "mfcl",
+  "mfdf",
+  "col_tech_1",
+  "legic",
+  "deister",
+  "em",
+  "col_tech_2",
+  "item",
+  "itme_name",
+  "sec_sv",
+  "project_pw",
+  "btn_project_pw",
+  "col_sv_1",
+  "wavenet_pw",
+  "btn_wavenet_pw",
+  "col_sv_2",
+  "lock_pw",
+  "btn_lock_pw",
+  "sec_hitag",
+  "feig_coding",
+  "sec_mfcl",
+  "key_a",
+  "btn_key_a",
+  "key_b",
+  "btn_key_b",
+  "col_mfcl_1",
+  "sector",
+  "skip_bytes",
+  "read_bytes",
+  "sec_mfdf",
+  "master_key",
+  "btn_master_key",
+  "app_master_key",
+  "btn_app_master_key",
+  "app_read_key",
+  "btn_app_read_key",
+  "col_mfdf_1",
+  "app_id",
+  "file_byte"
+ ],
+ "fields": [
+  {
+   "default": "TK-.#####",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "TK-.#####",
+   "reqd": 1
+  },
+  {
+   "fieldname": "sec_info",
+   "fieldtype": "Section Break",
+   "label": "Information"
+  },
+  {
+   "default": "Tag",
+   "fieldname": "form",
+   "fieldtype": "Select",
+   "label": "Bauform",
+   "options": "Tag\nCard\nInlay"
+  },
+  {
+   "default": "0",
+   "fieldname": "customer_key",
+   "fieldtype": "Check",
+   "label": "Kundenkey"
+  },
+  {
+   "fieldname": "col_info_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Customer name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "col_info_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "sec_tech",
+   "fieldtype": "Section Break",
+   "label": "Technologie"
+  },
+  {
+   "default": "0",
+   "fieldname": "ht1",
+   "fieldtype": "Check",
+   "label": "HITAG 1"
+  },
+  {
+   "default": "0",
+   "fieldname": "mfcl",
+   "fieldtype": "Check",
+   "label": "MIFARE Classic"
+  },
+  {
+   "default": "0",
+   "fieldname": "mfdf",
+   "fieldtype": "Check",
+   "label": "MIFARE DESFire"
+  },
+  {
+   "fieldname": "col_tech_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "legic",
+   "fieldtype": "Check",
+   "label": "LEGIC Prime MIM1024"
+  },
+  {
+   "default": "0",
+   "fieldname": "deister",
+   "fieldtype": "Check",
+   "label": "Deister"
+  },
+  {
+   "default": "0",
+   "fieldname": "em",
+   "fieldtype": "Check",
+   "label": "EM"
+  },
+  {
+   "fieldname": "col_tech_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "item",
+   "fieldtype": "Link",
+   "label": "Item",
+   "options": "Item"
+  },
+  {
+   "fetch_from": "item.item_name",
+   "fieldname": "itme_name",
+   "fieldtype": "Data",
+   "label": "Item name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "sec_sv",
+   "fieldtype": "Section Break",
+   "label": "Simons Voss"
+  },
+  {
+   "fieldname": "project_pw",
+   "fieldtype": "Password",
+   "label": "Projekt-PW"
+  },
+  {
+   "fieldname": "col_sv_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "wavenet_pw",
+   "fieldtype": "Password",
+   "label": "Wavenet-PW"
+  },
+  {
+   "fieldname": "col_sv_2",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "lock_pw",
+   "fieldtype": "Password",
+   "label": "Lock-PW"
+  },
+  {
+   "depends_on": "eval:doc.ht1==1",
+   "fieldname": "sec_hitag",
+   "fieldtype": "Section Break",
+   "label": "HITAG 1"
+  },
+  {
+   "default": "0",
+   "fieldname": "feig_coding",
+   "fieldtype": "Check",
+   "label": "FEIG-Codierung"
+  },
+  {
+   "depends_on": "eval:doc.mfcl==1",
+   "fieldname": "sec_mfcl",
+   "fieldtype": "Section Break",
+   "label": "MIFARE Classic EV1 1k"
+  },
+  {
+   "fieldname": "key_a",
+   "fieldtype": "Password",
+   "label": "Key A"
+  },
+  {
+   "fieldname": "key_b",
+   "fieldtype": "Password",
+   "label": "Key B"
+  },
+  {
+   "default": "1",
+   "fieldname": "sector",
+   "fieldtype": "Int",
+   "label": "Sector"
+  },
+  {
+   "fieldname": "col_mfcl_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "skip_bytes",
+   "fieldtype": "Int",
+   "label": "Bytes \u00fcberspringen"
+  },
+  {
+   "default": "4",
+   "fieldname": "read_bytes",
+   "fieldtype": "Int",
+   "label": "Bytes lesen"
+  },
+  {
+   "depends_on": "eval:doc.mfdf==1",
+   "fieldname": "sec_mfdf",
+   "fieldtype": "Section Break",
+   "label": "MIFARE DESFire EV3 4k"
+  },
+  {
+   "fieldname": "master_key",
+   "fieldtype": "Password",
+   "label": "Master Key"
+  },
+  {
+   "fieldname": "app_master_key",
+   "fieldtype": "Password",
+   "label": "App Master Key"
+  },
+  {
+   "fieldname": "app_read_key",
+   "fieldtype": "Password",
+   "label": "App Read Key"
+  },
+  {
+   "fieldname": "app_id",
+   "fieldtype": "Int",
+   "label": "App ID"
+  },
+  {
+   "default": "0",
+   "fieldname": "file_byte",
+   "fieldtype": "Int",
+   "label": "File"
+  },
+  {
+   "fieldname": "col_mfdf_1",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "licence",
+   "fieldtype": "Link",
+   "label": "Licence",
+   "options": "Licence"
+  },
+  {
+   "fetch_from": "licence.title",
+   "fieldname": "licence_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Licence name",
+   "read_only": 1
+  },
+  {
+   "depends_on": "eval:doc.project_pw",
+   "fieldname": "btn_project_pw",
+   "fieldtype": "Button",
+   "label": "Project PW"
+  },
+  {
+   "depends_on": "eval:doc.wavenet_pw",
+   "fieldname": "btn_wavenet_pw",
+   "fieldtype": "Button",
+   "label": "Wavenet PW",
+   "permlevel": 1
+  },
+  {
+   "depends_on": "eval:doc.lock_pw",
+   "fieldname": "btn_lock_pw",
+   "fieldtype": "Button",
+   "label": "Lock-PW",
+   "permlevel": 1
+  },
+  {
+   "depends_on": "eval:doc.key_a",
+   "fieldname": "btn_key_a",
+   "fieldtype": "Button",
+   "label": "Key A",
+   "permlevel": 1
+  },
+  {
+   "depends_on": "eval:doc.key_b",
+   "fieldname": "btn_key_b",
+   "fieldtype": "Button",
+   "label": "Key B",
+   "permlevel": 1
+  },
+  {
+   "depends_on": "eval:doc.master_key",
+   "fieldname": "btn_master_key",
+   "fieldtype": "Button",
+   "label": "Master Key",
+   "permlevel": 1
+  },
+  {
+   "depends_on": "eval:doc.app_master_key",
+   "fieldname": "btn_app_master_key",
+   "fieldtype": "Button",
+   "label": "App Master Key",
+   "permlevel": 1
+  },
+  {
+   "depends_on": "eval:doc.app_read_key",
+   "fieldname": "btn_app_read_key",
+   "fieldtype": "Button",
+   "label": "App Read Key",
+   "permlevel": 1
+  }
+ ],
+ "modified": "2023-08-03 10:09:36.328111",
+ "modified_by": "Administrator",
+ "module": "Finkzeit",
+ "name": "Transponder Configuration",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "email": 1,
+   "export": 1,
+   "permlevel": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "search_fields": "customer, customer_name, licence_name",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "customer_name",
+ "track_changes": 1
+}
