@@ -116,3 +116,4 @@ Report: Asset Summary,Initial Value,Anfangswert
 Report: Asset Summary,Acc. Depreciation,Kum. Abschreibung
 Report: Asset Summary,Cur. Depreciation,Laufende Abschr.
 Report: Asset Summary,Years,Jahre
+Doctype: Parkordnung,Display name,Anzeigename
