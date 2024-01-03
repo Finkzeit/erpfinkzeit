@@ -139,8 +139,8 @@ function update_all_in(frm) {
             }
         }
         frappe.model.set_value(child.doctype, child.name, 'qty', 1);
-        frappe.model.set_value(child.doctype, child.name, 'rate', frm.doc.all_in_rate);
-        frappe.model.set_value(child.doctype, child.name, 'discount', frm.doc.all_in_discount);
+        frappe.model.set_value(child.doctype, child.name, 'rate', frm.doc.final_all_in_rate);
+        frappe.model.set_value(child.doctype, child.name, 'discount', 0);
         frappe.model.set_value(child.doctype, child.name, 'amount', frm.doc.final_all_in_rate);
         frappe.model.set_value(child.doctype, child.name, 'all_in', 0);
 
