@@ -715,7 +715,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                 # find income account
                 if "FZCH" in kst:
                     income_account = u"3400 - Dienstleistungsertrag - FZCH"
-                    tax_rule = "Schweiz normal (302) - FZCH"
+                    tax_rule = "Schweiz normal (303) - FZCH"
                 else:
                     if customer_record.steuerregion == "EU":
                         income_account = u"4250 - Leistungserlöse EU-Ausland (in ZM) - FZAT"
@@ -1248,7 +1248,7 @@ def deliver_sales_order(sales_order, tenant="AT"):
         # find income account
         if "FZCH" in kst:
             income_account = u"3400 - Dienstleistungsertrag - FZCH"
-            tax_rule = "Schweiz normal (302) - FZCH"
+            tax_rule = "Schweiz normal (303) - FZCH"
         else:
             if customer_record.steuerregion == "EU":
                 income_account = u"4250 - Leistungserlöse EU-Ausland (in ZM) - FZAT"
