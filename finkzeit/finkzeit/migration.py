@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018-2019, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2018-2024, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 #
 # Run with
@@ -412,4 +412,21 @@ def send_customers_to_zsw(tenant, ignore_checked=1, select_customers=None):
         print("Updating {0} > {1} (active: {2}, kst: {3}".format(customer.name, zsw_ref, active, customer.kostenstelle))
         create_update_customer(customer.name, customer.customer_name, active=active, kst=customer.kostenstelle, tenant=tenant)
     print("Done. Please check the ERP error log for potential errors.")
+    return
+
+"""
+This function will check and update all customers in ZSW
+
+Run from bench as
+ $ bench execute finkzeit.finkzeit.migration.update_all_active_customers
+"""
+def update_all_active_customers(tenant="AT"):
+    customers = frappe.get_all("Customer", fields=['name', 'customer_name', 'short_name', 'technik', 'disabled'])
+    for c in customers:
+        print("Updating {0}...".format(c['name']))
+        try:
+            create_update_customer(c['name'], c['customer_name'], active=c['disabled'], technician=c['technik'], short_name=c['short_name'])
+        except Exception as e:
+            print("Failed: {0}".format(e))
+        
     return
