@@ -14,6 +14,7 @@ import codecs
 from datetime import datetime
 from openpyxl import load_workbook
 from finkzeit.finkzeit.zsw import create_update_customer
+from frappe.utils import cint
 
 # column allocation
 FIRST_DATA_ROW = 4              # first row containing data (after headers)
@@ -425,7 +426,14 @@ def update_all_active_customers(tenant="AT"):
     for c in customers:
         print("Updating {0}...".format(c['name']))
         try:
-            create_update_customer(c['name'], c['customer_name'], active=c['disabled'], , tenant=tenant, technician=c['technik'], short_name=c['short_name'])
+            create_update_customer(
+                customer=c['name'], 
+                customer_name=c['customer_name'], 
+                active=False if cint(c['disabled']) else True, 
+                tenant=tenant, 
+                technician=c['technik'], 
+                short_name=c['short_name']
+            )
         except Exception as e:
             print("Failed: {0}".format(e))
         
