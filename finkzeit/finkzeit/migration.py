@@ -425,7 +425,7 @@ def update_all_active_customers(tenant="AT"):
     for c in customers:
         print("Updating {0}...".format(c['name']))
         try:
-            create_update_customer(c['name'], c['customer_name'], active=c['disabled'], technician=c['technik'], short_name=c['short_name'])
+            create_update_customer(c['name'], c['customer_name'], active=c['disabled'], , tenant=tenant, technician=c['technik'], short_name=c['short_name'])
         except Exception as e:
             print("Failed: {0}".format(e))
         
