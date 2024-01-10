@@ -288,7 +288,7 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
                    FROM `tabSales Invoice Item`
                    LEFT JOIN `tabSales Invoice` ON `tabSales Invoice Item`.`parent` = `tabSales Invoice`.`name`
                    WHERE
-                    `tabSales Invoice`.`posting_date` >= (DATE_SUB(NOW(), INTERVAL 13 MONTH))
+                    `tabSales Invoice`.`posting_date` >= (DATE_SUB(NOW(), INTERVAL 12 MONTH))
                     AND `tabSales Invoice Item`.`item_code` IN ("3010")
                     AND `tabSales Invoice`.`customer` = '{customer}'
                     AND `tabSales Invoice`.`is_return` = 0
