@@ -284,20 +284,20 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
             email = "-"
             phone = "-"
     # maintenance contract customer?
-    sql_query = """SELECT DISTINCT `tabSales Invoice`.`posting_date`
-                   FROM `tabSales Invoice Item`
-                   LEFT JOIN `tabSales Invoice` ON `tabSales Invoice Item`.`parent` = `tabSales Invoice`.`name`
-                   WHERE
-                    `tabSales Invoice`.`posting_date` >= (DATE_SUB(NOW(), INTERVAL 12 MONTH))
-                    AND `tabSales Invoice Item`.`item_code` IN ("3010")
-                    AND `tabSales Invoice`.`customer` = '{customer}'
-                    AND `tabSales Invoice`.`is_return` = 0
-                   ORDER BY `tabSales Invoice`.`posting_date` DESC;""".format(customer=customer)
-    contract = frappe.db.sql(sql_query, as_dict=True)
-    if len(contract) > 0:
-        maintenance_contract = True
-    else:
-        maintenance_contract = False
+    #sql_query = """SELECT DISTINCT `tabSales Invoice`.`posting_date`
+    #               FROM `tabSales Invoice Item`
+    #               LEFT JOIN `tabSales Invoice` ON `tabSales Invoice Item`.`parent` = `tabSales Invoice`.`name`
+    #               WHERE
+    #                `tabSales Invoice`.`posting_date` >= (DATE_SUB(NOW(), INTERVAL 12 MONTH))
+    #                AND `tabSales Invoice Item`.`item_code` IN ("3010")
+    #                AND `tabSales Invoice`.`customer` = '{customer}'
+    #                AND `tabSales Invoice`.`is_return` = 0
+    #               ORDER BY `tabSales Invoice`.`posting_date` DESC;""".format(customer=customer)
+    #contract = frappe.db.sql(sql_query, as_dict=True)
+    #if len(contract) > 0:
+    #    maintenance_contract = True
+    #else:
+    #    maintenance_contract = False
     # fetch license information
     licence = frappe.get_all("Licence", filters={'customer': customer, 'enabled': 1}, fields=['title', 'retailer'])
     if len(licence) > 0:
@@ -358,8 +358,8 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
             createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_mailadresseKunde", email)
         if "p_telefonnummer" in available_properties:
             createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_telefonnummer", phone)
-        if "p_wartungsvertrag" in available_properties:
-            createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
+        # if "p_wartungsvertrag" in available_properties:
+        #     createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
         if "p_projektverantwortlicher" in available_properties:
             createOrUpdateWSExtension_link(wsLevelEArray[0]["extensions"]["WSExtension"], "p_projektverantwortlicher", zsw_technician, 2, 0, False)
         if "p_lizenzname" in available_properties and licence_name:
@@ -390,8 +390,8 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
             createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_mailadresseKunde", email)
         if "p_telefonnummer" in available_properties:
             createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_telefonnummer", phone)
-        if "p_wartungsvertrag" in available_properties:
-            createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
+        # if "p_wartungsvertrag" in available_properties:
+        #     createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
         if "p_projektverantwortlicher" in available_properties:
             createOrUpdateWSExtension_link(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_projektverantwortlicher", zsw_technician, 2, 0, False)
         client.service.createLevelsE(session, wsLevelEArray)
