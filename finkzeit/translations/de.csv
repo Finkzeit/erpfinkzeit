@@ -92,6 +92,7 @@ DocType: Preisliste Druck,Page break before,Mit Seitenumbruch
 DocType: Preisliste Druck,Price with discount,Rabattierter Preis
 DocType: Finkzeit Settings,Finkzeit Settings,Finzeit-Einstellungen
 DocType: Finkzeit Settings,Credit Account,Guthabenkonto
+DocType: Finkzeit Settings,Credit Item,Guthabensartikel
 DocType: Journal Entry,Credit Party,Guthaben gegen Kunde
 Report: Customer Credit Overview,Customer Credit Overview,Übersicht Kundenguthaben
 Report: Customer Credit Ledger,Customer Credit Ledger,Kundenguthabenkonto

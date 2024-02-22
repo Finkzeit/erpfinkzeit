@@ -5,6 +5,8 @@
  "engine": "InnoDB",
  "field_order": [
   "credit_account",
+  "col_credit",
+  "credit_item",
   "section_contracts",
   "default_increase_text",
   "contract_item"
@@ -32,10 +34,20 @@
    "fieldtype": "Link",
    "label": "Contract item",
    "options": "Item"
+  },
+  {
+   "fieldname": "col_credit",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "credit_item",
+   "fieldtype": "Link",
+   "label": "Credit Item",
+   "options": "Item"
   }
  ],
  "issingle": 1,
- "modified": "2020-12-03 16:04:07.260467",
+ "modified": "2024-02-22 16:59:43.807594",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Finkzeit Settings",
