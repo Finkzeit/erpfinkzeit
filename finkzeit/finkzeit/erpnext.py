@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018-2022, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2018-2024, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 #
 
@@ -121,7 +121,7 @@ def send_invoice(host, sales_invoice, no_description=False):
     # convert data to string for transmission
     text = json.dumps(data)
     payload = {'data': text}
-    r = requests.get("{host}/api/method/finkzeit.finkzeit.erpnext.post_invoice".format(host=host), params=payload)
+    r = requests.get("{host}/api/method/finkzeit.finkzeit.erpnext.post_invoice".format(host=host), json=payload)
     if r.status_code == requests.codes.ok:
         try:
             sql_query = """UPDATE `tabSales Invoice` SET `is_proposed` = 1 WHERE `name` = '{name}';""".format(name=sales_invoice)
