@@ -13,4 +13,7 @@ from frappe.permissions import add_permission
 
 def restore_permissions():
     add_permission("Item Group", "Verkauf")
+    add_permission("Item Group", "Administration")
+    add_permission("Item Group", "Arbeitsvorbereitung")
+    add_permission("Item Group", "Mitarbeiter Administration")
     return
