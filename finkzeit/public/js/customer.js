@@ -9,9 +9,9 @@ try {
 } catch { /* do nothing for older versions */ }
 
 frappe.ui.form.on('Customer', {
-	refresh(frm) {
-        check_credit_balance(frm);
-	}
+    refresh(frm) {
+        // check_credit_balance(frm);    // disabled 2024-04-30 as no longer used
+    }
 });
 
 function check_credit_balance(frm) {
