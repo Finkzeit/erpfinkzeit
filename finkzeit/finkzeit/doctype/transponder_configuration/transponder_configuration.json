@@ -192,18 +192,18 @@
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "wavenet_pw",
+   "fieldname": "lock_pw",
    "fieldtype": "Password",
-   "label": "Wavenet-PW"
+   "label": "Lock-PW"
   },
   {
    "fieldname": "col_sv_2",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "lock_pw",
+   "fieldname": "wavenet_pw",
    "fieldtype": "Password",
-   "label": "Lock-PW"
+   "label": "Wavenet-PW"
   },
   {
    "depends_on": "eval:doc.ht1==1",
