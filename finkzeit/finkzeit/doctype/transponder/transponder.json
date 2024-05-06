@@ -63,8 +63,8 @@
    "fetch_from": "transponder_configuration.licence",
    "fieldname": "licence",
    "fieldtype": "Link",
-   "in_list_view": 1,
-   "in_standard_filter": 1,
+   "in_list_view": 0,
+   "in_standard_filter": 0,
    "label": "Licence",
    "options": "Licence",
    "read_only": 1
@@ -86,6 +86,8 @@
    "fetch_from": "transponder_configuration.licence_name",
    "fieldname": "licence_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Licence name",
    "read_only": 1
   },
@@ -135,7 +137,7 @@
    "read_only": 1
   }
  ],
- "modified": "2023-08-03 08:53:24.986888",
+ "modified": "2024-05-06 10:43:24.986888",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Transponder",

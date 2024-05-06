@@ -1,6 +1,7 @@
-// Copyright (c) 2023, Fink Zeitsysteme/libracore and contributors
+// Copyright (c) 2023-2024, Fink Zeitsysteme/libracore and contributors
 // For license information, please see license.txt
 
+const PW_FIELDS = ['project_pw', 'wavenet_pw', 'lock_pw', 'key_a', 'key_b', 'master_key', 'app_master_key', 'app_read_key'];
 // filters
 cur_frm.fields_dict['customer'].get_query = function(doc) {
      return {
@@ -63,6 +64,10 @@ frappe.ui.form.on('Transponder Configuration', {
         frm.add_custom_button(__("Keys erzeugen"), function() {
             create_keys(frm);
         });
+        // reset descriptions (in case these were set while entering)
+        for (var i = 0; i < PW_FIELDS.length; i++) {
+            cur_frm.set_df_property(PW_FIELDS[i], 'description', null);
+        }
     },
     mfcl: function(frm) {
         if (frm.doc.mfcl === 1) {
@@ -140,6 +145,31 @@ frappe.ui.form.on('Transponder Configuration', {
     },
     btn_app_read_key: function(frm) {
         copy_key(frm, 'app_read_key');
+    },
+    // when an input is generated, show PW content as description (for easy checks)
+    project_pw: function(frm) {
+        cur_frm.set_df_property('project_pw', 'description', frm.doc.project_pw);
+    },
+    wavenet_pw: function(frm) {
+        cur_frm.set_df_property('wavenet_pw', 'description', frm.doc.wavenet_pw);
+    },
+    lock_pw: function(frm) {
+        cur_frm.set_df_property('lock_pw', 'description', frm.doc.lock_pw);
+    },
+    key_a: function(frm) {
+        cur_frm.set_df_property('key_a', 'description', frm.doc.key_a);
+    },
+    key_b: function(frm) {
+        cur_frm.set_df_property('key_b', 'description', frm.doc.key_b);
+    },
+    master_key: function(frm) {
+        cur_frm.set_df_property('master_key', 'description', frm.doc.master_key);
+    },
+    app_master_key: function(frm) {
+        cur_frm.set_df_property('app_master_key', 'description', frm.doc.app_master_key);
+    },
+    app_read_key: function(frm) {
+        cur_frm.set_df_property('app_read_key', 'description', frm.doc.app_read_key);
     }
 });
 

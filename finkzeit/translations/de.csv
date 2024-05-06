@@ -117,4 +117,8 @@ Report: Asset Summary,Initial Value,Anfangswert
 Report: Asset Summary,Acc. Depreciation,Kum. Abschreibung
 Report: Asset Summary,Cur. Depreciation,Laufende Abschr.
 Report: Asset Summary,Years,Jahre
-Doctype: Parkordnung,Display name,Anzeigename
+DocType: Parkordnung,Display name,Anzeigename
+DocType: Transponder Configuration,Tag,Tag
+DocType: Transponder Configuration,Transponder Configuration,Transponderkonfiguration
+DocType: Transponder Configuration,Sector,Sektor
+DocType: Transponder Configuration,Licence name,Lizenzname
