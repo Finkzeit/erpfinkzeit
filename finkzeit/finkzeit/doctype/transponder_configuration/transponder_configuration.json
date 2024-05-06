@@ -31,11 +31,11 @@
   "project_pw",
   "btn_project_pw",
   "col_sv_1",
-  "wavenet_pw",
-  "btn_wavenet_pw",
-  "col_sv_2",
   "lock_pw",
   "btn_lock_pw",
+  "col_sv_2",
+  "wavenet_pw",
+  "btn_wavenet_pw",
   "sec_hitag",
   "feig_coding",
   "sec_mfcl",
@@ -362,7 +362,7 @@
    "permlevel": 1
   }
  ],
- "modified": "2023-08-03 10:09:36.328111",
+ "modified": "2024-05-06 10:19:36.328111",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Transponder Configuration",
