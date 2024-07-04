@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018-2019, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2018-2024, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 #
 
@@ -211,3 +211,79 @@ def book_avis(company, intermediate_account, currency_deviation_account, invoice
     jv.submit()
     
     return jv.name
+
+def check_item_price_devaition():
+    sql_query = """
+    SELECT `tabItem Price`.`name`, `tabItem Price`.`item_code`, `tabItem Price`.`price_list_rate`,
+        (SELECT `tabVersion`.`data`
+        FROM `tabVersion`
+        WHERE 
+            `tabVersion`.`ref_doctype` = "Item Price"
+            AND `tabVersion`.`docname` = `tabItem Price`.`name`
+            AND `tabVersion`.`data` LIKE "%price_list_rate%"
+        ORDER BY `tabVersion`.`creation` DESC
+        LIMIT 1) AS `change`
+    FROM `tabItem Price`;
+    """
+
+    data = frappe.db.sql(sql_query, as_dict=True)
+
+    """
+    {
+        "added": [],
+        "changed": [
+            [
+                "price_list_rate",
+                "\u20ac 139,00",
+                "\u20ac 155,00"
+            ]
+        ],
+        "data_import": null,
+        "removed": [],
+        "row_changed": []
+    }
+    """
+
+    deviations = []
+    for d in data:
+        try:
+            if d.get('change'):
+                change = json.loads(d.get('change'))
+                for c in change.get("changed"):
+                    if c[0] == "price_list_rate":
+                        if type(c[2]) == str:
+                            new_rate = (c[2].split(" ")[1]).replace(".", "").replace(",", ".")
+                        else:
+                            new_rate = c[2]
+                        new_rate = float(new_rate)
+                        if new_rate!= d.get("price_list_rate"):
+                            deviation = ("Deviation at Item {0} where {1} != {2}".format(d.get("item_code"), d.get("price_list_rate"), new_rate))
+                            print(deviation)
+                            deviations.append(deviation)
+        except Exception as err:
+            print(err)
+
+    if len(deviations) > 0:
+        from frappe.core.doctype.communication.email import make
+        sysadmins = frappe.db.sql("""
+            SELECT `parent`
+            FROM `tabHas Role`
+            WHERE 
+                `parenttype` = "User"
+                AND `parentfield` = "roles"
+                AND `role` = "System Manager"
+                AND `parent` != "Administrator";
+            """, as_dict=True)
+        sysadmin_mails = []
+        for s in sysadmins:
+            sysadmin_mails.append(s.get('parent'))
+        make(
+            recipients = ", ".join(sysadmin_mails),
+            sender = "Administrator",
+            subject = "Item Price Deviations found",
+            content = "\n".join(deviations),
+            send_email = True
+        )
+
+    return
+            
