@@ -212,7 +212,7 @@ def book_avis(company, intermediate_account, currency_deviation_account, invoice
     
     return jv.name
 
-def check_item_price_devaition():
+def check_item_price_deviation():
     sql_query = """
     SELECT `tabItem Price`.`name`, `tabItem Price`.`item_code`, `tabItem Price`.`price_list_rate`,
         (SELECT `tabVersion`.`data`
