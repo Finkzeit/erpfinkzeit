@@ -4,65 +4,45 @@
 #
 
 # imports
-from __future__ import unicode_literals
 import frappe
 from frappe import _
+from erpnext.accounts.report.accounts_receivable.accounts_receivable import ReceivablePayableReport
+from frappe.utils import flt, rounded
 
 """
  This function will return the credit ledget for the specified customer
 """
 @frappe.whitelist()   
 def get_credit_account_ledger(customer, date=None):
-    credit_account = frappe.get_value("Finkzeit Settings", "Finkzeit Settings", "credit_account")
-    if not date:
-        date = "2999-12-31"
-    sql_query = """SELECT 
-            `raw`.`date`,
-            `raw`.`amount`,
-            `raw`.`reference`
-        FROM
-        (SELECT 
-            `tabPayment Entry`.`posting_date` AS `date`, 
-            (-1) * `tabPayment Entry Deduction`.`amount` AS `amount`,
-            `tabPayment Entry`.`name` AS `reference` 
-        FROM `tabPayment Entry Deduction`
-        LEFT JOIN `tabPayment Entry` ON `tabPayment Entry`.`name` = `tabPayment Entry Deduction`.`parent`
-        WHERE 
-            `tabPayment Entry Deduction`.`account` = "{account}"
-            AND `tabPayment Entry`.`party` = "{customer}"
-            AND `tabPayment Entry`.`docstatus` = 1
-            AND `tabPayment Entry`.`posting_date` <= "{date}"
-        UNION SELECT
-            `tabPayment Entry`.`posting_date` AS `date`,
-            (-1) * `tabPayment Entry`.`paid_amount` AS `amount`,
-            `tabPayment Entry`.`name` AS `reference`
-        FROM `tabPayment Entry`
-        WHERE 
-            `tabPayment Entry`.`paid_to` = "{account}"
-            AND `tabPayment Entry`.`credit_party` = "{customer}"
-            AND `tabPayment Entry`.`docstatus` = 1
-            AND `tabPayment Entry`.`posting_date` <= "{date}"
-        UNION SELECT
-            `tabJournal Entry`.`posting_date`  AS `date`,
-            (-1) * (`tabJournal Entry Account`.`debit` - `tabJournal Entry Account`.`credit`) AS `amount`,
-            `tabJournal Entry`.`name` AS `reference`
-        FROM `tabJournal Entry Account`
-        LEFT JOIN `tabJournal Entry` ON `tabJournal Entry`.`name` = `tabJournal Entry Account`.`parent`
-        WHERE 
-            `tabJournal Entry Account`.`account` = "{account}"
-            AND `tabJournal Entry Account`.`credit_party` = "{customer}"
-            AND `tabJournal Entry`.`docstatus` = 1
-            AND `tabJournal Entry`.`posting_date` <= "{date}"
-        ) AS `raw`
-        ORDER BY `raw`.`date` ASC;""".format(customer=customer, account=credit_account, date=date)
-    ledger = frappe.db.sql(sql_query, as_dict=True)
+    filters = frappe._dict({
+        'company': frappe.defaults.get_global_default('company'),
+        'report_date': date or "2999-12-31",
+        'customer': customer,
+        'range1': 30,
+        'range2': 60,
+        'range3': 90,
+        'range4': 120
+    })
+    args = {
+        "party_type": "Customer",
+        "naming_by": ["Selling Settings", "cust_master_name"],
+    }
+    columns, data, more, chart = ReceivablePayableReport(filters).run(args)
+    credits = []
+    for d in data:
+        if flt(d.get('outstanding')) < 0:
+            credits.append({
+                'date': d.get('posting_date'),
+                'amount': d.get('outstanding'),
+                'reference': d.get('voucher_no')
+            })
     # add balance value
     balance = 0
-    for i in range(0, len(ledger)):
-        balance = round((balance + ledger[i]['amount']), 2)
-        ledger[i]['balance'] = balance
+    for i in range(0, len(credits)):
+        balance = round((balance + credits[i]['amount']), 2)
+        credits[i]['balance'] = balance
         
-    return ledger
+    return credits
 
 """
  This function will return the current credit balance for the selected customer
@@ -137,6 +117,16 @@ def create_credit_advance(payment_entry, naming_series="GS-.#####", taxes="Ohne 
         })
         sinv.insert()
         sinv.submit()
+        # add a comment on the payment entry
+        new_comment = frappe.get_doc({
+            'doctype': 'Communication',
+            'comment_type': "Comment",
+            'content': "Doppelzahlung: Gutschrift eingebucht in {0}".format(sinv.name),
+            'reference_doctype': pe.doctype,
+            'status': "Linked",
+            'reference_name': pe.name
+        })
+        new_comment.insert()
         frappe.db.commit()
         jv_doc = sinv.name
         
