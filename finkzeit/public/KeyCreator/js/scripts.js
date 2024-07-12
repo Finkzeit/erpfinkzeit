@@ -91,6 +91,7 @@ async function executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpR
             deister_uid: transponderConfig.tags.deister?.uid,
             em_uid: transponderConfig.tags.em?.uid,
         };
+
         const response = await erpRestApi.createTransponder(transponderConfig.transponderConfigId, number, uid);
 
         logger.debug("Response:", response);
