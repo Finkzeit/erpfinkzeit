@@ -1,0 +1,187 @@
+:root {
+    --border-color: #c9d1d9;
+    --border-color-hover: #6e7681;
+    --font-family: monospace;
+    --primary-color: #007bff;
+    --secondary-color: #6c757d;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+    --light-color: #f8f9fa;
+    --dark-color: #343a40;
+}
+
+*,
+*:before,
+*:after {
+    box-sizing: inherit;
+}
+
+p {
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+body {
+    font-family: var(--font-family);
+    display: flex;
+    justify-content: center;
+    margin: 0;
+    padding: 0;
+    font-size: 1rem;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    width: 100%;
+    max-width: 600px;
+    padding: 20px;
+    border-radius: 8px;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1rem;
+    margin-bottom: 20px;
+}
+
+header h1 {
+    margin: 0;
+}
+
+header img {
+    width: 100px;
+}
+
+main {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    font-size: 14px;
+    font-style: italic;
+    margin-bottom: 5px;
+}
+
+input,
+select {
+    font-family: var(--font-family);
+    padding: 6.5px;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.btn {
+    font-family: var(--font-family);
+    cursor: pointer;
+    padding: 6.5px;
+    text-align: center;
+    background-color: transparent;
+    border-radius: 4px;
+    border: 1px solid var(--border-color);
+}
+
+.btn:hover:not(:disabled) {
+    border-color: var(--border-color-hover);
+}
+
+#ui {
+    font-weight: bold;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+#uiList {
+    list-style-type: none;
+    padding: 0;
+}
+
+#uiList li {
+    padding: 5px 0;
+}
+
+.dropdown {
+    position: fixed;
+    width: 90%;
+    max-width: 600px;
+    display: flex;
+    justify-content: flex-end;
+    bottom: 20px;
+}
+
+.dropbtn {
+    background-color: transparent;
+    padding: 0;
+    border: 0;
+    cursor: pointer;
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    background-color: #f9f9f9;
+    min-width: 160px;
+    box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+    z-index: 1;
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+
+.dropdown-content a {
+    color: black;
+    padding: 12px 16px;
+    text-decoration: none;
+    display: block;
+    border-radius: 10px;
+}
+
+.dropdown-content a:hover {
+    background-color: #f1f1f1;
+}
+
+.show {
+    display: block;
+}
+
+.overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.dialog {
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    width: 90%;
+    max-width: 600px;
+    text-align: center;
+}
+
+.dialog button {
+    margin: 10px;
+    padding: 5px 15px;
+    cursor: pointer;
+}
