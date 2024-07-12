@@ -81,40 +81,45 @@ async function executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpR
         }
     }
 
-    try {
-        const number = transponderConfig.getNumber();
-        const uid = {
-            hitag_uid: transponderConfig.tags.hitag?.uid,
-            mfcl_uid: transponderConfig.tags.mifareClassic?.uid,
-            mfdf_uid: transponderConfig.tags.mifareDesfire?.uid,
-            legic_uid: transponderConfig.tags.legic?.uid,
-            deister_uid: transponderConfig.tags.deister?.uid,
-            em_uid: transponderConfig.tags.em?.uid,
-        };
-        const response = await erpRestApi.createTransponder(transponderConfig.transponderConfigId, number, uid);
+    if (sessionResult !== "failed") {
+        try {
+            const number = transponderConfig.getNumber();
+            const uid = {
+                hitag_uid: transponderConfig.tags.hitag?.uid,
+                mfcl_uid: transponderConfig.tags.mifareClassic?.uid,
+                mfdf_uid: transponderConfig.tags.mifareDesfire?.uid,
+                legic_uid: transponderConfig.tags.legic?.uid,
+                deister_uid: transponderConfig.tags.deister?.uid,
+                em_uid: transponderConfig.tags.em?.uid,
+            };
 
-        logger.debug("Response:", response);
-        logger.debug("ResponseMessage:", response.message);
-        logger.debug("Number:", number);
+            const response = await erpRestApi.createTransponder(transponderConfig.transponderConfigId, number, uid);
 
-        if (response.message === number.toString()) {
-            logger.debug("Transponder created successfully");
-            updateSessionInfo("action", `Transponder mit Nummer ${number} erfolgreich erstellt`);
-        } else {
-            logger.warn(response.message);
-            if (response.message === "This transponder already exists") {
-                errors.push("Transponder existiert bereits im ERP");
-            } else if (errors.length === 0) {
-                errors.push(response.message);
+            logger.debug("Response:", response);
+            logger.debug("ResponseMessage:", response.message);
+            logger.debug("Number:", number);
+
+            if (response.message === number.toString()) {
+                logger.debug("Transponder created successfully");
+                updateSessionInfo("action", `Transponder mit Nummer ${number} erfolgreich erstellt`);
+            } else {
+                logger.warn(response.message);
+                if (response.message === "This transponder already exists") {
+                    errors.push("Transponder existiert bereits im ERP");
+                } else if (errors.length === 0) {
+                    errors.push(response.message);
+                }
+                sessionResult = "failed";
+            }
+        } catch (error) {
+            logger.error("Error creating transponder:", error);
+            if (errors.length === 0) {
+                errors.push(`Fehler beim Erstellen des Transponders: ${error.message}`);
             }
             sessionResult = "failed";
         }
-    } catch (error) {
-        logger.error("Error creating transponder:", error);
-        if (errors.length === 0) {
-            errors.push(`Fehler beim Erstellen des Transponders: ${error.message}`);
-        }
-        sessionResult = "failed";
+    } else {
+        logger.warn("Skipping transponder creation due to previous failures");
     }
 
     updateSessionInfo("sessionResult", sessionResult);
