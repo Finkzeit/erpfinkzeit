@@ -183,6 +183,8 @@ def get_transponder(hitag_uid=None, mfcl_uid=None, mfdf_uid=None, deister_uid=No
         query_string = """SELECT * FROM `tabTransponder` WHERE `deister_uid` = "{}";""".format(deister_uid)
     elif em_uid:
         query_string = """SELECT * FROM `tabTransponder` WHERE `em_uid` = "{}";""".format(em_uid)
+    else:
+        return """{"message":[]}"""
 
     data = frappe.db.sql(query_string, as_dict=True)
     
