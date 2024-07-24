@@ -3,10 +3,12 @@ import logger from "./logger.js";
 import { getSAK } from "./handler/protocolHandler.js";
 import { updateSessionInfo } from "./ui.js";
 import { getIsFormatting, addFormattingChangeListener, removeFormattingChangeListener } from "./state.js";
+import { inSession } from "./app.js";
 
 let detectedKeys = {};
 let wrongKeys = {};
 let correctKeys = {};
+let verifyKeyId = 0;
 
 function checkBit(value, bitNumber) {
     return (value & (1 << bitNumber)) !== 0;
@@ -20,11 +22,13 @@ function identifyMifare(sakValue) {
 }
 
 export async function verifyKey(transponderConfig, numberHandler) {
+    verifyKeyId++;
     logger.debug("[verifyKey] Starting key verification...");
     updateSessionInfo("status", "Schlüssel wird überprüft");
     let tagDetected = false;
 
-    while (!tagDetected) {
+    while (!tagDetected && inSession()) {
+        console.log("verifyKeyId: ", verifyKeyId);
         if (getIsFormatting()) {
             logger.debug("[verifyKey] Formatting in progress, stopping detection.");
             await new Promise((resolve) => {
@@ -41,26 +45,40 @@ export async function verifyKey(transponderConfig, numberHandler) {
         if (getIsFormatting()) continue; // Skip detection if formatting is still in progress
 
         logger.debug("[verifyKey] Detecting tag....");
+        console.log("config new1", transponderConfig);
+
         tagDetected = await detectFirstTag(transponderConfig);
+        console.log("config new2", transponderConfig);
+
         logger.debug("[verifyKey] Tag detected 1:", tagDetected);
         if (tagDetected) {
+            console.log("config new3", transponderConfig);
+
             await validateNumber(transponderConfig, numberHandler);
             const requiredKeysCorrect = await requiredKeySet(transponderConfig);
             if (requiredKeysCorrect) {
                 return true; // Return true if all required keys are correct
             }
+            return false;
+        }
+
+        if (!inSession()) {
+            logger.debug("[verifyKey] Session cancelled, stopping verification");
+            return false;
         }
     }
-    return false; // Return false if the loop exits without finding correct keys
+    return tagDetected;
 }
 
 export async function detectFirstTag(transponderConfig) {
     logger.debug("[verifyKey] Detecting tag...");
+    console.log("config new4", transponderConfig);
     updateSessionInfo("status", "Tag wird erkannt");
 
     const searchFunctions = [api.hitag1s, api.mifare, api.deister, api.em];
 
-    while (true) {
+    while (inSession()) {
+        console.log("inside detectFistKey verifyKeyId: ", verifyKeyId);
         if (getIsFormatting()) {
             logger.debug("[verifyKey] Formatting in progress, stopping detection.");
             return false; // Exit the loop if formatting is in progress
@@ -87,7 +105,11 @@ export async function detectFirstTag(transponderConfig) {
                     };
                     logger.info("[verifyKey] New tag found", result);
 
+                    console.log("config new5", transponderConfig);
+
                     await setUIDInTransponderConfig(transponderConfig, result);
+
+                    console.log("config new6", transponderConfig);
 
                     // Update session info with detected tag
                     updateSessionInfo("tag", {
@@ -96,6 +118,7 @@ export async function detectFirstTag(transponderConfig) {
                         status: "Erkannt",
                     });
                 } else {
+                    console.log("config new10", transponderConfig);
                     detectedKeys[result.UID].count += 1;
                     if (detectedKeys[result.UID].count === 2) {
                         logger.info("[verifyKey] UID detected twice, stopping loop", result);
@@ -107,9 +130,12 @@ export async function detectFirstTag(transponderConfig) {
             }
         }
     }
+    return false;
 }
 
 async function setUIDInTransponderConfig(transponderConfig, result) {
+    console.log("config new7", transponderConfig);
+
     let tagType = result.TagType;
     if (tagType === "MIFARE") {
         const sakValue = await getSAK(result.UID);
@@ -142,11 +168,17 @@ async function setUIDInTransponderConfig(transponderConfig, result) {
             }
             break;
     }
+    console.log("config new8", transponderConfig);
 
     logger.debug("[verifyKey] transponderConfig:", JSON.stringify(transponderConfig, null, 2));
 }
 
 async function requiredKeySet(transponderConfig) {
+    console.log("config new9", transponderConfig);
+    console.log("[verifyKey] Checking required key set...");
+    console.log(transponderConfig);
+    console.log("[verifyKey] Required keys:", transponderConfig.getRequiredKeys());
+    console.log("[verifyKey] Detected keys:", detectedKeys);
     logger.debug("[verifyKey] Checking required key set...");
     updateSessionInfo("status", "Erforderlicher Schlüsselsatz wird überprüft");
 
@@ -166,7 +198,7 @@ async function requiredKeySet(transponderConfig) {
                     case "em":
                         return "EM";
                     case "legic":
-                        return null; // Exclude LEGIC from the required keys set
+                        return null;
                     default:
                         return key;
                 }
@@ -198,6 +230,8 @@ async function requiredKeySet(transponderConfig) {
 }
 
 async function validateNumber(transponderConfig, numberHandler) {
+    console.log("[verifyKey] Validatingggg number...,", transponderConfig, numberHandler);
+    console.log("[verifyKey] Validatinggggg number...,", numberHandler.readFromInput());
     numberHandler.readFromInput();
     const currentNumber = numberHandler.getCurrentNumber();
     let isValidNumber = await numberHandler.validateNumber(currentNumber);

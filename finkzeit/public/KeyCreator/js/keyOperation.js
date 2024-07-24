@@ -1,30 +1,37 @@
 import logger from "./logger.js";
-import { verifyKey } from "./formatKeyVerify.js";
+import { verifyKey } from "./keyVerifyOperation.js";
 import * as protocolHandler from "./handler/protocolHandler.js";
 import * as api from "./api.js";
 import { DESF } from "./constants/constants.js";
 import { setIsFormatting } from "./state.js";
-import { clearKeys } from "./verifyKey.js"; // Add this import
+import { clearKeys } from "./verifyKey.js";
 
-const CRYPTO_ENV = DESF.CRYPTO_ENV0; // Assuming default crypto environment
+const CRYPTO_ENV = DESF.CRYPTO_ENV0;
 
 let shouldContinueSearch = true;
+let erpRestApi; // Declare at the top level
 
-export function initializeKeyFormatting() {
-    logger.debug("Initializing key formatting");
+export function initializeKeyOperation(erpRestApiInstance) {
+    erpRestApi = erpRestApiInstance; // Store the instance
+    logger.debug("Initializing key formatting and reading");
     const settingsButton = document.getElementById("settingsButton");
     const formatKeyOption = document.getElementById("formatKeyOption");
+    const readKeyOption = document.getElementById("readKeyOption");
     const settingsDropdown = document.getElementById("settingsDropdown");
 
-    if (!settingsButton || !formatKeyOption || !settingsDropdown) {
-        logger.error("One or more elements not found for key formatting");
+    if (!settingsButton || !formatKeyOption || !readKeyOption || !settingsDropdown) {
+        logger.error("One or more elements not found for key formatting/reading");
         return;
     }
 
     settingsButton.addEventListener("click", toggleDropdown);
     formatKeyOption.addEventListener("click", () => {
         logger.debug("Format Key option clicked");
-        handleFormatKey();
+        keyOperations("format");
+    });
+    readKeyOption.addEventListener("click", () => {
+        logger.debug("Read Key option clicked");
+        keyOperations("read");
     });
 
     window.addEventListener("click", function (event) {
@@ -34,7 +41,7 @@ export function initializeKeyFormatting() {
         }
     });
 
-    logger.debug("Key formatting initialized");
+    logger.debug("Key formatting and reading initialized");
 }
 
 function toggleDropdown(event) {
@@ -50,27 +57,26 @@ function closeDropdown() {
     dropdownContent.classList.remove("show");
 }
 
-async function handleFormatKey() {
-    logger.debug("Handle format key called");
+async function keyOperations(action) {
+    logger.debug(`Handle ${action} key called`);
 
-    const dialog = showDialog("Schlüssel wird gesucht. Bitte legen Sie einen Schlüssel auf den Leser.");
+    const dialog = showDialog(`Schlüssel wird gesucht. Bitte legen Sie einen Schlüssel auf den Leser.`);
     shouldContinueSearch = true;
     logger.debug("Setting isFormatting to true");
-    setIsFormatting(true); // Set the flag to stop the main loop
+    setIsFormatting(true);
 
     try {
-        updateDialogMessage("Tag zum Formatieren wird gesucht...");
+        updateDialogMessage(`Tag zum ${action === "format" ? "Formatieren" : "Lesen"} wird gesucht...`);
         logger.debug("Starting tag detection");
         const detectedTags = await getDetectedTags(dialog);
         logger.debug("Detected tags:", detectedTags);
 
-        if (!shouldContinueSearch) {
-            logger.debug("Tag detection cancelled");
-            return;
-        }
-
-        if (detectedTags.length === 0) {
-            updateDialogText(dialog, "Keine Tags erkannt. Bitte versuchen Sie es erneut.");
+        if (!shouldContinueSearch || detectedTags.length === 0) {
+            updateDialogText(
+                dialog,
+                detectedTags.length === 0 ? "Keine Tags erkannt. Bitte versuchen Sie es erneut." : "Tag-Erkennung abgebrochen."
+            );
+            addCloseButton(dialog, true);
             return;
         }
 
@@ -81,25 +87,160 @@ async function handleFormatKey() {
             })
             .join(", ");
         const keyText = detectedTags.length === 1 ? "Schlüssel" : "Schlüssel";
-        const formatText = detectedTags.length === 1 ? "diesen Schlüssel" : "diese Schlüssel";
-        updateDialogText(dialog, `Erkannte ${keyText}: ${detectedTechsString}. Möchten Sie ${formatText} formatieren?`);
+        const actionText = action === "format" ? "formatieren" : "lesen";
+        updateDialogText(
+            dialog,
+            `Erkannte ${keyText}: ${detectedTechsString}. Möchten Sie ${
+                actionText === "formatieren" ? "diesen" : "diese"
+            } ${keyText} ${actionText}?`
+        );
 
-        const shouldFormat = await getConfirmation(dialog, true);
-        if (shouldFormat) {
-            await formatDetectedTags(detectedTags, dialog);
+        const shouldProceed = await getConfirmation(dialog, action);
+        if (shouldProceed) {
+            if (action === "format") {
+                await formatKey(detectedTags, dialog);
+            } else {
+                await readKey(detectedTags, dialog);
+            }
+        } else {
+            addCloseButton(dialog, true);
         }
     } catch (error) {
-        logger.error("Error in handleFormatKey:", error);
+        logger.error(`Error in keyOperations:`, error);
         updateDialogText(dialog, "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
-    } finally {
-        setTimeout(() => {
-            if (dialog.overlay && dialog.overlay.parentNode) {
-                dialog.overlay.parentNode.removeChild(dialog.overlay);
-            }
-            logger.debug("Setting isFormatting to false");
-            setIsFormatting(false); // Reset the flag after formatting is done
-        }, 4000);
+        addCloseButton(dialog, true);
     }
+}
+
+async function formatKey(tags, dialog) {
+    updateDialogMessage("Tag-Formatierung wird gestartet...");
+    for (const tag of tags) {
+        try {
+            await formatTag(tag);
+            updateDialogMessage(`${tag.type} (${tag.uid}) erfolgreich formatiert`);
+            clearKeys(tag.uid);
+        } catch (error) {
+            updateDialogMessage(`Fehler beim Formatieren von ${tag.type} (${tag.uid}): ${error.message}`);
+        }
+    }
+    updateDialogMessage("Tag-Formatierung abgeschlossen. Entfernen Sie den Schlüssel, wenn Sie ihn nicht automatisch beschreiben möchten.");
+
+    // Add a close button that sets isFormatting to false
+    addCloseButton(dialog, true);
+}
+
+async function readKey(tags, dialog) {
+    updateDialogMessage("Tag-Auslesen wird gestartet...");
+    for (const tag of tags) {
+        try {
+            const transponderData = await readTag(tag);
+            updateDialogMessage(`${tag.type} (${tag.uid}) erfolgreich ausgelesen`);
+
+            // Display the transponder data and wait for user confirmation
+            await displayTransponderDataAndWait(transponderData, dialog);
+        } catch (error) {
+            updateDialogMessage(`Fehler beim Auslesen von ${tag.type} (${tag.uid}): ${error.message}`);
+            await waitForUserConfirmation(dialog);
+        }
+    }
+
+    // Add this line to update the dialog message after all tags have been processed
+    updateDialogMessage("Tag-Auslesen abgeschlossen.");
+
+    // Add a close button that sets isFormatting to false
+    addCloseButton(dialog, true);
+}
+
+function displayTransponderDataAndWait(transponderData, dialog) {
+    return new Promise((resolve) => {
+        if (transponderData && transponderData.message && transponderData.message.length > 0) {
+            const data = transponderData.message[0];
+            let formattedData = "";
+
+            const addLine = (label, value) => {
+                if (value) {
+                    formattedData += `${label}: ${value}\n`;
+                }
+            };
+
+            addLine("Nummer", data.name || data.code);
+            addLine("Kunde", data.customer_name);
+            addLine("Kundennummer", data.customer);
+            addLine("Lizenz", data.licence);
+            addLine("Lizenzname", data.licence_name);
+            addLine("Transponder-Konfiguration", data.transponder_configuration);
+
+            formattedData += "\nUIDs:\n";
+            addLine("- Hitag", data.hitag_uid);
+            addLine("- Mifare Classic", data.mfcl_uid);
+            addLine("- Mifare DESFire", data.mfdf_uid);
+            addLine("- Deister", data.deister_uid);
+            addLine("- EM", data.em_uid);
+            addLine("- Legic", data.legic_uid);
+
+            addLine(
+                "\nErstellt am",
+                data.creation
+                    ? new Date(data.creation).toLocaleString("de-DE", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                          hour12: false,
+                      })
+                    : null
+            );
+            addLine(
+                "Zuletzt geändert",
+                data.modified
+                    ? new Date(data.modified).toLocaleString("de-DE", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          second: "2-digit",
+                          hour12: false,
+                      })
+                    : null
+            );
+            addLine("Geändert von", data.modified_by);
+
+            updateDialogText(dialog, formattedData.trim());
+        } else {
+            updateDialogText(dialog, "Keine Daten für diesen Transponder gefunden.");
+        }
+
+        // Add a close button
+        const closeButton = document.createElement("button");
+        closeButton.textContent = "Schließen";
+        closeButton.className = "btn";
+        closeButton.addEventListener("click", () => {
+            closeDialog(dialog); // Close the dialog immediately
+            resolve();
+        });
+
+        const buttonsContainer = dialog.dialogElement.querySelector("#dialogButtons");
+        buttonsContainer.innerHTML = "";
+        buttonsContainer.appendChild(closeButton);
+    });
+}
+
+function waitForUserConfirmation(dialog) {
+    return new Promise((resolve) => {
+        const okButton = document.createElement("button");
+        okButton.textContent = "OK";
+        okButton.className = "btn";
+        okButton.addEventListener("click", () => {
+            resolve();
+        });
+
+        const buttonsContainer = dialog.dialogElement.querySelector("#dialogButtons");
+        buttonsContainer.innerHTML = "";
+        buttonsContainer.appendChild(okButton);
+    });
 }
 
 function showDialog(message) {
@@ -121,6 +262,8 @@ function showDialog(message) {
 
     document.getElementById("cancelBtn").addEventListener("click", () => {
         shouldContinueSearch = false;
+        logger.debug("Setting isFormatting to false");
+        setIsFormatting(false);
         if (overlay.parentNode) {
             overlay.parentNode.removeChild(overlay);
         }
@@ -133,27 +276,24 @@ function updateDialogText(dialog, message) {
     logger.debug("Updating dialog text:", message);
     const textElement = dialog.dialogElement.querySelector("#dialogText");
     textElement.textContent = message;
+    textElement.style.whiteSpace = "pre-wrap"; // This preserves line breaks
 }
 
-function getConfirmation(dialog, showFormatButton) {
+function getConfirmation(dialog, action) {
     return new Promise((resolve) => {
         const buttonsContainer = dialog.dialogElement.querySelector("#dialogButtons");
-        if (showFormatButton) {
-            const formatButton = document.createElement("button");
-            formatButton.className = "btn";
-            formatButton.id = "formatBtn";
-            formatButton.textContent = "Formatieren";
-            formatButton.addEventListener("click", () => {
-                // Remove both buttons when formatting starts
-                buttonsContainer.innerHTML = "";
-                resolve(true);
-            });
-            buttonsContainer.insertBefore(formatButton, buttonsContainer.firstChild);
-        }
+        const actionButton = document.createElement("button");
+        actionButton.className = "btn";
+        actionButton.id = action === "format" ? "formatBtn" : "readBtn";
+        actionButton.textContent = action === "format" ? "Formatieren" : "Lesen";
+        actionButton.addEventListener("click", () => {
+            buttonsContainer.innerHTML = "";
+            resolve(true);
+        });
+        buttonsContainer.insertBefore(actionButton, buttonsContainer.firstChild);
 
         const cancelButton = document.getElementById("cancelBtn");
         cancelButton.addEventListener("click", () => {
-            // Remove both buttons when cancelling
             buttonsContainer.innerHTML = "";
             resolve(false);
         });
@@ -180,27 +320,13 @@ async function getDetectedTags(dialog) {
     }
 }
 
-async function formatDetectedTags(tags, dialog) {
-    updateDialogMessage("Tag-Formatierung wird gestartet...");
-    for (const tag of tags) {
-        try {
-            await formatTag(tag);
-            updateDialogMessage(`${tag.type} (${tag.uid}) erfolgreich formatiert`);
-            clearKeys(tag.uid); // Clear keys after successful format
-        } catch (error) {
-            updateDialogMessage(`Fehler beim Formatieren von ${tag.type} (${tag.uid}): ${error.message}`);
-        }
-    }
-    updateDialogMessage("Tag-Formatierung abgeschlossen. Entfernen Sie den Schlüssel, wenn Sie ihn nicht automatisch beschreiben möchten.");
-}
-
 async function formatTag(tag) {
     logger.debug(`Formatting ${tag.type} (${tag.uid})...`);
 
     try {
         switch (tag.type.toUpperCase()) {
             case "HITAG":
-            case "HITAG1S": // Add this line to handle "hitag1s"
+            case "HITAG1S":
                 await hitagScript({ tags: { hitag: { uid: tag.uid } } });
                 break;
             case "MIFARE_CLASSIC":
@@ -254,27 +380,16 @@ async function mifareClassicScript(config) {
     await api.mifare();
 
     const keys = {
-        A: [
-            0xffffffffffff, // Default key
-            0xa0a1a2a3a4a5,
-            0xd3f7d3f7d3f7,
-            0x123456780000,
-            0x111111111111,
-            // Add more keys as needed
-        ],
-        B: [
-            0xffffffffffff, // Default key
-            // Add more keys as needed
-        ],
+        A: [0xffffffffffff, 0xa0a1a2a3a4a5, 0xd3f7d3f7d3f7, 0x123456780000, 0x111111111111],
+        B: [0xffffffffffff],
     };
 
-    const totalSectors = 16; // Assuming a Mifare Classic 1K tag
+    const totalSectors = 16;
 
     try {
         for (let sector = 0; sector < totalSectors; sector++) {
             let loggedIn = false;
 
-            // Try to login with each key type and key
             for (const keyType of ["A", "B"]) {
                 for (const key of keys[keyType]) {
                     try {
@@ -292,10 +407,9 @@ async function mifareClassicScript(config) {
             }
 
             if (loggedIn) {
-                // Write 0s to blocks, skipping block 0 in sector 0
                 const zeroData = "00000000000000000000000000000000";
-                const startBlock = sector === 0 ? 1 : 0; // Skip block 0 in sector 0
-                const endBlock = sector === 0 ? 2 : 3; // Write to 2 blocks in sector 0, 3 blocks in others
+                const startBlock = sector === 0 ? 1 : 0;
+                const endBlock = sector === 0 ? 2 : 3;
 
                 for (let i = startBlock; i < endBlock; i++) {
                     const block = sector * 4 + i;
@@ -309,7 +423,6 @@ async function mifareClassicScript(config) {
                     }
                 }
 
-                // Write specific data to block 3 (trailer block)
                 const trailerData = "FFFFFFFFFFFF" + "FF0780" + "69" + "FFFFFFFFFFFF";
                 const trailerBlock = sector * 4 + 3;
                 const trailerWriteResponse = await protocolHandler.MifareClassic_WriteBlock(trailerBlock, trailerData);
@@ -341,12 +454,7 @@ async function mifareDesfireScript(config) {
     updateDialogMessage("Mifare DESFire-Operationen werden gestartet");
 
     const masterKeys = [
-        0x2,
-        0x00000000000000000000000000000000, // Default 3DES key
-        0x12344567890,
-        0x0123456789abcdef0123456789abcdef, // Example AES key
-        0xaabbccddeeff00112233445566778899, // Another example key
-        // Add more keys as needed
+        0x2, 0x00000000000000000000000000000000, 0x12344567890, 0x0123456789abcdef0123456789abcdef, 0xaabbccddeeff00112233445566778899,
     ];
 
     try {
@@ -441,6 +549,32 @@ async function mifareDesfireScript(config) {
     }
 }
 
+async function readTag(tag) {
+    logger.debug(`Reading ${tag.type} (${tag.uid})...`);
+    const uid = {};
+    switch (tag.type.toLowerCase()) {
+        case "hitag":
+        case "hitag1s":
+            uid.hitag_uid = tag.uid;
+            break;
+        case "mifare_classic":
+            uid.mfcl_uid = tag.uid;
+            break;
+        case "mifare_desfire":
+            uid.mfdf_uid = tag.uid;
+            break;
+        case "deister":
+            uid.deister_uid = tag.uid;
+            break;
+        case "em":
+            uid.em_uid = tag.uid;
+            break;
+        default:
+            throw new Error(`Unbekannter Tag-Typ: ${tag.type}`);
+    }
+    return await erpRestApi.getTransponder(uid);
+}
+
 export function updateDialogMessage(message) {
     logger.debug("Updating dialog message:", message);
     const dialogText = document.getElementById("dialogText");
@@ -449,4 +583,27 @@ export function updateDialogMessage(message) {
     } else {
         logger.warn("Dialog text element not found");
     }
+}
+
+function closeDialog(dialog) {
+    if (dialog.overlay && dialog.overlay.parentNode) {
+        dialog.overlay.parentNode.removeChild(dialog.overlay);
+    }
+}
+
+function addCloseButton(dialog, setIsFormattingFalse = false) {
+    const closeButton = document.createElement("button");
+    closeButton.textContent = "Schließen";
+    closeButton.className = "btn";
+    closeButton.addEventListener("click", () => {
+        if (setIsFormattingFalse) {
+            logger.debug("Setting isFormatting to false");
+            setIsFormatting(false);
+        }
+        closeDialog(dialog);
+    });
+
+    const buttonsContainer = dialog.dialogElement.querySelector("#dialogButtons");
+    buttonsContainer.innerHTML = "";
+    buttonsContainer.appendChild(closeButton);
 }

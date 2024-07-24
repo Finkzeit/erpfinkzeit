@@ -5,7 +5,7 @@ import numberHandler from "./handler/numberHandler.js";
 import { updateSessionInfo } from "./ui.js";
 import logger from "./logger.js";
 
-async function executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpRestApi) {
+async function executeScriptsBasedOnConfig(transponderConfig, erpRestApi) {
     const scriptMapping = {
         hitag: hitagScript,
         mifareClassic: mifareClassicScript,
@@ -16,12 +16,24 @@ async function executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpR
     let sessionResult = "success";
     let errors = [];
 
+    const requiredKeys = transponderConfig.getRequiredKeys();
+
     for (const key of requiredKeys) {
         if (transponderConfig.isTagAvailable(key)) {
+            if (["deister", "legic", "em"].includes(key)) {
+                logger.debug(`${key.toUpperCase()} benötigt kein Skript, wird als erfolgreich fortgesetzt`);
+                updateSessionInfo("tag", {
+                    type: key,
+                    uid: transponderConfig.tags[key]?.uid || "N/A",
+                    status: "Abgeschlossen",
+                });
+                continue;
+            }
+
             const script = scriptMapping[key];
             if (script) {
                 if (key === "hitag" && transponderConfig.tags.hitag.feig_coding !== 1) {
-                    logger.debug("Feig script not executed as feig is not 1");
+                    logger.debug("Feig-Skript nicht ausgeführt, da feig nicht 1 ist");
                     continue;
                 }
                 if (!(await transponderConfig.getNumber())) {
@@ -34,9 +46,9 @@ async function executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpR
                 try {
                     const scriptResult = await script(transponderConfig);
                     if (!scriptResult) {
-                        throw new Error(`Failed to write data to ${key.toUpperCase()} tag`);
+                        throw new Error(`Fehler bei der Ausführung des ${key.toUpperCase()}-Skripts`);
                     }
-                    logger.debug(`${key.toUpperCase()} script completed successfully`);
+                    logger.debug(`${key.toUpperCase()}-Skript erfolgreich abgeschlossen`);
                     updateSessionInfo("tag", {
                         type: key,
                         uid: transponderConfig.tags[key]?.uid || "N/A",
@@ -44,9 +56,9 @@ async function executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpR
                     });
                     updateSessionInfo("number", transponderConfig.getNumber());
                 } catch (error) {
-                    logger.error(`Error executing ${key.toUpperCase()} script:`, error);
+                    logger.error(`Fehler bei der Ausführung des ${key.toUpperCase()}-Skripts:`, error);
                     if (errors.length === 0) {
-                        errors.push(`${key.toUpperCase()}: ${error.message}`);
+                        errors.push(`${error.message}`);
                     }
                     allScriptsExecuted = false;
                     sessionResult = "failed";
@@ -55,19 +67,19 @@ async function executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpR
                         uid: transponderConfig.tags[key]?.uid || "N/A",
                         status: "Fehlgeschlagen",
                     });
-                    break; // Exit the loop after the first error
+                    break;
                 }
             } else {
-                logger.warn(`${key.toUpperCase()} script not found`);
+                logger.warn(`${key.toUpperCase()}-Skript nicht gefunden`);
                 if (errors.length === 0) {
-                    errors.push(`${key.toUpperCase()} script nicht gefunden`);
+                    errors.push(`${key.toUpperCase()}-Skript nicht gefunden`);
                 }
                 allScriptsExecuted = false;
                 sessionResult = "failed";
-                break; // Exit the loop after the first error
+                break;
             }
         } else if (requiredKeys.includes(key)) {
-            logger.warn(`${key.toUpperCase()} not available`);
+            logger.warn(`${key.toUpperCase()} nicht verfügbar`);
             if (errors.length === 0) {
                 errors.push(`${key.toUpperCase()} nicht verfügbar`);
             }
@@ -77,10 +89,9 @@ async function executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpR
                 status: "Nicht verfügbar",
             });
             sessionResult = "failed";
-            break; // Exit the loop after the first error
+            break;
         }
     }
-
     if (sessionResult !== "failed") {
         try {
             const number = transponderConfig.getNumber();
@@ -95,12 +106,12 @@ async function executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpR
 
             const response = await erpRestApi.createTransponder(transponderConfig.transponderConfigId, number, uid);
 
-            logger.debug("Response:", response);
-            logger.debug("ResponseMessage:", response.message);
-            logger.debug("Number:", number);
+            logger.debug("Antwort:", response);
+            logger.debug("Antwortnachricht:", response.message);
+            logger.debug("Nummer:", number);
 
             if (response.message === number.toString()) {
-                logger.debug("Transponder created successfully");
+                logger.debug("Transponder erfolgreich erstellt");
                 updateSessionInfo("action", `Transponder mit Nummer ${number} erfolgreich erstellt`);
             } else {
                 logger.warn(response.message);
@@ -112,14 +123,14 @@ async function executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpR
                 sessionResult = "failed";
             }
         } catch (error) {
-            logger.error("Error creating transponder:", error);
+            logger.error("Fehler beim Erstellen des Transponders:", error);
             if (errors.length === 0) {
                 errors.push(`Fehler beim Erstellen des Transponders: ${error.message}`);
             }
             sessionResult = "failed";
         }
     } else {
-        logger.warn("Skipping transponder creation due to previous failures");
+        logger.warn("Überspringen der Transpondererstellung aufgrund vorheriger Fehler");
     }
 
     updateSessionInfo("sessionResult", sessionResult);

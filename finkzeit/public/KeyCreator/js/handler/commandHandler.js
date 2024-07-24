@@ -26,48 +26,51 @@ async function processQueue() {
     }
 
     isProcessing = true;
-    const { command, paramStr, resolve, reject } = commandQueue.shift();
 
-    try {
-        let byteArr = `${hex(command, 4)}${paramStr}\r`;
-        logger.debug(`sendCommand sent: ${byteArr}`);
-        await portHandler.serialPortHandler.write(byteArr);
+    while (commandQueue.length > 0) {
+        const { command, paramStr, resolve, reject } = commandQueue.shift();
 
-        byteArr = "";
-        const timeout = Date.now() + 5000; // Increase timeout to 5 seconds
+        try {
+            let byteArr = `${hex(command, 4)}${paramStr}\r`;
+            logger.debug(`sendCommand sent: ${byteArr}`);
+            await portHandler.serialPortHandler.write(byteArr);
 
-        while (Date.now() < timeout) {
-            const bytes = await portHandler.serialPortHandler.read();
-            byteArr += bytes;
-            if (byteArr.endsWith("\r")) {
-                logger.debug(`Received response: ${byteArr}`);
-                break;
+            byteArr = "";
+            const timeout = Date.now() + 5000; // 5 seconds timeout
+
+            while (Date.now() < timeout) {
+                const bytes = await portHandler.serialPortHandler.read();
+                byteArr += bytes;
+                if (byteArr.endsWith("\r")) {
+                    logger.debug(`Received response: ${byteArr}`);
+                    break;
+                }
+                await new Promise((r) => setTimeout(r, 10)); // Small delay to prevent tight loop
             }
-        }
 
-        if (!byteArr.endsWith("\r")) {
-            logger.warn("No valid delimiter found");
-            reject("No valid delimiter found");
-        } else if (byteArr.length < 3) {
-            logger.error("Timeout or incomplete response");
-            reject("Timeout or incomplete response");
-        } else {
-            const errCode = parseInt(byteArr.slice(0, 2), 16);
-            if (errCode !== SP_ERROR.ERR_NONE) {
-                logger.warn("Error code found");
-                reject("Error code found");
+            if (!byteArr.endsWith("\r")) {
+                throw new Error("No valid delimiter found");
+            } else if (byteArr.length < 3) {
+                throw new Error("Timeout or incomplete response");
             } else {
-                const response = byteArr.slice(2, -1);
-                await resolve(response);
+                const errCode = parseInt(byteArr.slice(0, 2), 16);
+                if (errCode !== SP_ERROR.ERR_NONE) {
+                    throw new Error("Error code found");
+                } else {
+                    const response = byteArr.slice(2, -1);
+                    resolve(response);
+                }
             }
+        } catch (error) {
+            logger.error(`Error in processQueue: ${error}`);
+            reject(error);
         }
-    } catch (error) {
-        logger.error(`Error in processQueue: ${error}`);
-        reject(error);
-    } finally {
-        isProcessing = false;
-        processQueue();
+
+        // Add a small delay between processing commands
+        //await new Promise((r) => setTimeout(r, 50));
     }
+
+    isProcessing = false;
 }
 
 export function hex(value, length) {

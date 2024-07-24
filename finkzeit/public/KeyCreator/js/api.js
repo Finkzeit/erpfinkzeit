@@ -13,26 +13,22 @@ async function setAndSearchTag(lfTag, hfTag) {
 }
 
 export async function hitag1s() {
-    logger.debug("trying to run HITAG1S");
-    logger.debug("setting tag types");
+    logger.debug("setAndSearch HITAG1S");
     return await setAndSearchTag(TAG_TYPES.LF.HITAG1S, TAG_TYPES.HF.NONE);
 }
 
 export async function mifare() {
-    logger.debug("trying to run Mifare Classic");
-    logger.debug("setting tag types");
+    logger.debug("setAndSearch Mifare Classic");
     return await setAndSearchTag(TAG_TYPES.LF.NONE, TAG_TYPES.HF.MIFARE_CLASSIC);
 }
 
 export async function deister() {
-    logger.debug("trying to run Deister");
-    logger.debug("setting tag types");
+    logger.debug("setAndSearch Deister");
     return await setAndSearchTag(TAG_TYPES.LF.DEISTER, TAG_TYPES.HF.NONE);
 }
 
 export async function em() {
-    logger.debug("trying to run EM");
-    logger.debug("setting tag types");
+    logger.debug("setAndSearch EM");
     return await setAndSearchTag(TAG_TYPES.LF.EM4102, TAG_TYPES.HF.NONE);
 }
 

@@ -11,21 +11,21 @@ export async function mifareClassicScript(transponderConfig) {
     try {
         const loginResponse = await loginMifareClassic(transponderConfig);
         if (!loginResponse) {
-            logger.warn("mifareClassicScript aborted due to login failure");
+            logger.warn("mifareClassicScript abgebrochen aufgrund von Anmeldefehler");
             updateSessionInfo("action", "MIFARE Classic Anmeldung fehlgeschlagen");
             return false;
         }
 
         const writeKeyResponse = await writeLoginKey(transponderConfig);
         if (!writeKeyResponse) {
-            logger.warn("mifareClassicScript aborted due to login key write failure");
+            logger.warn("mifareClassicScript abgebrochen aufgrund von Fehler beim Schreiben des Anmeldeschlüssels");
             updateSessionInfo("action", "MIFARE Classic Anmeldeschlüssel schreiben fehlgeschlagen");
             return false;
         }
 
         const writeResponse = await writeMifareClassic(transponderConfig);
         if (!writeResponse) {
-            logger.warn("mifareClassicScript aborted due to write failure");
+            logger.warn("mifareClassicScript abgebrochen aufgrund von Schreibfehler");
             updateSessionInfo("action", "MIFARE Classic schreiben fehlgeschlagen");
             return false;
         }
@@ -34,15 +34,15 @@ export async function mifareClassicScript(transponderConfig) {
         logger.debug("readResponse:", readResponse);
         if (readResponse === transponderConfig.tags.mifareClassic.number) {
             updateSessionInfo("action", "MIFARE Classic Verifizierung erfolgreich");
-            logger.debug("mifareClassicScript completed successfully");
+            logger.debug("mifareClassicScript erfolgreich abgeschlossen");
             return true;
         } else {
             updateSessionInfo("action", "MIFARE Classic Verifizierung fehlgeschlagen");
-            logger.warn("mifareClassicScript failed due to verification mismatch");
+            logger.warn("mifareClassicScript fehlgeschlagen aufgrund von Verifizierungsabweichung");
             return false;
         }
     } catch (error) {
-        logger.error("Error in mifareClassicScript:", error);
+        logger.error("Fehler in mifareClassicScript:", error);
         updateSessionInfo("action", `Fehler während MIFARE Classic Operationen: ${error.message}`);
         return false;
     }
@@ -50,52 +50,52 @@ export async function mifareClassicScript(transponderConfig) {
 
 export async function loginMifareClassic(transponderConfig) {
     const { sector } = transponderConfig.tags.mifareClassic;
-    logger.debug("Starting loginMifareClassic with sector:", sector);
+    logger.debug("Starte loginMifareClassic mit Sektor:", sector);
     updateSessionInfo("action", "Versuche MIFARE Classic Anmeldung");
 
     try {
         const result = await protocolHandler.MifareClassic_Login(281474976710655, "00", sector);
 
         if (result) {
-            logger.debug("Login successful");
+            logger.debug("Anmeldung erfolgreich");
             updateSessionInfo("action", "MIFARE Classic Anmeldung erfolgreich");
             return result;
         }
 
-        logger.warn("Login failed: Not a new key");
+        logger.warn("Anmeldung fehlgeschlagen: Kein neuer Schlüssel");
         return null;
     } catch (error) {
-        logger.error("Error during MIFARE_CLASSIC_LOGIN:", error);
+        logger.error("Fehler während MIFARE_CLASSIC_LOGIN:", error);
         updateSessionInfo("action", `Fehler während MIFARE Classic Anmeldung: ${error.message}`);
         throw error;
     }
 }
 
 export async function writeMifareClassic(transponderConfig) {
-    logger.debug("Starting writeMifareClassic with config:", transponderConfig);
+    logger.debug("Starte writeMifareClassic mit Konfiguration:", transponderConfig);
     updateSessionInfo("action", "Schreibe zu MIFARE Classic");
 
     const { skip_bytes, read_bytes, sector, number: data } = transponderConfig.tags.mifareClassic;
     const block = skip_bytes >> 4;
-    logger.debug("Skip bytes:", skip_bytes, "Sector:", sector, "Data (Number):", data);
+    logger.debug("Übersprungene Bytes:", skip_bytes, "Sektor:", sector, "Daten (Nummer):", data);
 
     const spBlock = (sector << 2) + block;
-    logger.debug("Calculated SP block:", spBlock);
+    logger.debug("Berechneter SP-Block:", spBlock);
 
     const swappedData = swap32(data >>> 0);
     const dataHex = hex(swappedData, 2 * read_bytes);
-    logger.debug("Data swap hex:", dataHex);
+    logger.debug("Daten-Swap-Hex:", dataHex);
 
     let dataArray = new Uint8Array(16);
     for (let i = 0; i < dataHex.length / 2; i++) {
         dataArray[skip_bytes + i] = parseInt(dataHex.slice(i * 2, i * 2 + 2), 16);
     }
-    logger.debug("DataArray:", dataArray);
+    logger.debug("DatenArray:", dataArray);
 
     let dataStr = Array.from(dataArray)
         .map((byte) => byte.toString(16).padStart(2, "0"))
         .join("");
-    logger.debug("Processed data:", dataStr);
+    logger.debug("Verarbeitete Daten:", dataStr);
 
     try {
         updateSessionInfo("tag", {
@@ -106,7 +106,7 @@ export async function writeMifareClassic(transponderConfig) {
 
         const result = await protocolHandler.MifareClassic_WriteBlock(spBlock, dataStr);
         if (result) {
-            logger.debug("Write successful");
+            logger.debug("Schreiben erfolgreich");
             updateSessionInfo("action", "MIFARE Classic schreiben erfolgreich");
             updateSessionInfo("tag", {
                 type: "MIFARECLASSIC",
@@ -116,7 +116,7 @@ export async function writeMifareClassic(transponderConfig) {
             return result;
         }
 
-        logger.warn("Write failed: Data could not be written");
+        logger.warn("Schreiben fehlgeschlagen: Daten konnten nicht geschrieben werden");
         updateSessionInfo("tag", {
             type: "MIFARECLASSIC",
             uid: transponderConfig.tags.mifareClassic.uid,
@@ -124,7 +124,7 @@ export async function writeMifareClassic(transponderConfig) {
         });
         return null;
     } catch (error) {
-        logger.error("Error during MIFARE_CLASSIC_WRITE:", error);
+        logger.error("Fehler während MIFARE_CLASSIC_WRITE:", error);
         updateSessionInfo("action", `Fehler während MIFARE Classic schreiben: ${error.message}`);
         throw error;
     }
@@ -135,7 +135,7 @@ export async function readMifareClassic(transponderConfig) {
     const block = skip_bytes >> 4;
     const spBlock = (sector << 2) + block;
 
-    logger.debug("Starting readMifareClassic", {
+    logger.debug("Starte readMifareClassic", {
         block,
         sector,
         skip_bytes,
@@ -149,7 +149,7 @@ export async function readMifareClassic(transponderConfig) {
 
         if (parseByte(0, result) === 1) {
             const dataHex = result.slice(2, 34);
-            logger.debug("Raw read data:", dataHex);
+            logger.debug("Rohe gelesene Daten:", dataHex);
 
             let dataArray = new Uint8Array(16);
             for (let i = 0; i < 32; i += 2) {
@@ -163,31 +163,31 @@ export async function readMifareClassic(transponderConfig) {
                 dataInt |= extractedData[i] << (8 * i);
             }
 
-            logger.debug("Extracted data (before swap):", dataInt);
+            logger.debug("Extrahierte Daten (vor Swap):", dataInt);
 
-            const dataStr = `Data: ${dataInt}`;
+            const dataStr = `Daten: ${dataInt}`;
             return dataInt;
         } else {
-            const errorMsg = "OutputMifareClassic: Data: Es konnten keine Daten gefunden werden";
+            const errorMsg = "OutputMifareClassic: Daten: Es konnten keine Daten gefunden werden";
             logger.warn(errorMsg);
             return null;
         }
     } catch (error) {
-        logger.error("Error during MIFARE_CLASSIC_READ:", error);
+        logger.error("Fehler während MIFARE_CLASSIC_READ:", error);
         updateSessionInfo("action", `Fehler während MIFARE Classic lesen: ${error.message}`);
         throw error;
     }
 }
 
 export async function writeLoginKey(transponderConfig) {
-    logger.debug("Starting writeLoginKey with config:", transponderConfig);
+    logger.debug("Starte writeLoginKey mit Konfiguration:", transponderConfig);
     updateSessionInfo("action", "Schreibe Anmeldeschlüssel zu MIFARE Classic");
 
     const { sector, key_a } = transponderConfig.tags.mifareClassic;
     const block = 3;
 
     const spBlock = (sector << 2) + block;
-    logger.debug("Calculated SP block for key writing:", spBlock);
+    logger.debug("Berechneter SP-Block für Schlüsselschreiben:", spBlock);
 
     let dataArray = new Uint8Array(16);
 
@@ -204,20 +204,20 @@ export async function writeLoginKey(transponderConfig) {
     let dataStr = Array.from(dataArray)
         .map((byte) => byte.toString(16).padStart(2, "0"))
         .join("");
-    logger.debug("Full sector trailer data to write:", dataStr);
+    logger.debug("Vollständige Sektortrailerdaten zum Schreiben:", dataStr);
 
     try {
         const result = await protocolHandler.MifareClassic_WriteBlock(spBlock, dataStr);
         if (result) {
-            logger.debug("Key write successful");
+            logger.debug("Schlüsselschreiben erfolgreich");
             updateSessionInfo("action", "MIFARE Classic Anmeldeschlüssel schreiben erfolgreich");
             return result;
         }
 
-        logger.warn("Key write failed: Data could not be written");
+        logger.warn("Schlüsselschreiben fehlgeschlagen: Daten konnten nicht geschrieben werden");
         return null;
     } catch (error) {
-        logger.error("Error during MIFARE_CLASSIC_WRITE_KEY:", error);
+        logger.error("Fehler während MIFARE_CLASSIC_WRITE_KEY:", error);
         updateSessionInfo("action", `Fehler während MIFARE Classic Anmeldeschlüssel schreiben: ${error.message}`);
         throw error;
     }

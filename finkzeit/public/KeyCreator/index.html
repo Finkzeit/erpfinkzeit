@@ -36,6 +36,7 @@
                     <img src="img/gear.svg" alt="Einstellungen" style="width: 25px; height: 25px" />
                 </button>
                 <div id="settingsContent" class="dropdown-content">
+                    <a href="#" id="readKeyOption">Schlüssel Auslesen</a>
                     <a href="#" id="formatKeyOption">Schlüssel Formatieren</a>
                 </div>
             </div>
@@ -47,7 +48,6 @@
             $(document).ready(function () {
                 $("#firmen").select2({
                     placeholder: "Wähle eine Firma",
-                    allowClear: true,
                 });
             });
         </script>
