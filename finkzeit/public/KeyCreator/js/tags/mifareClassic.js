@@ -60,13 +60,16 @@ export async function loginMifareClassic(transponderConfig) {
             logger.debug("Anmeldung erfolgreich");
             updateSessionInfo("action", "MIFARE Classic Anmeldung erfolgreich");
             return result;
+        } else {
+            const errorMessage = "Anmeldung fehlgeschlagen: Kein neuer Schlüssel";
+            logger.warn(errorMessage);
+            updateSessionInfo("action", errorMessage);
+            return null;
         }
-
-        logger.warn("Anmeldung fehlgeschlagen: Kein neuer Schlüssel");
-        return null;
     } catch (error) {
-        logger.error("Fehler während MIFARE_CLASSIC_LOGIN:", error);
-        updateSessionInfo("action", `Fehler während MIFARE Classic Anmeldung: ${error.message}`);
+        const errorMessage = `Fehler während MIFARE_CLASSIC_LOGIN: ${error.message}`;
+        logger.error(errorMessage, error);
+        updateSessionInfo("action", errorMessage);
         throw error;
     }
 }

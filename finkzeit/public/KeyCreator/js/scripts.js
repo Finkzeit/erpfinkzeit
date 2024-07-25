@@ -110,7 +110,7 @@ async function executeScriptsBasedOnConfig(transponderConfig, erpRestApi) {
             logger.debug("Antwortnachricht:", response.message);
             logger.debug("Nummer:", number);
 
-            if (response.message === number.toString()) {
+            if (response.message === number) {
                 logger.debug("Transponder erfolgreich erstellt");
                 updateSessionInfo("action", `Transponder mit Nummer ${number} erfolgreich erstellt`);
             } else {

@@ -80,7 +80,7 @@ class ErpRestApi {
             const response = await fetch(`${this.baseUrl}create_transponder?${params.toString()}`);
             const responseData = await response.json();
 
-            if (response.message === number) {
+            if (responseData.message === number.toString()) {
                 logger.debug(`Transponder created successfully with number: ${number}`);
                 return { status: true, message: number };
             } else {

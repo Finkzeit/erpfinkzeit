@@ -113,9 +113,6 @@ async function keyOperations(action) {
         logger.error(`Error in keyOperations:`, error);
         updateDialogText(dialog, "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
         addCloseButton(dialog, true);
-    } finally {
-        logger.debug("Setting isFormatting to false");
-        setIsFormatting(false);
     }
 }
 
@@ -132,7 +129,7 @@ async function formatKey(tags, dialog) {
     }
     updateDialogMessage("Tag-Formatierung abgeschlossen. Entfernen Sie den Schlüssel, wenn Sie ihn nicht automatisch beschreiben möchten.");
 
-    // Add a close button that sets isFormatting to false
+    // Add a close button that sets isFormatting to false when clicked
     addCloseButton(dialog, true);
 }
 
@@ -444,8 +441,7 @@ async function formatTag(tag) {
             case "MIFARE_CLASSIC":
                 await mifareClassicScript({
                     tags: { mifareClassic: { uid: tag.uid } },
-                    key_a: transponderConfig?.tags?.mifareClassic?.key_a || 0xffffffffffff, // Default key if not found
-                    key_b: transponderConfig?.tags?.mifareClassic?.key_b || 0xffffffffffff, // Default key if not found
+                    key_a: transponderConfig?.tags?.mifareClassic?.key_a || "ffffffffffff", // Default key if not found
                 });
                 break;
             case "MIFARE_DESFIRE":
@@ -499,8 +495,8 @@ async function mifareClassicScript(config) {
     await api.mifare();
 
     const keys = {
-        A: [`0x${config.key_a}`, 0xffffffffffff, 0xa0a1a2a3a4a5, 0xd3f7d3f7d3f7, 0x000000000000],
-        B: [`0x${config.key_b}`, 0xffffffffffff, 0xa0a1a2a3a4a5, 0xd3f7d3f7d3f7, 0x000000000000],
+        A: [`0x${config.key_a}`, "0xffffffffffff", "0xa0a1a2a3a4a5", "0xd3f7d3f7d3f7", "0x000000000000", "0xeb28e7c0d239"],
+        B: ["0xffffffffffff", "0xa0a1a2a3a4a5", "0xd3f7d3f7d3f7", "0x000000000000", "0xeb28e7c0d239"],
     };
 
     const totalSectors = 16;
@@ -519,7 +515,7 @@ async function mifareClassicScript(config) {
                             break;
                         }
                     } catch (error) {
-                        logger.debug(`Login failed for sector ${sector} with key ${key} (Key ${keyType}): ${error.message}`);
+                        logger.warn(`Login failed for sector ${sector} with key ${key} (Key ${keyType}): ${error.message}`);
                     }
                 }
                 if (loggedIn) break;
@@ -541,7 +537,6 @@ async function mifareClassicScript(config) {
                         updateDialogMessage(`Fehler beim Schreiben von Nullen in Block ${block} in Sektor ${sector}`);
                     }
                 }
-
                 const trailerData = "FFFFFFFFFFFF" + "FF0780" + "69" + "FFFFFFFFFFFF";
                 const trailerBlock = sector * 4 + 3;
                 const trailerWriteResponse = await protocolHandler.MifareClassic_WriteBlock(trailerBlock, trailerData);
