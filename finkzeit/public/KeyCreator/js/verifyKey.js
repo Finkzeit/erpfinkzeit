@@ -94,7 +94,7 @@ export async function detectFirstTag(transponderConfig) {
                         data: result,
                         TagType: tagType,
                     };
-                    logger.info("[verifyKey] New tag found", result);
+                    logger.debug("[verifyKey] New tag found", result);
 
                     await setUIDInTransponderConfig(transponderConfig, result);
 
@@ -107,7 +107,7 @@ export async function detectFirstTag(transponderConfig) {
                 } else {
                     detectedKeys[result.UID].count += 1;
                     if (detectedKeys[result.UID].count === 2) {
-                        logger.info("[verifyKey] UID detected twice, stopping loop", result);
+                        logger.debug("[verifyKey] UID detected twice, stopping loop", result);
                         return detectedKeys;
                     }
                 }
@@ -190,7 +190,7 @@ async function requiredKeySet(transponderConfig) {
     logger.debug("[verifyKey] Detected keys:", detectedKeySet);
 
     if (requiredKeySet.size === detectedKeySet.size && [...requiredKeySet].every((key) => detectedKeySet.has(key))) {
-        logger.info("[verifyKey] All required keys have been detected.");
+        logger.debug("[verifyKey] All required keys have been detected.");
         updateSessionInfo("status", "Alle erforderlichen Schlüssel erkannt");
         Object.assign(correctKeys, detectedKeys);
         detectedKeys = {};

@@ -140,7 +140,7 @@ class SerialPortHandler {
                 ]);
 
                 if (dataCleared) {
-                    logger.info("Buffer cleared");
+                    logger.debug("Buffer cleared");
                 }
             } catch (error) {
                 logger.error("Failed to clear buffer", error);

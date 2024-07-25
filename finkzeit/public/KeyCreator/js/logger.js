@@ -1,5 +1,5 @@
 export class Logger {
-    constructor(isDevelopment = false) {
+    constructor(isDevelopment = true) {
         this.isDevelopment = isDevelopment;
     }
 
@@ -24,7 +24,7 @@ export class Logger {
 }
 
 // Create a default instance
-const isDevelopment = true; // Set this to false if in production
+const isDevelopment = false; // Set this to false if in production
 const logger = new Logger(isDevelopment);
 
 // Export the default instance
