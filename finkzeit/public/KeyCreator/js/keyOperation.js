@@ -98,9 +98,13 @@ async function keyOperations(action) {
         const shouldProceed = await getConfirmation(dialog, action);
         if (shouldProceed) {
             if (action === "format") {
-                await formatKey(detectedTags, dialog);
+                await readKey(detectedTags, dialog, true); // Pass true to indicate formatting mode
+                // Only proceed to format if shouldContinueSearch is still true
+                if (shouldContinueSearch) {
+                    await formatKey(detectedTags, dialog);
+                }
             } else {
-                await readKey(detectedTags, dialog);
+                await readKey(detectedTags, dialog, false); // Pass false to indicate read mode
             }
         } else {
             addCloseButton(dialog, true);
@@ -109,6 +113,9 @@ async function keyOperations(action) {
         logger.error(`Error in keyOperations:`, error);
         updateDialogText(dialog, "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
         addCloseButton(dialog, true);
+    } finally {
+        logger.debug("Setting isFormatting to false");
+        setIsFormatting(false);
     }
 }
 
@@ -129,26 +136,120 @@ async function formatKey(tags, dialog) {
     addCloseButton(dialog, true);
 }
 
-async function readKey(tags, dialog) {
+async function readKey(tags, dialog, isFormatting) {
+    logger.debug("Starting readKey function");
     updateDialogMessage("Tag-Auslesen wird gestartet...");
+    const transponderDataList = [];
+
     for (const tag of tags) {
         try {
+            logger.debug(`Reading tag: ${tag.type} (${tag.uid})`);
             const transponderData = await readTag(tag);
+            logger.debug(`Transponder data for ${tag.uid}:`, JSON.stringify(transponderData));
+            transponderDataList.push(transponderData);
             updateDialogMessage(`${tag.type} (${tag.uid}) erfolgreich ausgelesen`);
-
-            // Display the transponder data and wait for user confirmation
-            await displayTransponderDataAndWait(transponderData, dialog);
         } catch (error) {
+            logger.error(`Error reading tag ${tag.type} (${tag.uid}):`, error);
             updateDialogMessage(`Fehler beim Auslesen von ${tag.type} (${tag.uid}): ${error.message}`);
             await waitForUserConfirmation(dialog);
+            shouldContinueSearch = false;
+            return;
         }
     }
 
-    // Add this line to update the dialog message after all tags have been processed
-    updateDialogMessage("Tag-Auslesen abgeschlossen.");
+    logger.debug("All tags read. Checking if transponder data is the same");
+    logger.debug("Transponder data list:", JSON.stringify(transponderDataList));
 
-    // Add a close button that sets isFormatting to false
-    addCloseButton(dialog, true);
+    // Check if all transponder data are the same
+    const allSame = transponderDataList.every((data, index, array) => {
+        if (index === 0) return true; // Skip first element
+        const isEqual = JSON.stringify(data) === JSON.stringify(array[0]);
+        logger.debug(`Comparing transponder ${index} with first transponder. Equal: ${isEqual}`);
+        return isEqual;
+    });
+
+    logger.debug(`All transponders are the same: ${allSame}`);
+
+    if (!allSame) {
+        logger.warn("Different transponders detected. Aborting operation.");
+        updateDialogMessage("Warnung: Die Technologie im Inneren wurde geändert.");
+        addCloseButton(dialog, true);
+        shouldContinueSearch = false;
+        return;
+    }
+
+    // Check transponder configuration
+    if (transponderDataList.length > 0 && transponderDataList[0].message && transponderDataList[0].message.length > 0) {
+        const transponderConfigId = transponderDataList[0].message[0].transponder_configuration;
+        if (transponderConfigId) {
+            try {
+                const transponderConfig = await erpRestApi.getTransponderConfiguration(transponderConfigId);
+                logger.debug("Transponder configuration:", JSON.stringify(transponderConfig));
+
+                const configMismatch = checkConfigMismatch(transponderConfig, tags);
+                if (configMismatch) {
+                    logger.warn("Mismatch between transponder configuration and detected tags:", configMismatch);
+                    updateDialogMessage(`Warnung: Konfigurationsfehler erkannt - ${configMismatch}`);
+                    if (isFormatting) {
+                        addCloseButton(dialog, true);
+                        shouldContinueSearch = false;
+                        return;
+                    } else {
+                        await waitForUserConfirmation(dialog);
+                    }
+                }
+            } catch (error) {
+                logger.error("Error fetching transponder configuration:", error);
+                updateDialogMessage("Fehler beim Abrufen der Transponder-Konfiguration.");
+                await waitForUserConfirmation(dialog);
+            }
+        }
+    }
+
+    // If all data are the same, display the transponder data only in read mode
+    if (!isFormatting && transponderDataList.length > 0) {
+        logger.debug("Displaying transponder data");
+        await displayTransponderDataAndWait(transponderDataList[0], dialog);
+    } else if (isFormatting) {
+        updateDialogMessage("Tag-Auslesen abgeschlossen. Entfernen Sie den Schlüssel, wenn Sie ihn nicht automatisch beschreiben möchten.");
+        // Add a close button that sets isFormatting to false
+        addCloseButton(dialog, true);
+    }
+
+    logger.debug("readKey function completed");
+}
+
+function checkConfigMismatch(transponderConfig, detectedTags) {
+    const configTags = Object.keys(transponderConfig.tags);
+    const detectedTagTypes = detectedTags.map((tag) => translateTagType(tag.type.toLowerCase()));
+
+    const missingTags = configTags.filter((tag) => !detectedTagTypes.includes(tag));
+    const extraTags = detectedTagTypes.filter((tag) => !configTags.includes(tag));
+
+    if (missingTags.length > 0 || extraTags.length > 0) {
+        let message = "";
+        if (missingTags.length > 0) {
+            message += `Fehlende Tags: ${missingTags.join(", ")}. Die Technologie im Inneren wurde entweder verändert oder ist defekt.`;
+        }
+        if (extraTags.length > 0) {
+            message += `Unerwartete Tags: ${extraTags.join(", ")}. Die Technologie im Inneren wurde verändert.`;
+        }
+        return message.trim();
+    }
+
+    return null;
+}
+
+function translateTagType(detectedType) {
+    const translations = {
+        hitag1s: "hitag",
+        mifare_classic: "mifareClassic",
+        mifare_desfire: "mifareDesfire",
+        deister: "deister",
+        em: "em",
+        legic: "legic",
+    };
+    return translations[detectedType] || detectedType;
 }
 
 function displayTransponderDataAndWait(transponderData, dialog) {
@@ -375,7 +476,7 @@ async function hitagScript(config) {
         logger.debug("Reset Hitag Result", resetResponse);
 
         if (resetResponse.Result) {
-            logger.info("HITAG1S ID successfully reset");
+            logger.debug("HITAG1S ID successfully reset");
             updateDialogMessage(`HITAG1S (${config.tags.hitag.uid}) erfolgreich zurückgesetzt`);
             return true;
         } else {
@@ -404,81 +505,83 @@ async function mifareClassicScript(config) {
             0xa0a1a2a3a4a5,
             0xd3f7d3f7d3f7,
             0x000000000000,
-            0xb0b1b2b3b4b5,
-            0x4d3a99c351dd,
-            0x1a982c7e459a,
-            0xaabbccddeeff,
-            0x714c5c886e97,
-            0x587ee5f9350f,
-            0xa0478cc39091,
-            0x533cb6c723f6,
-            0x8fd0a4f256e9,
-            0xa64598a77478,
-            0x26940b21ff5d,
-            0xfc00018778f7,
-            0x00000ffe2488,
-            0x5c598c9c58b5,
-            0xe4d2770a89be,
-            0x434f4d4d4f41,
-            0x434f4d4d4f42,
-            0x47524f555041,
-            0x47524f555042,
-            0x505249564141,
-            0x505249564142,
-            0x0297927c0f77,
-            0xee0042f88840,
-            0x722bfcc5375f,
-            0xf1d83f964314,
-            0x54726176656c,
-            0x776974687573,
-            0x4af9d7adebe4,
-            0x2ba9621e0a36,
-            0x000000000001,
-            0x123456789abc,
-            0xb127c6f41436,
-            0x12f2ee3478c1,
-            0x34d1df9934c5,
-            0x55f5a5dd38c9,
-            0xf1a97341a9fc,
-            0x33f974b42769,
-            0x14d446e33363,
-            0xc934fe34d934,
-            0x1999a3554a55,
-            0x27dd91f1fcf1,
-            0xa94133013401,
-            0x99c636334433,
-            0x43ab19ef5c31,
-            0xa053a292a4af,
-            0x505249565441,
-            0x505249565442,
-            0xfc0001877bf7,
-            0xa0b0c0d0e0f0,
-            0xa1b1c1d1e1f1,
-            0xbd493a3962b6,
-            0x010203040506,
-            0x111111111111,
-            0x222222222222,
-            0x333333333333,
-            0x444444444444,
-            0x555555555555,
-            0x666666666666,
-            0x777777777777,
-            0x888888888888,
-            0x999999999999,
-            0xaaaaaaaaaaaa,
-            0xbbbbbbbbbbbb,
-            0xcccccccccccc,
-            0xdddddddddddd,
-            0xeeeeeeeeeeee,
-            0x0123456789ab,
-            0x000000000002,
-            0x00000000000a,
-            0x00000000000b,
-            0x100000000000,
-            0x200000000000,
-            0xa00000000000,
-            0xb00000000000,
-            0xabcdef123456,
+            0xeb28e7c0d239,
+            0x123456780000,
+            //0xb0b1b2b3b4b5,
+            //0x4d3a99c351dd,
+            //0x1a982c7e459a,
+            //0xaabbccddeeff,
+            //0x714c5c886e97,
+            //0x587ee5f9350f,
+            //0xa0478cc39091,
+            //0x533cb6c723f6,
+            //0x8fd0a4f256e9,
+            //0xa64598a77478,
+            //0x26940b21ff5d,
+            //0xfc00018778f7,
+            //0x00000ffe2488,
+            //0x5c598c9c58b5,
+            //0xe4d2770a89be,
+            //0x434f4d4d4f41,
+            //0x434f4d4d4f42,
+            //0x47524f555041,
+            //0x47524f555042,
+            //0x505249564141,
+            //0x505249564142,
+            //0x0297927c0f77,
+            //0xee0042f88840,
+            //0x722bfcc5375f,
+            //0xf1d83f964314,
+            //0x54726176656c,
+            //0x776974687573,
+            //0x4af9d7adebe4,
+            //0x2ba9621e0a36,
+            //0x000000000001,
+            //0x123456789abc,
+            //0xb127c6f41436,
+            //0x12f2ee3478c1,
+            //0x34d1df9934c5,
+            //0x55f5a5dd38c9,
+            //0xf1a97341a9fc,
+            //0x33f974b42769,
+            //0x14d446e33363,
+            //0xc934fe34d934,
+            //0x1999a3554a55,
+            //0x27dd91f1fcf1,
+            //0xa94133013401,
+            //0x99c636334433,
+            //0x43ab19ef5c31,
+            //0xa053a292a4af,
+            //0x505249565441,
+            //0x505249565442,
+            //0xfc0001877bf7,
+            //0xa0b0c0d0e0f0,
+            //0xa1b1c1d1e1f1,
+            //0xbd493a3962b6,
+            //0x010203040506,
+            //0x111111111111,
+            //0x222222222222,
+            //0x333333333333,
+            //0x444444444444,
+            //0x555555555555,
+            //0x666666666666,
+            //0x777777777777,
+            //0x888888888888,
+            //0x999999999999,
+            //0xaaaaaaaaaaaa,
+            //0xbbbbbbbbbbbb,
+            //0xcccccccccccc,
+            //0xdddddddddddd,
+            //0xeeeeeeeeeeee,
+            //0x0123456789ab,
+            //0x000000000002,
+            //0x00000000000a,
+            //0x00000000000b,
+            //0x100000000000,
+            //0x200000000000,
+            //0xa00000000000,
+            //0xb00000000000,
+            //0xabcdef123456,
         ],
         B: [
             `0x${config.key_b}`,
@@ -486,81 +589,83 @@ async function mifareClassicScript(config) {
             0xa0a1a2a3a4a5,
             0xd3f7d3f7d3f7,
             0x000000000000,
-            0xb0b1b2b3b4b5,
-            0x4d3a99c351dd,
-            0x1a982c7e459a,
-            0xaabbccddeeff,
-            0x714c5c886e97,
-            0x587ee5f9350f,
-            0xa0478cc39091,
-            0x533cb6c723f6,
-            0x8fd0a4f256e9,
-            0xa64598a77478,
-            0x26940b21ff5d,
-            0xfc00018778f7,
-            0x00000ffe2488,
-            0x5c598c9c58b5,
-            0xe4d2770a89be,
-            0x434f4d4d4f41,
-            0x434f4d4d4f42,
-            0x47524f555041,
-            0x47524f555042,
-            0x505249564141,
-            0x505249564142,
-            0x0297927c0f77,
-            0xee0042f88840,
-            0x722bfcc5375f,
-            0xf1d83f964314,
-            0x54726176656c,
-            0x776974687573,
-            0x4af9d7adebe4,
-            0x2ba9621e0a36,
-            0x000000000001,
-            0x123456789abc,
-            0xb127c6f41436,
-            0x12f2ee3478c1,
-            0x34d1df9934c5,
-            0x55f5a5dd38c9,
-            0xf1a97341a9fc,
-            0x33f974b42769,
-            0x14d446e33363,
-            0xc934fe34d934,
-            0x1999a3554a55,
-            0x27dd91f1fcf1,
-            0xa94133013401,
-            0x99c636334433,
-            0x43ab19ef5c31,
-            0xa053a292a4af,
-            0x505249565441,
-            0x505249565442,
-            0xfc0001877bf7,
-            0xa0b0c0d0e0f0,
-            0xa1b1c1d1e1f1,
-            0xbd493a3962b6,
-            0x010203040506,
-            0x111111111111,
-            0x222222222222,
-            0x333333333333,
-            0x444444444444,
-            0x555555555555,
-            0x666666666666,
-            0x777777777777,
-            0x888888888888,
-            0x999999999999,
-            0xaaaaaaaaaaaa,
-            0xbbbbbbbbbbbb,
-            0xcccccccccccc,
-            0xdddddddddddd,
-            0xeeeeeeeeeeee,
-            0x0123456789ab,
-            0x000000000002,
-            0x00000000000a,
-            0x00000000000b,
-            0x100000000000,
-            0x200000000000,
-            0xa00000000000,
-            0xb00000000000,
-            0xabcdef123456,
+            0xeb28e7c0d239,
+            0x123456780000,
+            //0xb0b1b2b3b4b5,
+            //0x4d3a99c351dd,
+            //0x1a982c7e459a,
+            //0xaabbccddeeff,
+            //0x714c5c886e97,
+            //0x587ee5f9350f,
+            //0xa0478cc39091,
+            //0x533cb6c723f6,
+            //0x8fd0a4f256e9,
+            //0xa64598a77478,
+            //0x26940b21ff5d,
+            //0xfc00018778f7,
+            //0x00000ffe2488,
+            //0x5c598c9c58b5,
+            //0xe4d2770a89be,
+            //0x434f4d4d4f41,
+            //0x434f4d4d4f42,
+            //0x47524f555041,
+            //0x47524f555042,
+            //0x505249564141,
+            //0x505249564142,
+            //0x0297927c0f77,
+            //0xee0042f88840,
+            //0x722bfcc5375f,
+            //0xf1d83f964314,
+            //0x54726176656c,
+            //0x776974687573,
+            //0x4af9d7adebe4,
+            //0x2ba9621e0a36,
+            //0x000000000001,
+            //0x123456789abc,
+            //0xb127c6f41436,
+            //0x12f2ee3478c1,
+            //0x34d1df9934c5,
+            //0x55f5a5dd38c9,
+            //0xf1a97341a9fc,
+            //0x33f974b42769,
+            //0x14d446e33363,
+            //0xc934fe34d934,
+            //0x1999a3554a55,
+            //0x27dd91f1fcf1,
+            //0xa94133013401,
+            //0x99c636334433,
+            //0x43ab19ef5c31,
+            //0xa053a292a4af,
+            //0x505249565441,
+            //0x505249565442,
+            //0xfc0001877bf7,
+            //0xa0b0c0d0e0f0,
+            //0xa1b1c1d1e1f1,
+            //0xbd493a3962b6,
+            //0x010203040506,
+            //0x111111111111,
+            //0x222222222222,
+            //0x333333333333,
+            //0x444444444444,
+            //0x555555555555,
+            //0x666666666666,
+            //0x777777777777,
+            //0x888888888888,
+            //0x999999999999,
+            //0xaaaaaaaaaaaa,
+            //0xbbbbbbbbbbbb,
+            //0xcccccccccccc,
+            //0xdddddddddddd,
+            //0xeeeeeeeeeeee,
+            //0x0123456789ab,
+            //0x000000000002,
+            //0x00000000000a,
+            //0x00000000000b,
+            //0x100000000000,
+            //0x200000000000,
+            //0xa00000000000,
+            //0xb00000000000,
+            //0xabcdef123456,
         ],
     };
 
@@ -576,7 +681,7 @@ async function mifareClassicScript(config) {
                         const loginResult = await protocolHandler.MifareClassic_Login(key, keyType === "A" ? "00" : "01", sector);
                         if (loginResult) {
                             loggedIn = true;
-                            logger.info(`Successfully logged in to sector ${sector} with key ${key} (Key ${keyType})`);
+                            logger.debug(`Successfully logged in to sector ${sector} with key ${key} (Key ${keyType})`);
                             break;
                         }
                     } catch (error) {
@@ -595,7 +700,7 @@ async function mifareClassicScript(config) {
                     const block = sector * 4 + i;
                     const writeResponse = await protocolHandler.MifareClassic_WriteBlock(block, zeroData);
                     if (writeResponse) {
-                        logger.info(`Successfully wrote zeros to block ${block} in sector ${sector}`);
+                        logger.debug(`Successfully wrote zeros to block ${block} in sector ${sector}`);
                         updateDialogMessage(`Schreibe Nullen in Block ${block} in Sektor ${sector}...`);
                     } else {
                         logger.warn(`Failed to write zeros to block ${block} in sector ${sector}`);
@@ -607,7 +712,7 @@ async function mifareClassicScript(config) {
                 const trailerBlock = sector * 4 + 3;
                 const trailerWriteResponse = await protocolHandler.MifareClassic_WriteBlock(trailerBlock, trailerData);
                 if (trailerWriteResponse) {
-                    logger.info(`Successfully wrote trailer data to block ${trailerBlock} in sector ${sector}`);
+                    logger.debug(`Successfully wrote trailer data to block ${trailerBlock} in sector ${sector}`);
                     updateDialogMessage(`Schreibe Trailer-Daten in Block ${trailerBlock} in Sektor ${sector}...`);
                 } else {
                     logger.warn(`Failed to write trailer data to block ${trailerBlock} in sector ${sector}`);
@@ -619,7 +724,7 @@ async function mifareClassicScript(config) {
             }
         }
 
-        logger.info("Mifare Classic tag formatting completed");
+        logger.debug("Mifare Classic tag formatting completed");
         updateDialogMessage("MIFARE_CLASSIC-Tag erfolgreich formatiert");
         return true;
     } catch (error) {
@@ -632,9 +737,6 @@ async function mifareClassicScript(config) {
 async function mifareDesfireScript(config) {
     logger.debug("Starting mifareDesfireScript function");
     updateDialogMessage("Mifare DESFire-Operationen werden gestartet");
-
-    console.log("keym", config.master_key);
-    console.log("keym", `0x${config.master_key}`);
 
     const masterKeys = [
         Number(`0x${config.master_key}`),
@@ -657,7 +759,7 @@ async function mifareDesfireScript(config) {
                     const authResult = await protocolHandler.DESFire_Authenticate(CRYPTO_ENV, 0x00, key, keyType, DESF.AUTHMODE_EV1);
                     if (authResult) {
                         authenticated = true;
-                        logger.info(`Successfully authenticated with key: ${key} and keyType: ${keyType}`);
+                        logger.debug(`Successfully authenticated with key: ${key} and keyType: ${keyType}`);
                         updateDialogMessage(`Authentifizierung mit Schlüssel: ${key} und Schlüsseltyp: ${keyType}...`);
                         break;
                     }
@@ -677,7 +779,7 @@ async function mifareDesfireScript(config) {
         if (!formatResult) {
             throw new Error("Fehler beim Formatieren des DESFire-Tags");
         }
-        logger.info("DESFire tag formatted successfully");
+        logger.debug("DESFire tag formatted successfully");
 
         updateDialogMessage("Master-Schlüsseleinstellungen werden gelesen...");
         const readKeySettingsResult = await protocolHandler.DESFire_GetKeySettings(CRYPTO_ENV);
@@ -698,7 +800,7 @@ async function mifareDesfireScript(config) {
         if (!changeSettingsResult) {
             throw new Error("Fehler beim Ändern der Master-Schlüsseleinstellungen");
         }
-        logger.info("Master key settings changed successfully");
+        logger.debug("Master key settings changed successfully");
 
         updateDialogMessage("Standard-Master-Schlüssel wird gesetzt...");
         const oldKey = masterKeys[0];
@@ -726,7 +828,7 @@ async function mifareDesfireScript(config) {
         if (!changeKeyResult) {
             throw new Error("Fehler beim Setzen des Standard-Master-Schlüssels");
         }
-        logger.info("Standard-Master-Schlüssel erfolgreich gesetzt");
+        logger.debug("Standard-Master-Schlüssel erfolgreich gesetzt");
 
         updateDialogMessage("MIFARE DESFire-Tag erfolgreich formatiert");
         return true;

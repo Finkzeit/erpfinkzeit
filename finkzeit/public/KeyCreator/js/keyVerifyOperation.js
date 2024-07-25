@@ -61,7 +61,7 @@ async function waitForInitialTag(shouldContinueSearchFn) {
                     const sakValue = await getSAK(result.UID);
                     tagType = identifyMifare(sakValue);
                 }
-                logger.info("[FormatVerify] Initial tag found", result);
+                logger.debug("[FormatVerify] Initial tag found", result);
                 updateDialogMessage(`${tagType} (${result.UID}) erkannt`);
                 return { uid: result.UID, tagType };
             }
@@ -96,7 +96,7 @@ async function detectAllTags(shouldContinueSearchFn) {
                 data: result,
                 TagType: tagType,
             };
-            logger.info("[FormatVerify] New tag found", result);
+            logger.debug("[FormatVerify] New tag found", result);
 
             updateDialogMessage(`${tagType} (${result.UID}) erkannt`);
         }
@@ -112,7 +112,7 @@ async function requiredKeySet() {
     logger.debug("[FormatVerify] Detected keys:", detectedKeySet);
 
     if (detectedKeySet.size > 0) {
-        logger.info("[FormatVerify] Keys have been detected.");
+        logger.debug("[FormatVerify] Keys have been detected.");
         updateDialogMessage("Schlüssel erkannt");
         Object.assign(correctKeys, detectedKeys);
         detectedKeys = {};

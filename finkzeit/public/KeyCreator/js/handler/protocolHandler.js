@@ -84,7 +84,7 @@ export async function searchTag() {
         const recvStr = String(response);
 
         if (recvStr.slice(0, 2) === "00") {
-            logger.info("Kein Tag gefunden");
+            logger.debug("Kein Tag gefunden");
             return { Result: false, TagType: null, IDBitCount: 0, UID: null };
         }
 
@@ -250,7 +250,7 @@ export async function DESFire_CreateApplication(
 
     const response = await sendCommand(SP_CMD.DESFIRE_CREATE_APP, paramStr);
     if (response === "01") {
-        logger.info("Anwendung erstellt mit ID", AID);
+        logger.debug("Anwendung erstellt mit ID", AID);
     } else {
         logger.warn("Anwendungserstellung fehlgeschlagen oder Anwendung existiert bereits");
     }

@@ -32,7 +32,7 @@ async function processQueue() {
 
     while (commandQueue.length > 0) {
         const { command, paramStr, resolve, reject } = commandQueue.shift();
-        logger.info(`Processing command: ${command}, Params: ${paramStr}`);
+        logger.debug(`Processing command: ${command}, Params: ${paramStr}`);
 
         try {
             let byteArr = `${hex(command, 4)}${paramStr}\r`;
@@ -62,7 +62,7 @@ async function processQueue() {
                     throw new Error(`Error code received: ${errCode}`);
                 } else {
                     const response = byteArr.slice(2, -1);
-                    logger.info(`Command executed successfully, response: ${response}`);
+                    logger.debug(`Command executed successfully, response: ${response}`);
                     resolve(response);
                 }
             }
