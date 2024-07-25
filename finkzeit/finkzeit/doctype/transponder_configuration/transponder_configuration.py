@@ -193,17 +193,20 @@ def get_transponder(hitag_uid=None, mfcl_uid=None, mfdf_uid=None, deister_uid=No
 """
 Delete a transponder
 Provide exactly one of them
+-code:
 -hitag_uid:
 -mfcl_uid:
 -mfdf_uid:
 -deister_uid:
 -em_uid:
 
- /api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.del_transponder?<XXXX>_uid=<HEX>
+ /api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.del_transponder?<TYPE>=<VAL>
 """
 @frappe.whitelist()
-def del_transponder(hitag_uid=None, mfcl_uid=None, mfdf_uid=None, deister_uid=None, em_uid=None):
-    if hitag_uid:
+def del_transponder(code=None, hitag_uid=None, mfcl_uid=None, mfdf_uid=None, deister_uid=None, em_uid=None):
+    if code:
+        query_string = """DELETE FROM `tabTransponder` WHERE `code` = "{}";""".format(code)
+    elif hitag_uid:
         query_string = """DELETE FROM `tabTransponder` WHERE `hitag_uid` = "{}";""".format(hitag_uid)
     elif mfcl_uid:
         query_string = """DELETE FROM `tabTransponder` WHERE `mfcl_uid` = "{}";""".format(mfcl_uid)
