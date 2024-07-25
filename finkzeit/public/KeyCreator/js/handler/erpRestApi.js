@@ -10,20 +10,22 @@ class ErpRestApi {
 
     async getTransponderConfigurationList(firmenSelect) {
         try {
-            //you need to get the sid out of cookies sid=... in erp-test.finkzeit.at
-            document.cookie = "sid=5f67cc235f64e5290134f036833f638b38abbdddab2a6a8cc73bb401";
+            // If running locally, you need to uncomment the following line and set the sid to the one you get from the erp-test.finkzeit.at cookies
+            document.cookie = "sid=eaff457306e216b250f6a085d1a7cb74ffc81075b7ac5918b362221f";
             const response = await fetch(`${this.baseUrl}get_transponder_config_list`);
 
             if (response.status === 403) {
-                updateSessionInfo("action", "Session-ID fehlt oder ist ungültig. Bitte erneut anmelden.");
-                logger.warn("Session-ID ungültig");
+                const message = "Session-ID fehlt oder ist ungültig. Bitte erneut anmelden.";
+                updateSessionInfo("action", message);
+                logger.warn(message);
                 throw new Error("Session-ID ungültig");
             }
 
             if (!response.ok) {
-                updateSessionInfo("action", `Laden der Firmenliste fehlgeschlagen: HTTP-Status ${response.status}`);
-                logger.warn(`Laden der Firmenliste fehlgeschlagen: HTTP-Status ${response.status}`);
-                throw new Error(`HTTP-Status ${response.status}`);
+                const message = `Laden der Firmenliste fehlgeschlagen: HTTP-Status ${response.status}`;
+                updateSessionInfo("action", message);
+                logger.warn(message);
+                throw new Error(message);
             }
 
             const data = await response.json();
@@ -34,9 +36,10 @@ class ErpRestApi {
                 firmenSelect.appendChild(option);
             });
         } catch (error) {
-            logger.error("Fehler beim Abrufen der Firmenliste:", error);
-            if (error.message !== "Session-ID ungültig" && error.message.indexOf("HTTP-Status") === -1) {
-                updateSessionInfo("action", `Fehler beim Abrufen der Firmenliste: ${error.message}`);
+            const message = `Fehler beim Abrufen der Firmenliste: ${error.message}`;
+            logger.error(message, error);
+            if (error.message !== "Session-ID ungültig" && !error.message.includes("HTTP-Status")) {
+                updateSessionInfo("action", message);
             }
             throw error;
         }
@@ -46,14 +49,16 @@ class ErpRestApi {
         try {
             const response = await fetch(`${this.baseUrl}get_transponder_config?config=${transponderConfigId}`);
             if (!response.ok) {
-                logger.warn(`Abrufen der Transponderkonfiguration fehlgeschlagen: HTTP-Status ${response.status}`);
-                throw new Error(`HTTP-Status ${response.status}`);
+                const message = `Abrufen der Transponderkonfiguration fehlgeschlagen: HTTP-Status ${response.status}`;
+                logger.warn(message);
+                throw new Error(message);
             }
             const transponderConfigData = await response.json();
             return new TransponderConfig(transponderConfigData.message);
         } catch (error) {
-            logger.error("Fehler beim Abrufen der Transponderkonfiguration:", error);
-            updateSessionInfo("action", `Fehler beim Abrufen der Transponderkonfiguration: ${error.message}`);
+            const message = `Fehler beim Abrufen der Transponderkonfiguration: ${error.message}`;
+            logger.error(message, error);
+            updateSessionInfo("action", message);
             throw error;
         }
     }
@@ -76,14 +81,16 @@ class ErpRestApi {
             const responseData = await response.json();
 
             if (response.message === number) {
-                logger.debug(`Zurückgegebene Nummer ${number}`);
+                logger.debug(`Transponder created successfully with number: ${number}`);
                 return { status: true, message: number };
             } else {
-                logger.warn(`Erstellen des Transponders fehlgeschlagen: ${responseData.message}`);
+                const message = `Erstellen des Transponders fehlgeschlagen: ${responseData.message}`;
+                logger.warn(message);
                 return { status: false, message: responseData.message };
             }
         } catch (error) {
-            logger.error("Fehler beim Erstellen des Transponders:", error);
+            const message = `Fehler beim Erstellen des Transponders: ${error.message}`;
+            logger.error(message, error);
             throw error;
         }
     }
@@ -103,8 +110,9 @@ class ErpRestApi {
 
             const response = await fetch(`${this.baseUrl}get_transponder?${params.toString()}`);
             if (!response.ok) {
-                logger.warn(`Abrufen des Transponders fehlgeschlagen: HTTP-Status ${response.status}`);
-                throw new Error(`HTTP-Status ${response.status}`);
+                const message = `Abrufen des Transponders fehlgeschlagen: HTTP-Status ${response.status}`;
+                logger.warn(message);
+                throw new Error(message);
             }
             const transponderData = await response.json();
 
@@ -128,8 +136,9 @@ class ErpRestApi {
                 return { message: [] };
             }
         } catch (error) {
-            logger.error("Fehler beim Abrufen des Transponders:", error);
-            updateSessionInfo("action", `Fehler beim Abrufen des Transponders: ${error.message}`);
+            const message = `Fehler beim Abrufen des Transponders: ${error.message}`;
+            logger.error(message, error);
+            updateSessionInfo("action", message);
             throw error;
         }
     }

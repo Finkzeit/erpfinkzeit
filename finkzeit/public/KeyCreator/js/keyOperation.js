@@ -324,16 +324,34 @@ async function formatTag(tag) {
     logger.debug(`Formatting ${tag.type} (${tag.uid})...`);
 
     try {
+        // Use the existing readTag function to get transponder data
+        const transponderData = await readTag(tag);
+
+        let transponderConfig = null;
+        if (transponderData.message && transponderData.message.length > 0) {
+            const transponderConfigId = transponderData.message[0].transponder_configuration;
+            transponderConfig = await erpRestApi.getTransponderConfiguration(transponderConfigId);
+        } else {
+            logger.warn(`No transponder configuration found for ${tag.type} (${tag.uid}). Using default keys.`);
+        }
+
         switch (tag.type.toUpperCase()) {
             case "HITAG":
             case "HITAG1S":
                 await hitagScript({ tags: { hitag: { uid: tag.uid } } });
                 break;
             case "MIFARE_CLASSIC":
-                await mifareClassicScript({ tags: { mifareClassic: { uid: tag.uid } } });
+                await mifareClassicScript({
+                    tags: { mifareClassic: { uid: tag.uid } },
+                    key_a: transponderConfig?.tags?.mifareClassic?.key_a || 0xffffffffffff, // Default key if not found
+                    key_b: transponderConfig?.tags?.mifareClassic?.key_b || 0xffffffffffff, // Default key if not found
+                });
                 break;
             case "MIFARE_DESFIRE":
-                await mifareDesfireScript({ tags: { mifareDesfire: { uid: tag.uid } } });
+                await mifareDesfireScript({
+                    tags: { mifareDesfire: { uid: tag.uid } },
+                    master_key: transponderConfig?.tags?.mifareDesfire?.master_key || 0x00000000000000000000000000000000, // Default key if not found
+                });
                 break;
             default:
                 throw new Error(`Unsupported tag type: ${tag.type}`);
@@ -380,8 +398,170 @@ async function mifareClassicScript(config) {
     await api.mifare();
 
     const keys = {
-        A: [0xffffffffffff, 0xa0a1a2a3a4a5, 0xd3f7d3f7d3f7, 0x123456780000, 0x111111111111],
-        B: [0xffffffffffff],
+        A: [
+            `0x${config.key_a}`,
+            0xffffffffffff,
+            0xa0a1a2a3a4a5,
+            0xd3f7d3f7d3f7,
+            0x000000000000,
+            0xb0b1b2b3b4b5,
+            0x4d3a99c351dd,
+            0x1a982c7e459a,
+            0xaabbccddeeff,
+            0x714c5c886e97,
+            0x587ee5f9350f,
+            0xa0478cc39091,
+            0x533cb6c723f6,
+            0x8fd0a4f256e9,
+            0xa64598a77478,
+            0x26940b21ff5d,
+            0xfc00018778f7,
+            0x00000ffe2488,
+            0x5c598c9c58b5,
+            0xe4d2770a89be,
+            0x434f4d4d4f41,
+            0x434f4d4d4f42,
+            0x47524f555041,
+            0x47524f555042,
+            0x505249564141,
+            0x505249564142,
+            0x0297927c0f77,
+            0xee0042f88840,
+            0x722bfcc5375f,
+            0xf1d83f964314,
+            0x54726176656c,
+            0x776974687573,
+            0x4af9d7adebe4,
+            0x2ba9621e0a36,
+            0x000000000001,
+            0x123456789abc,
+            0xb127c6f41436,
+            0x12f2ee3478c1,
+            0x34d1df9934c5,
+            0x55f5a5dd38c9,
+            0xf1a97341a9fc,
+            0x33f974b42769,
+            0x14d446e33363,
+            0xc934fe34d934,
+            0x1999a3554a55,
+            0x27dd91f1fcf1,
+            0xa94133013401,
+            0x99c636334433,
+            0x43ab19ef5c31,
+            0xa053a292a4af,
+            0x505249565441,
+            0x505249565442,
+            0xfc0001877bf7,
+            0xa0b0c0d0e0f0,
+            0xa1b1c1d1e1f1,
+            0xbd493a3962b6,
+            0x010203040506,
+            0x111111111111,
+            0x222222222222,
+            0x333333333333,
+            0x444444444444,
+            0x555555555555,
+            0x666666666666,
+            0x777777777777,
+            0x888888888888,
+            0x999999999999,
+            0xaaaaaaaaaaaa,
+            0xbbbbbbbbbbbb,
+            0xcccccccccccc,
+            0xdddddddddddd,
+            0xeeeeeeeeeeee,
+            0x0123456789ab,
+            0x000000000002,
+            0x00000000000a,
+            0x00000000000b,
+            0x100000000000,
+            0x200000000000,
+            0xa00000000000,
+            0xb00000000000,
+            0xabcdef123456,
+        ],
+        B: [
+            `0x${config.key_b}`,
+            0xffffffffffff,
+            0xa0a1a2a3a4a5,
+            0xd3f7d3f7d3f7,
+            0x000000000000,
+            0xb0b1b2b3b4b5,
+            0x4d3a99c351dd,
+            0x1a982c7e459a,
+            0xaabbccddeeff,
+            0x714c5c886e97,
+            0x587ee5f9350f,
+            0xa0478cc39091,
+            0x533cb6c723f6,
+            0x8fd0a4f256e9,
+            0xa64598a77478,
+            0x26940b21ff5d,
+            0xfc00018778f7,
+            0x00000ffe2488,
+            0x5c598c9c58b5,
+            0xe4d2770a89be,
+            0x434f4d4d4f41,
+            0x434f4d4d4f42,
+            0x47524f555041,
+            0x47524f555042,
+            0x505249564141,
+            0x505249564142,
+            0x0297927c0f77,
+            0xee0042f88840,
+            0x722bfcc5375f,
+            0xf1d83f964314,
+            0x54726176656c,
+            0x776974687573,
+            0x4af9d7adebe4,
+            0x2ba9621e0a36,
+            0x000000000001,
+            0x123456789abc,
+            0xb127c6f41436,
+            0x12f2ee3478c1,
+            0x34d1df9934c5,
+            0x55f5a5dd38c9,
+            0xf1a97341a9fc,
+            0x33f974b42769,
+            0x14d446e33363,
+            0xc934fe34d934,
+            0x1999a3554a55,
+            0x27dd91f1fcf1,
+            0xa94133013401,
+            0x99c636334433,
+            0x43ab19ef5c31,
+            0xa053a292a4af,
+            0x505249565441,
+            0x505249565442,
+            0xfc0001877bf7,
+            0xa0b0c0d0e0f0,
+            0xa1b1c1d1e1f1,
+            0xbd493a3962b6,
+            0x010203040506,
+            0x111111111111,
+            0x222222222222,
+            0x333333333333,
+            0x444444444444,
+            0x555555555555,
+            0x666666666666,
+            0x777777777777,
+            0x888888888888,
+            0x999999999999,
+            0xaaaaaaaaaaaa,
+            0xbbbbbbbbbbbb,
+            0xcccccccccccc,
+            0xdddddddddddd,
+            0xeeeeeeeeeeee,
+            0x0123456789ab,
+            0x000000000002,
+            0x00000000000a,
+            0x00000000000b,
+            0x100000000000,
+            0x200000000000,
+            0xa00000000000,
+            0xb00000000000,
+            0xabcdef123456,
+        ],
     };
 
     const totalSectors = 16;
@@ -453,8 +633,16 @@ async function mifareDesfireScript(config) {
     logger.debug("Starting mifareDesfireScript function");
     updateDialogMessage("Mifare DESFire-Operationen werden gestartet");
 
+    console.log("keym", config.master_key);
+    console.log("keym", `0x${config.master_key}`);
+
     const masterKeys = [
-        0x2, 0x00000000000000000000000000000000, 0x12344567890, 0x0123456789abcdef0123456789abcdef, 0xaabbccddeeff00112233445566778899,
+        Number(`0x${config.master_key}`),
+        0x2,
+        0x00000000000000000000000000000000,
+        0x12344567890,
+        0x0123456789abcdef0123456789abcdef,
+        0xaabbccddeeff00112233445566778899,
     ];
 
     try {
@@ -519,7 +707,7 @@ async function mifareDesfireScript(config) {
         const keyVersion = 0x00;
         const keyType = DESF.KEYTYPE_3DES;
 
-        console.log("CRYPTO_ENV", CRYPTO_ENV, "keyNumber");
+        logger.debug("CRYPTO_ENV", CRYPTO_ENV, "keyNumber");
 
         const changeKeyResult = await protocolHandler.DESFire_ChangeKey(
             CRYPTO_ENV,

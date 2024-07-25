@@ -11,11 +11,13 @@ let isProcessing = false;
 export async function initPortHandler() {
     portHandler = new PortHandler();
     await portHandler.serialPortHandler.open();
+    logger.info("PortHandler initialized and serial port opened.");
 }
 
 export async function sendCommand(command, paramStr) {
     return new Promise((resolve, reject) => {
         commandQueue.push({ command, paramStr, resolve, reject });
+        logger.debug(`Command added to queue: ${command}, Params: ${paramStr}`);
         processQueue();
     });
 }
@@ -26,13 +28,15 @@ async function processQueue() {
     }
 
     isProcessing = true;
+    logger.debug("Processing command queue...");
 
     while (commandQueue.length > 0) {
         const { command, paramStr, resolve, reject } = commandQueue.shift();
+        logger.info(`Processing command: ${command}, Params: ${paramStr}`);
 
         try {
             let byteArr = `${hex(command, 4)}${paramStr}\r`;
-            logger.debug(`sendCommand sent: ${byteArr}`);
+            logger.debug(`Sending command: ${byteArr}`);
             await portHandler.serialPortHandler.write(byteArr);
 
             byteArr = "";
@@ -49,28 +53,27 @@ async function processQueue() {
             }
 
             if (!byteArr.endsWith("\r")) {
-                throw new Error("No valid delimiter found");
+                throw new Error("No valid delimiter found in response");
             } else if (byteArr.length < 3) {
-                throw new Error("Timeout or incomplete response");
+                throw new Error("Timeout or incomplete response received");
             } else {
                 const errCode = parseInt(byteArr.slice(0, 2), 16);
                 if (errCode !== SP_ERROR.ERR_NONE) {
-                    throw new Error("Error code found");
+                    throw new Error(`Error code received: ${errCode}`);
                 } else {
                     const response = byteArr.slice(2, -1);
+                    logger.info(`Command executed successfully, response: ${response}`);
                     resolve(response);
                 }
             }
         } catch (error) {
-            logger.error(`Error in processQueue: ${error}`);
+            logger.error(`Error processing command: ${error.message}`);
             reject(error);
         }
-
-        // Add a small delay between processing commands
-        //await new Promise((r) => setTimeout(r, 50));
     }
 
     isProcessing = false;
+    logger.debug("Finished processing command queue.");
 }
 
 export function hex(value, length) {
