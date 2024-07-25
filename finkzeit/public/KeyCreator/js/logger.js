@@ -1,5 +1,5 @@
 export class Logger {
-    constructor(isDevelopment = true) {
+    constructor(isDevelopment = false) {
         this.isDevelopment = isDevelopment;
     }
 

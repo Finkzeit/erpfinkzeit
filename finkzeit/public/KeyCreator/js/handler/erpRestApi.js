@@ -11,7 +11,7 @@ class ErpRestApi {
     async getTransponderConfigurationList(firmenSelect) {
         try {
             // If running locally, you need to uncomment the following line and set the sid to the one you get from the erp-test.finkzeit.at cookies
-            document.cookie = "sid=eaff457306e216b250f6a085d1a7cb74ffc81075b7ac5918b362221f";
+            //document.cookie = "sid=eaff457306e216b250f6a085d1a7cb74ffc81075b7ac5918b362221f";
             const response = await fetch(`${this.baseUrl}get_transponder_config_list`);
 
             if (response.status === 403) {
