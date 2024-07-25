@@ -199,8 +199,12 @@ Provide exactly one of them
 """
 @frappe.whitelist()
 def del_transponder(code):
-    transponder = frappe.get_doc("Transponder", code)
-    transponder.delete()
-    frappe.db.commit()
-    return data
+    try:
+        transponder = frappe.get_doc("Transponder", code)
+        transponder.delete()
+        frappe.db.commit()
+        return {'success': True, 'error': None}
+    except Exception as err:
+        frappe.log_error( "{0}".format(err), "Delete transponder through API failed")
+        return {'success': False, 'error': err}
     
