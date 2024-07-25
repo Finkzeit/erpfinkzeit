@@ -10,20 +10,20 @@ export async function mifareDesfireScript(transponderConfig) {
     updateSessionInfo("action", "Starte MIFARE DESFire Operationen");
 
     try {
-        if (!(await login0Key())) throw new Error("Failed to login with 0 key");
+        if (!(await login0Key())) throw new Error("Anmeldung mit 0-Schlüssel fehlgeschlagen");
         const readMasterKeySettingsResult = await readMasterKeySettings();
-        if (!readMasterKeySettingsResult) throw new Error("Failed to read master key settings");
+        if (!readMasterKeySettingsResult) throw new Error("Lesen der Master-Schlüsseleinstellungen fehlgeschlagen");
         logger.debug("readMasterKeySettingsResult", readMasterKeySettingsResult);
 
         if (!(await changeMasterKeySettings(readMasterKeySettingsResult.keySettings, readMasterKeySettingsResult.numberOfKeys)))
-            throw new Error("Failed to change master key settings");
+            throw new Error("Ändern der Master-Schlüsseleinstellungen fehlgeschlagen");
         if (!(await changeMasterKey(transponderConfig, readMasterKeySettingsResult.keySettings, readMasterKeySettingsResult.numberOfKeys)))
-            throw new Error("Failed to change master key");
-        if (!(await loginMasterKey(transponderConfig))) throw new Error("Failed to login with master key");
+            throw new Error("Ändern des Master-Schlüssels fehlgeschlagen");
+        if (!(await loginMasterKey(transponderConfig))) throw new Error("Anmeldung mit Master-Schlüssel fehlgeschlagen");
         if (!(await createApplication(transponderConfig, readMasterKeySettingsResult.keySettings)))
-            throw new Error("Failed to create application");
-        if (!(await selectApplication(transponderConfig))) throw new Error("Failed to select application");
-        if (!(await loginAppZeroKeyAES())) throw new Error("Failed to login with app zero key AES");
+            throw new Error("Erstellen der Anwendung fehlgeschlagen");
+        if (!(await selectApplication(transponderConfig))) throw new Error("Auswählen der Anwendung fehlgeschlagen");
+        if (!(await loginAppZeroKeyAES())) throw new Error("Anmeldung mit Anwendungs-Null-Schlüssel AES fehlgeschlagen");
         if (
             !(await changeAppMasterKey(
                 transponderConfig,
@@ -31,8 +31,8 @@ export async function mifareDesfireScript(transponderConfig) {
                 readMasterKeySettingsResult.numberOfKeys
             ))
         )
-            throw new Error("Failed to change app master key");
-        if (!(await loginAppMasterKey(transponderConfig))) throw new Error("Failed to login with app master key");
+            throw new Error("Ändern des Anwendungs-Master-Schlüssels fehlgeschlagen");
+        if (!(await loginAppMasterKey(transponderConfig))) throw new Error("Anmeldung mit Anwendungs-Master-Schlüssel fehlgeschlagen");
         if (
             !(await changeApplicationReadKey(
                 transponderConfig,
@@ -40,13 +40,13 @@ export async function mifareDesfireScript(transponderConfig) {
                 readMasterKeySettingsResult.numberOfKeys
             ))
         )
-            throw new Error("Failed to change application read key");
-        if (!(await selectApplication(transponderConfig))) throw new Error("Failed to select application");
-        if (!(await loginAppMasterKey(transponderConfig))) throw new Error("Failed to login with app master key");
-        if (!(await createDataFile(transponderConfig))) throw new Error("Failed to create data file");
-        if (!(await writeToFile(transponderConfig))) throw new Error("Failed to write to file");
-        if (!(await loginApplicationReadKey(transponderConfig))) throw new Error("Failed to login with application read key");
-        if (!(await readAndVerifyFile(transponderConfig))) throw new Error("Failed to read and verify file");
+            throw new Error("Ändern des Anwendungs-Lese-Schlüssels fehlgeschlagen");
+        if (!(await selectApplication(transponderConfig))) throw new Error("Auswählen der Anwendung fehlgeschlagen");
+        if (!(await loginAppMasterKey(transponderConfig))) throw new Error("Anmeldung mit Anwendungs-Master-Schlüssel fehlgeschlagen");
+        if (!(await createDataFile(transponderConfig))) throw new Error("Erstellen der Datendatei fehlgeschlagen");
+        if (!(await writeToFile(transponderConfig))) throw new Error("Schreiben in die Datei fehlgeschlagen");
+        if (!(await loginApplicationReadKey(transponderConfig))) throw new Error("Anmeldung mit Anwendungs-Lese-Schlüssel fehlgeschlagen");
+        if (!(await readAndVerifyFile(transponderConfig))) throw new Error("Lesen und Verifizieren der Datei fehlgeschlagen");
 
         updateSessionInfo("tag", {
             type: "MIFAREDESFIRE",
@@ -56,7 +56,7 @@ export async function mifareDesfireScript(transponderConfig) {
         updateSessionInfo("action", "MIFARE DESFire Operationen erfolgreich abgeschlossen");
         return true;
     } catch (error) {
-        logger.error("Error in mifareDesfireScript:", error);
+        logger.error("Fehler in mifareDesfireScript:", error);
         updateSessionInfo("tag", {
             type: "MIFAREDESFIRE",
             uid: transponderConfig.tags.mifareDesfire.uid,

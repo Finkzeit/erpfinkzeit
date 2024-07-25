@@ -3,6 +3,7 @@ import logger from "./logger.js";
 import { getSAK } from "./handler/protocolHandler.js";
 import { updateSessionInfo } from "./ui.js";
 import { getIsFormatting, addFormattingChangeListener, removeFormattingChangeListener } from "./state.js";
+import { inSession } from "./app.js";
 
 let detectedKeys = {};
 let wrongKeys = {};
@@ -24,7 +25,7 @@ export async function verifyKey(transponderConfig, numberHandler) {
     updateSessionInfo("status", "Schlüssel wird überprüft");
     let tagDetected = false;
 
-    while (!tagDetected) {
+    while (!tagDetected && inSession()) {
         if (getIsFormatting()) {
             logger.debug("[verifyKey] Formatting in progress, stopping detection.");
             await new Promise((resolve) => {
@@ -41,17 +42,25 @@ export async function verifyKey(transponderConfig, numberHandler) {
         if (getIsFormatting()) continue; // Skip detection if formatting is still in progress
 
         logger.debug("[verifyKey] Detecting tag....");
+
         tagDetected = await detectFirstTag(transponderConfig);
-        logger.debug("[verifyKey] Tag detected 1:", tagDetected);
+
+        logger.debug("[verifyKey] Tag detected:", tagDetected);
         if (tagDetected) {
             await validateNumber(transponderConfig, numberHandler);
             const requiredKeysCorrect = await requiredKeySet(transponderConfig);
             if (requiredKeysCorrect) {
                 return true; // Return true if all required keys are correct
             }
+            return false;
+        }
+
+        if (!inSession()) {
+            logger.debug("[verifyKey] Session cancelled, stopping verification");
+            return false;
         }
     }
-    return false; // Return false if the loop exits without finding correct keys
+    return tagDetected;
 }
 
 export async function detectFirstTag(transponderConfig) {
@@ -60,13 +69,13 @@ export async function detectFirstTag(transponderConfig) {
 
     const searchFunctions = [api.hitag1s, api.mifare, api.deister, api.em];
 
-    while (true) {
+    while (inSession()) {
         if (getIsFormatting()) {
             logger.debug("[verifyKey] Formatting in progress, stopping detection.");
             return false; // Exit the loop if formatting is in progress
         }
 
-        logger.debug("[verifyKey] Searching for tag.....");
+        logger.debug("[verifyKey] Searching for tag...");
         for (const searchFunction of searchFunctions) {
             const result = await searchFunction();
             if (result.Result) {
@@ -107,6 +116,7 @@ export async function detectFirstTag(transponderConfig) {
             }
         }
     }
+    return false;
 }
 
 async function setUIDInTransponderConfig(transponderConfig, result) {
@@ -143,7 +153,7 @@ async function setUIDInTransponderConfig(transponderConfig, result) {
             break;
     }
 
-    logger.debug("[verifyKey] transponderConfig:", JSON.stringify(transponderConfig, null, 2));
+    logger.debug("[verifyKey] Updated transponderConfig:", JSON.stringify(transponderConfig, null, 2));
 }
 
 async function requiredKeySet(transponderConfig) {
@@ -166,7 +176,7 @@ async function requiredKeySet(transponderConfig) {
                     case "em":
                         return "EM";
                     case "legic":
-                        return null; // Exclude LEGIC from the required keys set
+                        return null;
                     default:
                         return key;
                 }

@@ -1,5 +1,5 @@
 export class Logger {
-    constructor(isDevelopment = true) {
+    constructor(isDevelopment = false) {
         this.isDevelopment = isDevelopment;
     }
 
@@ -17,7 +17,8 @@ export class Logger {
 
     debug(...args) {
         if (this.isDevelopment) {
-            console.debug("[DEBUG]", ...args);
+            const timestamp = Date.now();
+            console.debug(`[DEBUG] [${timestamp}]`, ...args);
         }
     }
 }

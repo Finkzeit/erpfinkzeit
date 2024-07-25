@@ -189,3 +189,34 @@ def get_transponder(hitag_uid=None, mfcl_uid=None, mfdf_uid=None, deister_uid=No
     data = frappe.db.sql(query_string, as_dict=True)
     
     return data
+
+"""
+Delete a transponder
+Provide exactly one of them
+-hitag_uid:
+-mfcl_uid:
+-mfdf_uid:
+-deister_uid:
+-em_uid:
+
+ /api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.del_transponder?<XXXX>_uid=<HEX>
+"""
+@frappe.whitelist()
+def del_transponder(hitag_uid=None, mfcl_uid=None, mfdf_uid=None, deister_uid=None, em_uid=None):
+    if hitag_uid:
+        query_string = """DELETE FROM `tabTransponder` WHERE `hitag_uid` = "{}";""".format(hitag_uid)
+    elif mfcl_uid:
+        query_string = """DELETE FROM `tabTransponder` WHERE `mfcl_uid` = "{}";""".format(mfcl_uid)
+    elif mfdf_uid:
+        query_string = """DELETE FROM `tabTransponder` WHERE `mfdf_uid` = "{}";""".format(mfdf_uid)
+    elif deister_uid:
+        query_string = """DELETE FROM `tabTransponder` WHERE `deister_uid` = "{}";""".format(deister_uid)
+    elif em_uid:
+        query_string = """DELETE FROM `tabTransponder` WHERE `em_uid` = "{}";""".format(em_uid)
+    else:
+        return """{"message":[]}"""
+
+    data = frappe.db.sql(query_string, as_dict=True)
+    
+    return data
+    
