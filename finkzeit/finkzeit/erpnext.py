@@ -56,7 +56,8 @@ def post_invoice(**kwargs):
         'additional_discount_percentage': invoice['additional_discount_percentage'],
         'discount_amount': invoice['discount_amount'],
         'payment_terms_template': supplier_record.payment_terms,
-        'is_proposed': 1
+        'is_proposed': 1,
+        'update_stock': 1
     })
     try:
         # assert that all items exist
