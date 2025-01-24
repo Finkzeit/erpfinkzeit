@@ -150,6 +150,7 @@ def createOrUpdateWSExtension_historical(extensions, propKey, value):
                 # already an update today - update value only
                 ext["action"] = ENUM_ACTION['UPDATE']
                 ext["value"] = value
+                ext["validTo"] = None
                 return
             else:
                 # existing, but old entry - close 
