@@ -10,10 +10,18 @@ from frappe import _
 from lxml import etree
 from zeep import Client, Settings
 from time import time
-from datetime import datetime
+from datetime import datetime, time as dt_time
 from frappe.utils.background_jobs import enqueue
 from finkzeit.finkzeit.doctype.licence.licence import create_invoice, create_delivery_note
 from frappe.utils.password import get_decrypted_password
+
+ENUM_ACTION = {
+    'NONE': 0
+    'CREATE': 1,
+    'DELETE': 2,
+    'UPDATE': 3,
+    'REPLACE': 4
+}
 
 """ Low-level connect/disconnect """
 def getSession():
@@ -127,9 +135,39 @@ def createOrUpdateWSExtension(extensions, propKey, value):
   if value:
       if foundExt:
           ext["value"] = value
-          ext["action"] = 3
+          ext["action"] = ENUM_ACTION['UPDATE']
       else:
-          extensions.append({'action': 1, 'name': propKey, 'value': value })
+          extensions.append({'action': ENUM_ACTION['CREATE'], 'name': propKey, 'value': value })
+
+def createOrUpdateWSExtension_historical(extensions, propKey, value):
+  foundExt, ext = getExtension(extensions, propKey)
+  new_start = int(datetime.combine(datetime.today(), dt_time.min).timestamp())      # unix time midnight starting today
+  if value:
+        # in case of an existing entry: terminate
+        if foundExt:
+            # check if valid from is today (last update today)
+            if ext["validFrom"]["timeInSeconds"] >= new_start:
+                # already an update today - update value only
+                ext["action"] = ENUM_ACTION['UPDATE']
+                ext["value"] = value
+                return
+            else:
+                # existing, but old entry - close 
+                ext["action"] = ENUM_ACTION['UPDATE']
+                ext["validTo"] = {
+                    'timeInSeconds': new_start - 1          # set end date to yesterday 1 sec before midight
+                }
+
+        # start a new entry
+        wsTsNow = client.service.getTime(s)
+        extensions.append({
+            'action': ENUM_ACTION['CREATE'], 
+            'name': propKey, 
+            'value': value,
+            'validFrom': {
+                'timeInSeconds': new_start
+            }
+        })
 
 def createOrUpdateWSExtension_link(extensions, propKey, value, naturalInfo, linkType, remove):
   foundExt, ext = getExtension(extensions, propKey)
@@ -1575,7 +1613,7 @@ def update_customer_all_in(licence, calc_rate, tenant="AT"):
         wsLevelEArray[0]["action"] = 3
         
         if "p_all_in_std" in available_properties:
-            createOrUpdateWSExtension(wsLevelEArray[0]["extensions"]["WSExtension"], "p_all_in_std", all_in_ms)
+            createOrUpdateWSExtension_historical(wsLevelEArray[0]["extensions"]["WSExtension"], "p_all_in_std", all_in_ms)
 
         # compress level
         contentDict = compress_level_e(wsLevelEArray[0])
