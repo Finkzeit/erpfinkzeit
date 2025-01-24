@@ -16,7 +16,7 @@ from finkzeit.finkzeit.doctype.licence.licence import create_invoice, create_del
 from frappe.utils.password import get_decrypted_password
 
 ENUM_ACTION = {
-    'NONE': 0
+    'NONE': 0,
     'CREATE': 1,
     'DELETE': 2,
     'UPDATE': 3,
