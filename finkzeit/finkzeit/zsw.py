@@ -1618,7 +1618,7 @@ def update_customer_all_in(licence, calc_rate, tenant="AT"):
         contentDict = compress_level_e(wsLevelEArray[0])
         print("{0}".format(contentDict))
         try:
-            client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
+            client.service.updateLevelsE(s, {'WSExtensibleLevel': [contentDict]})
         except Exception as err:
             frappe.log_error("{0} on {1}".format(err, contentDict), "ZSW update_customer_all_in customer error")
     else:
