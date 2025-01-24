@@ -140,9 +140,9 @@ def createOrUpdateWSExtension(extensions, propKey, value):
           extensions.append({'action': ENUM_ACTION['CREATE'], 'name': propKey, 'value': value })
 
 def createOrUpdateWSExtension_historical(extensions, propKey, value):
-  foundExt, ext = getExtension(extensions, propKey)
-  new_start = int(datetime.combine(datetime.today(), dt_time.min).timestamp())      # unix time midnight starting today
-  if value:
+    foundExt, ext = getExtension(extensions, propKey)
+    new_start = int(datetime.combine(datetime.today(), dt_time.min).timestamp())      # unix time midnight starting today
+    if value:
         # in case of an existing entry: terminate
         if foundExt:
             # check if valid from is today (last update today)
@@ -171,7 +171,6 @@ def createOrUpdateWSExtension_historical(extensions, propKey, value):
         # remove
         # in case of an existing entry: terminate
         if foundExt:
-            # existing, but old entry - close 
             ext["action"] = ENUM_ACTION['UPDATE']
             ext["validTo"] = {
                 'timeInSeconds': new_start + 1         # set end date today
