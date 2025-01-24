@@ -159,7 +159,6 @@ def createOrUpdateWSExtension_historical(extensions, propKey, value):
                 }
 
         # start a new entry
-        wsTsNow = client.service.getTime(s)
         extensions.append({
             'action': ENUM_ACTION['CREATE'], 
             'name': propKey, 
