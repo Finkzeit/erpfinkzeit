@@ -167,6 +167,15 @@ def createOrUpdateWSExtension_historical(extensions, propKey, value):
                 'timeInSeconds': new_start
             }
         })
+    else:
+        # remove
+        # in case of an existing entry: terminate
+        if foundExt:
+            # existing, but old entry - close 
+            ext["action"] = ENUM_ACTION['UPDATE']
+            ext["validTo"] = {
+                'timeInSeconds': new_start + 1         # set end date today
+            }
 
 def createOrUpdateWSExtension_link(extensions, propKey, value, naturalInfo, linkType, remove):
   foundExt, ext = getExtension(extensions, propKey)
