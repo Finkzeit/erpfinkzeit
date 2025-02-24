@@ -1,50 +1,21 @@
-frappe.listview_settings['Payment Proposal'] = {
+frappe.listview_settings['Payment Return Proposal'] = {
     onload: function(listview) {
-        listview.page.add_menu_item( __("Create Payment Proposal"), function() {
-            prepare_payment_proposal();
+        listview.page.add_menu_item( __("Create Payment Return Proposal"), function() {
+            prepare_payment_return_proposal();
         });
     }
 }
 
-function prepare_payment_proposal() {
-    frappe.call({
-        "method": "frappe.client.get",
-        "args": {
-                "doctype": "ERPNextSwiss Settings",
-                "name": "ERPNextSwiss Settings"
-        },
-        "callback": function(response) {
-            try {
-                var d = new Date();
-                d = new Date(d.setDate(d.getDate() + response.message.planning_days));
-                frappe.prompt([
-                        {'fieldname': 'date', 'fieldtype': 'Date', 'label': __('Include Payments Until'), 'reqd': 1, 'default': d},
-                        {'fieldname': 'company', 'fieldtype': 'Link', 'label': __("Company"), 'options': 'Company', 
-                         'default': frappe.defaults.get_default("Company") },
-                        {'fieldname': 'currency', 'fieldtype': 'Link', 'label': __('Currency'), 'options': 'Currency'},
-                    ],
-                    function(values){
-                        create_payment_proposal(values.date, values.company, values.currency);
-                    },
-                    __('Payment Proposal'),
-                    __('Create')
-                );
-            } catch (err) {
-                frappe.msgprint("Error: " + err.message);
-            }
-            
-        }
-    });
- 
+function prepare_payment_return_proposal() {
+    create_payment_return_proposal(frappe.defaults.get_default("Company"), "3400"); 
 }
 
-function create_payment_proposal(date, company, currency) {
+function create_payment_return_proposal(company, account) {
     frappe.call({
-        "method": "erpnextswiss.erpnextswiss.doctype.payment_proposal.payment_proposal.create_payment_proposal",
+        "method": "finkzeit.finkzeit.doctype.payment_return_proposal.payment_return_proposal.create_payment_return_proposal",
         "args": { 
-            "date": date, 
             "company": company,
-            "currency": currency
+            "account": account
         },
         "callback": function(response) {
             if (response.message) {

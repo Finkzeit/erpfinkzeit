@@ -68,14 +68,6 @@ class PaymentReturnProposal(Document):
         # save
         self.save()
 
-    def on_cancel(self):
-        # reset is_proposed
-        for purchase_invoice in self.purchase_invoices:
-            # un-mark sales invoices as proposed
-            invoice = frappe.get_doc("Purchase Invoice", purchase_invoice.purchase_invoice)
-            invoice.is_proposed = 0
-            invoice.save()        
-            
         return
     
     def add_payment(self, receiver_name, iban, payment_type, address_line1, 
@@ -105,10 +97,7 @@ class PaymentReturnProposal(Document):
                 'amount': amount,
                 'currency': currency,
                 'reference': "{0}...".format(reference[:136]) if len(reference) > 140 else reference,
-                'execution_date': pay_date,
-                'esr_reference': esr_reference,
-                'esr_participation_number': esr_participation_number,
-                'is_salary': is_salary 
+                'execution_date': pay_date
             })
             return
             
@@ -256,7 +245,7 @@ def create_payment_return_proposal(company=None, account=None):
           `tabPayment Entry`.`party_name` AS `customer`, 
           `tabPayment Entry`.`name` AS `name`,
           `tabPayment Entry`.`paid_amount` AS `outstanding_amount`,
-          `tabPayment Entry`.`posting_date` AS `due_date`, 
+          `tabPayment Entry`.`posting_date` AS `transaction_date`, 
           `tabPayment Entry`.`paid_to_account_currency` AS `currency`,
           `tabPayment Entry`.`reference_no` AS `external_reference`,
           `tabPayment Entry`.`posting_date` AS `skonto_date`,
@@ -270,27 +259,25 @@ def create_payment_return_proposal(company=None, account=None):
           AND `tabPayment Entry`.`party_type` = "Customer"
           AND `tabPayment Return Proposal Payment Entry`.`name` IS NULL
           AND `tabPayment Entry Deduction`.`account` LIKE "{account}%"
-          AND `tabPurchase Invoice`.`company` = '{company}'
+          AND `tabPayment Entry`.`company` = '{company}'
         GROUP BY `tabPayment Entry`.`name`;""".format(account=account, company=company))
     payment_entries = frappe.db.sql(sql_query, as_dict=True)
     # get all purchase invoices that pending
     total = 0.0
     records = []
     for pe in payment_entries:
-        reference = pe.external_reference or pe.name
         new_pe = { 
-            'customer': pe.customer,
-            'purchase_invoice': pe.name,
-            'amount': pe.outstanding_amount,
-            'due_date': pe.due_date,
-            'currency': pe.currency,
-            'skonto_date': pe.skonto_date,
-            'skonto_amount': pe.skonto_amount,
-            'payment_type': pe.payment_type,
-            'external_reference': unidecode(reference)
+            'customer': pe.get('customer'),
+            'payment_entry': pe.get('name'),
+            'amount': pe.get('outstanding_amount'),
+            'transaction_date': pe.get('transaction_date'),
+            'currency': pe.get('currency'),
+            'skonto_date': pe.get('skonto_date'),
+            'skonto_amount': pe.get('skonto_amount'),
+            'payment_type': pe.get('payment_type')
         }
-        total += pe.skonto_amount
-        payment_entries.append(new_pe)
+        total += pe.get('skonto_amount')
+        records.append(new_pe)
 
     # create new record
     new_record = None

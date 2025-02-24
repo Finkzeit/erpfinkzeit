@@ -4,28 +4,16 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "expense_claim",
-  "employee",
-  "employee_name",
+  "payment_entry",
+  "customer",
+  "customer_name",
   "amount",
-  "payable_account"
+  "transaction_date",
+  "skonto_date",
+  "skonto_amount",
+  "payment_type"
  ],
  "fields": [
-  {
-   "fieldname": "expense_claim",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Expense Claim",
-   "options": "Expense Claim"
-  },
-  {
-   "fieldname": "employee",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Employee",
-   "options": "Employee",
-   "reqd": 1
-  },
   {
    "fieldname": "amount",
    "fieldtype": "Currency",
@@ -34,21 +22,50 @@
    "reqd": 1
   },
   {
-   "fieldname": "payable_account",
+   "fieldname": "payment_entry",
    "fieldtype": "Link",
-   "label": "Payable Account",
-   "options": "Account"
+   "in_list_view": 1,
+   "label": "Payment Entry",
+   "options": "Payment Entry"
   },
   {
-   "fetch_from": "employee.employee_name",
-   "fieldname": "employee_name",
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Customer",
+   "options": "Customer",
+   "reqd": 1
+  },
+  {
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
    "fieldtype": "Data",
-   "label": "Employee name",
+   "label": "Customer Name",
    "read_only": 1
+  },
+  {
+   "fieldname": "transaction_date",
+   "fieldtype": "Date",
+   "label": "Transaction Date"
+  },
+  {
+   "fieldname": "skonto_date",
+   "fieldtype": "Date",
+   "label": "Skonto Date"
+  },
+  {
+   "fieldname": "skonto_amount",
+   "fieldtype": "Currency",
+   "label": "Skonto Amount"
+  },
+  {
+   "fieldname": "payment_type",
+   "fieldtype": "Data",
+   "label": "Payment Type"
   }
  ],
  "istable": 1,
- "modified": "2021-11-16 11:32:51.462603",
+ "modified": "2025-02-24 21:43:21.431894",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Payment Return Proposal Payment Entry",

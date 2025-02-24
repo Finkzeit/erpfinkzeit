@@ -18,12 +18,7 @@
   "reference",
   "execution_date",
   "bic",
-  "payment_type",
-  "section_esr",
-  "esr_participation_number",
-  "esr_reference",
-  "section_salary",
-  "is_salary"
+  "payment_type"
  ],
  "fields": [
   {
@@ -95,32 +90,6 @@
    "options": "SEPA\nIBAN\nESR"
   },
   {
-   "fieldname": "section_esr",
-   "fieldtype": "Section Break",
-   "label": "ESR"
-  },
-  {
-   "fieldname": "esr_participation_number",
-   "fieldtype": "Data",
-   "label": "ESR Participation Number"
-  },
-  {
-   "fieldname": "esr_reference",
-   "fieldtype": "Data",
-   "label": "ESR Reference"
-  },
-  {
-   "fieldname": "section_salary",
-   "fieldtype": "Section Break",
-   "label": "Salary"
-  },
-  {
-   "default": "0",
-   "fieldname": "is_salary",
-   "fieldtype": "Check",
-   "label": "Is Salary"
-  },
-  {
    "fieldname": "receiver_id",
    "fieldtype": "Data",
    "hidden": 1,
@@ -138,7 +107,7 @@
   }
  ],
  "istable": 1,
- "modified": "2024-12-12 16:48:17.253368",
+ "modified": "2025-02-24 21:38:05.565882",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Payment Return Proposal Payment",
