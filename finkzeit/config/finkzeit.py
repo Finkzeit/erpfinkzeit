@@ -162,6 +162,12 @@ def get_data():
                        "label": _("Customer Credit Ledger"),
                        "description": _("Customer Credit Ledger"),
                        "is_query_report": True
+                   },
+                   {
+                       "type": "doctype",
+                       "name": "Payment Return Proposal",
+                       "label": _("Payment Return Proposal"),
+                       "description": _("Payment Return Proposal")
                    }
             ]
         },

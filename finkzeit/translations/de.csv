@@ -122,3 +122,4 @@ DocType: Transponder Configuration,Tag,Tag
 DocType: Transponder Configuration,Transponder Configuration,Transponderkonfiguration
 DocType: Transponder Configuration,Sector,Sektor
 DocType: Transponder Configuration,Licence name,Lizenzname
+DocType: Payment Return Proposal,Payment Return Proposal,Rückzahlungsvorschlag

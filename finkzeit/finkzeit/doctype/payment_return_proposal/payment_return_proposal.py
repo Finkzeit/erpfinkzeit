@@ -14,8 +14,6 @@ from frappe.utils import cint, get_url_to_form, rounded
 from unidecode import unidecode     # used to remove German/French-type special characters from bank identifieres
 from erpnextswiss.scripts.crm_tools import get_primary_customer_address
 
-PAYMENT_REMARKS = "From Payment Proposal {0}"
-
 class PaymentReturnProposal(Document):
     def validate(self):
         # check company settigs
@@ -39,30 +37,27 @@ class PaymentReturnProposal(Document):
         # collect payments
         total = 0
         for payment_entry in self.payment_entries:
-
-            exec_date = datetime.now() + timedelta(days=1)
-            payment_type = "IBAN"
             # add new payment record
-            if amount > 0:
+            if payment_entry.skonto_amount > 0:
                 cust = frappe.get_doc("Customer", payment_entry.customer)
                 addr = get_primary_customer_address(payment_entry.customer)
                 self.add_payment(
                     receiver_name=cust.customer_name, 
                     iban=payment_entry.iban, 
-                    payment_type=payment_type,
+                    payment_type=payment_entry.payment_type,
                     address_line1=addr.address_line1, 
                     address_line2="{0} {1}".format(addr.pincode, addr.city), 
                     country=addr.country, 
                     pincode=addr.pincode, 
                     city=addr.city,
-                    amount=payment_entry.amount, 
+                    amount=payment_entry.skonto_amount, 
                     currency=payment_entry.currency, 
                     reference=payment_entry.payment_entry, 
-                    execution_date=exec_date, 
+                    execution_date=payment_entry.skonto_date, 
                     bic=None, 
                     receiver_id=payment_entry.customer
                 )
-                total += amount
+                total += payment_entry.skonto_amount
         # update total
         self.total = total
         # save
@@ -242,7 +237,7 @@ def create_payment_return_proposal(company=None, account=None):
     # get all payment entries with double payments
     sql_query = ("""
         SELECT 
-          `tabPayment Entry`.`party_name` AS `customer`, 
+          `tabPayment Entry`.`party` AS `customer`, 
           `tabPayment Entry`.`name` AS `name`,
           `tabPayment Entry`.`paid_amount` AS `outstanding_amount`,
           `tabPayment Entry`.`posting_date` AS `transaction_date`, 
@@ -250,6 +245,7 @@ def create_payment_return_proposal(company=None, account=None):
           `tabPayment Entry`.`reference_no` AS `external_reference`,
           `tabPayment Entry`.`posting_date` AS `skonto_date`,
           `tabPayment Entry`.`paid_amount` AS `skonto_amount`,
+          `tabPayment Entry`.`bank_account_no` AS `iban`,
           "IBAN" AS `payment_type`
         FROM `tabPayment Entry Deduction`
         LEFT JOIN `tabPayment Entry` ON `tabPayment Entry Deduction`.`parent` = `tabPayment Entry`.`name`
@@ -260,6 +256,7 @@ def create_payment_return_proposal(company=None, account=None):
           AND `tabPayment Return Proposal Payment Entry`.`name` IS NULL
           AND `tabPayment Entry Deduction`.`account` LIKE "{account}%"
           AND `tabPayment Entry`.`company` = '{company}'
+          AND `tabPayment Entry`.`bank_account_no` IS NOT NULL
         GROUP BY `tabPayment Entry`.`name`;""".format(account=account, company=company))
     payment_entries = frappe.db.sql(sql_query, as_dict=True)
     # get all purchase invoices that pending
@@ -272,9 +269,10 @@ def create_payment_return_proposal(company=None, account=None):
             'amount': pe.get('outstanding_amount'),
             'transaction_date': pe.get('transaction_date'),
             'currency': pe.get('currency'),
-            'skonto_date': pe.get('skonto_date'),
+            'skonto_date': datetime.now() + timedelta(days=1),
             'skonto_amount': pe.get('skonto_amount'),
-            'payment_type': pe.get('payment_type')
+            'payment_type': pe.get('payment_type'),
+            'iban': pe.get('iban')
         }
         total += pe.get('skonto_amount')
         records.append(new_pe)

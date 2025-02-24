@@ -11,61 +11,90 @@
   "transaction_date",
   "skonto_date",
   "skonto_amount",
-  "payment_type"
+  "payment_type",
+  "iban",
+  "currency"
  ],
  "fields": [
   {
+   "columns": 2,
    "fieldname": "amount",
    "fieldtype": "Currency",
    "in_list_view": 1,
    "label": "Amount",
+   "read_only": 1,
    "reqd": 1
   },
   {
+   "columns": 2,
    "fieldname": "payment_entry",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Payment Entry",
-   "options": "Payment Entry"
+   "options": "Payment Entry",
+   "read_only": 1
   },
   {
+   "columns": 1,
    "fieldname": "customer",
    "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Customer",
    "options": "Customer",
+   "read_only": 1,
    "reqd": 1
   },
   {
+   "columns": 3,
    "fetch_from": "customer.customer_name",
    "fieldname": "customer_name",
    "fieldtype": "Data",
+   "in_list_view": 1,
    "label": "Customer Name",
    "read_only": 1
   },
   {
+   "columns": 2,
    "fieldname": "transaction_date",
    "fieldtype": "Date",
-   "label": "Transaction Date"
+   "in_list_view": 1,
+   "label": "Transaction Date",
+   "read_only": 1
   },
   {
    "fieldname": "skonto_date",
    "fieldtype": "Date",
-   "label": "Skonto Date"
+   "label": "Skonto Date",
+   "read_only": 1
   },
   {
    "fieldname": "skonto_amount",
    "fieldtype": "Currency",
-   "label": "Skonto Amount"
+   "label": "Skonto Amount",
+   "read_only": 1
   },
   {
    "fieldname": "payment_type",
    "fieldtype": "Data",
-   "label": "Payment Type"
+   "label": "Payment Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "iban",
+   "fieldtype": "Data",
+   "label": "IBAN",
+   "read_only": 1
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency",
+   "read_only": 1
   }
  ],
  "istable": 1,
- "modified": "2025-02-24 21:43:21.431894",
+ "modified": "2025-02-24 22:21:31.090807",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Payment Return Proposal Payment Entry",
