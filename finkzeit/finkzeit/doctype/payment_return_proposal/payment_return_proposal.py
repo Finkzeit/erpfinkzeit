@@ -239,12 +239,12 @@ def create_payment_return_proposal(company=None, account=None):
         SELECT 
           `tabPayment Entry`.`party` AS `customer`, 
           `tabPayment Entry`.`name` AS `name`,
-          `tabPayment Entry`.`paid_amount` AS `outstanding_amount`,
+          ABS(`tabPayment Entry Deduction`.`amount`) AS `outstanding_amount`,
           `tabPayment Entry`.`posting_date` AS `transaction_date`, 
           `tabPayment Entry`.`paid_to_account_currency` AS `currency`,
           `tabPayment Entry`.`reference_no` AS `external_reference`,
           `tabPayment Entry`.`posting_date` AS `skonto_date`,
-          `tabPayment Entry`.`paid_amount` AS `skonto_amount`,
+          ABS(`tabPayment Entry Deduction`.`amount`) AS `skonto_amount`,
           `tabPayment Entry`.`bank_account_no` AS `iban`,
           "IBAN" AS `payment_type`
         FROM `tabPayment Entry Deduction`
