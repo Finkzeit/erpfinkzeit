@@ -339,6 +339,7 @@ def create_invoice(customer, items, overall_discount, remarks, taxes_and_charges
     new_sales_invoice = frappe.get_doc({
         'doctype': 'Sales Invoice',
         'customer': customer,
+        'territory': frappe.get_cached_value("Customer", customer, "territory"),
         'items': items,
         'apply_discount_on': 'Net Total',
         'additional_discount_percentage': overall_discount,
