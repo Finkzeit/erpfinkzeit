@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright (c) 2018-2025, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
-#
 
 # imports
 from __future__ import unicode_literals
@@ -23,36 +22,52 @@ ENUM_ACTION = {
     'REPLACE': 4
 }
 
-""" Low-level connect/disconnect """
-def getSession():
-    global session
-    #SF global nextSessionRefresh
-    #SF if not 'session' in globals():
-    #SF   global session = None
-    if not 'session' in globals():
-        session = None
+TIMEOUT = 60000
 
-    if session:
+
+try:
+    # read configuration
+    config = frappe.get_doc("ZSW", "ZSW")
+    print("Global config loaded")
+
+    # create SOAP WebService client stub
+    settings = Settings(strict=True, xml_huge_tree=False)
+    client = Client(config.endpoint, settings=settings)
+    print("Global SOAP client stub initialized")
+
+    # create and initialize global variables to be used later on
+    session = None
+    nextRefresh = 0
+    print("Global variables initialized")
+except:
+    frappe.log_error("Unable to create and initialize global variables", "ZSW global")
+
+"""
+ Session handling
+"""
+def getSession():
+    # check if session-string could be valid (None is never valid)
+    if session != None:
         try:
-            #SF check for refresh timout is half sessionTimeout
-            #SF if datetime.now().timestamp() > nextRefresh
-            session = client.service.refreshSession(session)
-            if session:
-                #SF nextRefresh = datetime.now().timestamp() + (timeout - 60000)
+            # check if it's already time to refresh 
+            if datetime.now().timestamp() > nextRefresh:
+                session = client.service.refreshSession(session)
+                nextRefresh = datetime.now().timestamp() + (TIMEOUT/2)
                 print("Session: {0} refreshed".format(session))
-                # return a refreshed and authenticated session
-                return session
+
+            # return the still good or refreshed session
+            return session
         except:
-            print("Old Session expired, creating new one")
+            print("Session expired, creating new one")
 
     try:
-        #create a new session
-        session = client.service.openSession(config.license)
-        #SF timeout = client.service.getSessionTimeout(session)
-        #SF nextRefresh = datetime.now().timestamp() + (timeout - 10000)
+        # create a new session
+        session = client.service.openSession(config.license, TIMEOUT)
+        nextRefresh = datetime.now().timestamp() + (TIMEOUT/2)
         print("Session: {0}  created".format(session))
-        pw = get_decrypted_password("ZSW", "ZSW", 'password', False)
+ 
         # try to authenticate session
+        pw = get_decrypted_password("ZSW", "ZSW", 'password', False)
         login_result = client.service.login(session, config.user, pw)
         if login_result != 0:
             client.service.closeSession(session)
@@ -61,80 +76,12 @@ def getSession():
         print("Failed creating new session")
         session = None
 
-    # return the resulting session can bei either None or all OK
+    # return the resulting session can bei either None or a valid session id
     return session
 
-try:
-    # read configuration
-    config = frappe.get_doc("ZSW", "ZSW")
-    print("Global config loaded")
-
-    #import logging.config
-
-    #logging.config.dictConfig({
-    #    'version': 1,
-    #    'formatters': {
-    #        'verbose': {
-    #            'format': '%(name)s: %(message)s'
-    #        }
-    #    },
-    #    'handlers': {
-    #        'console': {
-    #            'level': 'DEBUG',
-    #            'class': 'logging.StreamHandler',
-    #            'formatter': 'verbose',
-    #        },
-    #    },
-    #    'loggers': {
-    #        'zeep.transports': {
-    #            'level': 'DEBUG',
-    #            'propagate': True,
-    #            'handlers': ['console'],
-    #        },
-    #    }
-    #})
-
-    #from zeep import Plugin
-
-    #class LoggingPlugin(Plugin):
-
-    #    def ingress(self, envelope, http_headers, operation):
-    #        print(etree.tostring(envelope, pretty_print=True))
-    #        return envelope, http_headers
-
-    #    def egress(self, envelope, http_headers, operation, binding_options):
-    #        print(etree.tostring(envelope, pretty_print=True))
-    #        return envelope, http_headers
-
-    # create SOAP client stub
-    # with logging plugin
-    #client = Client(config.endpoint, plugins=[LoggingPlugin()])
-    # without logging plugin
-    #client = Client(config.endpoint)
-
-    # with settings
-    #settings = Settings(strict=False, xml_huge_tree=True)
-    settings = Settings(strict=True, xml_huge_tree=False)
-    client = Client(config.endpoint, settings=settings)
-    print("Global SOAP client stub initialized")
-
-    # create and initialize session variable to be used later on
-    session = None
-    #SF timeout
-    #SF nextRefresh
-    print("Global session variable initialized")
-except:
-    frappe.log_error("Unable to create and initialize global variables", "ZSW global")
-
-#SF function disconnect() is not necessary at all
-def disconnect():
-    # global session
-    if session:
-        s = getSession()
-        client.service.logout(s)
-        client.service.closeSession(s)
-
-""" support functions """
+"""
+ support functions
+"""
 def getExtension(list, propName):
     for ext in list:
         if ext["name"] == propName:
@@ -215,7 +162,9 @@ def createOrUpdateWSExtension_link(extensions, propKey, value, naturalInfo, link
                            'name': propKey,
                            'link': { 'action': 1, 'linkType': linkType, 'naturalID': value, 'naturalInfo': naturalInfo }})
 
-""" abstracted ZSW functions """
+"""
+ abstracted ZSW functions
+"""
 def get_employees():
     print("Read employees...")
     employees = client.service.getAllEmployees(getSession(), 0)
@@ -242,7 +191,7 @@ def get_bookings(start_time, end_time):
         bookings = client.service.getBookingPairs(getSession(), fromTS, toTS, False, 1)
     except Exception as err:
         frappe.log_error("Get booking pairs failed with error {0}.".format(err), "ZSW get booking pairs")
-        #return here because going further doesn't make sense!
+        # return here because going further doesn't make sense!
         return []
 
     # update end_time in ZSW record
@@ -253,7 +202,7 @@ def get_bookings(start_time, end_time):
         config.save()
         print("Global config updated")
     except Exception as err:
-        frappe.log_error( "Unable to set end time. ({0})".format(err), "ZSW get_booking")
+        frappe.log_error("Unable to set end time. ({0})".format(err), "ZSW get_booking")
         return []
 
     print("Bookings: {0}".format(bookings))
@@ -276,7 +225,7 @@ def get_project_bookings(zsw_project, from_time, to_time):
         bookings = client.service.getBookingPairsByLevel(getSession(), fromTS, toTS, zsw_project, 4)
     except Exception as err:
         frappe.log_error("Get booking pairs by level failed with error {0}.".format(err), "ZSW get booking pairs by level")
-        #return here because going further doesn't make sense!
+        # return here because going further doesn't make sense!
         return []
 
     print("Bookings: {0}".format(bookings))
@@ -353,7 +302,7 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
             email = "-"
             phone = "-"
     # maintenance contract customer?
-    #sql_query = """SELECT DISTINCT `tabSales Invoice`.`posting_date`
+    # sql_query = """SELECT DISTINCT `tabSales Invoice`.`posting_date`
     #               FROM `tabSales Invoice Item`
     #               LEFT JOIN `tabSales Invoice` ON `tabSales Invoice Item`.`parent` = `tabSales Invoice`.`name`
     #               WHERE
@@ -362,10 +311,10 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
     #                AND `tabSales Invoice`.`customer` = '{customer}'
     #                AND `tabSales Invoice`.`is_return` = 0
     #               ORDER BY `tabSales Invoice`.`posting_date` DESC;""".format(customer=customer)
-    #contract = frappe.db.sql(sql_query, as_dict=True)
-    #if len(contract) > 0:
+    # contract = frappe.db.sql(sql_query, as_dict=True)
+    # if len(contract) > 0:
     #    maintenance_contract = True
-    #else:
+    # else:
     #    maintenance_contract = False
     # fetch license information
     licence = frappe.get_all("Licence", filters={'customer': customer, 'enabled': 1}, fields=['title', 'retailer'])
@@ -399,7 +348,7 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
     wsTsNow = client.service.getTime(s)
     wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': get_zsw_level("Customer"), 'code': zsw_reference }] }
     wsLevelEArray = client.service.getLevelsEByIdentification(s, wsLevelIdentArray, wsTsNow)
-    #print("Level E: {0}".format(wsLevelEArray))
+    # print("Level E: {0}".format(wsLevelEArray))
     # prepare properties
     available_properties = get_all_property_definitions()
     # check if customer exists
@@ -470,11 +419,7 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
         if kst:
             client.service.quickAddGroupMember(session, kst_code, link)
     except Exception as err:
-        frappe.log_error( "Unable to add link ({0})<br>Session: {1}, kst: {2}, link: {3}".format(
-            err, session, kst_code, link), "ZSW update customer" )
-    # close connection
-    disconnect()
-    return
+        frappe.log_error("Unable to add link ({0})<br>Session: {1}, kst: {2}, link: {3}".format(err, session, kst_code, link), "ZSW update customer")
 
 def create_update_item(item_code, item_name, active, target):
     if active == 1 or active == "1":
@@ -490,13 +435,10 @@ def create_update_item(item_code, item_name, active, target):
         }]
     }
     # connect to ZSW
-    #print("Writing {0}".format(level))
+    # print("Writing {0}".format(level))
     s = getSession()
     # create or update sales order
     client.service.createLevels(session, level, True)
-    # close connection
-    disconnect()
-    return
     
 def create_update_sales_order(sales_order, customer, customer_name, tenant="AT", technician=None, active=True, debug=False):
     # collect city
@@ -517,7 +459,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
             customer_record.technik = technician
             customer_record.save()
         except Exception as err:
-            frappe.log_error( "Unable to update customer {0}: {1}".format(customer, err), "ZSW create_update_sales_order" )
+            frappe.log_error("Unable to update customer {0}: {1}".format(customer, err), "ZSW create_update_sales_order")
 
         zsw_technician = get_technician_id(technician)
     else:
@@ -542,7 +484,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
     wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': get_zsw_level("Customer"), 'code': get_zsw_reference(customer, tenant) }] }
     wsLevelEArray = client.service.getLevelsEByIdentification(s, wsLevelIdentArray, wsTsNow)
     if wsLevelEArray:
-        #print("Level E Array: {0}".format(wsLevelEArray[0]) )
+        # print("Level E Array: {0}".format(wsLevelEArray[0]) )
         # make sure extension key exists
         if not wsLevelEArray[0]["extensions"]:
             wsLevelEArray[0]["extensions"] = {'WSExtension': []}
@@ -562,11 +504,7 @@ def create_update_sales_order(sales_order, customer, customer_name, tenant="AT",
             print("Content: {0}".format(contentDict))
         client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
     else:
-        frappe.log_error( "Trying to link to customer that does not exist: {0} ({1})".format(customer, sales_order), "ZSW create_update_sales_order")
-        
-    # close connection
-    disconnect()
-    return
+        frappe.log_error("Trying to link to customer that does not exist: {0} ({1})".format(customer, sales_order), "ZSW create_update_sales_order")
 
 def get_zsw_reference(customer, tenant):
     if tenant.lower() == "ch":
@@ -587,11 +525,11 @@ def get_zsw_project_name(sales_order, tenant):
     return zsw_project_name
 
 def compress_level_e(level_e_array):
-    #print("Settings: {0}".format(client.settings))
+    # print("Settings: {0}".format(client.settings))
     contentStr = "{0}".format(level_e_array)
     contentDict = eval(contentStr)
     contentDict.pop('genericProperties', None)
-    #print("LevelArray: {0}".format(contentDict))
+    # print("LevelArray: {0}".format(contentDict))
     return contentDict
         
 """ interaction mechanisms """
@@ -729,7 +667,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
     start_time -= (2 * 60 * 60)
     end_time += (20 * 60 * 60)
     if end_time < start_time:
-        frappe.log_error( "Invalid end time (before start time)", "ZSW invalid end time" )
+        frappe.log_error("Invalid end time (before start time)", "ZSW invalid end time")
         print("Invalid end time (before start time)")
         return
     # get bookings
@@ -775,7 +713,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                 customer_record = frappe.get_doc("Customer", erp_customer)
             except:
                 # customer not found
-                frappe.log_error( "Customer {0} not found in ERPNext.".format(erp_customer), "ZSW customer not found" )
+                frappe.log_error("Customer {0} not found in ERPNext.".format(erp_customer), "ZSW customer not found")
                 continue
             if customer_record:
                 # prepare customer settings
@@ -840,14 +778,14 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                         item_code = []
                         qty = []
                         customer_contact = None
-                        #print("Booking: {0}".format(booking))
+                        # print("Booking: {0}".format(booking))
                         try:
-                        #if True:
+                        # if True:
                             try:
                                 print("Properties: {0}".format(len(booking['properties']['WSProperty'])))
                             except:
                                 print("No properties")
-                            #print("Property details: {0}".format(booking['properties']))
+                            # print("Property details: {0}".format(booking['properties']))
                             for p in booking['properties']['WSProperty']:
                                 print("Reading properties...")
                                 if p['key'] == 2:
@@ -1016,7 +954,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
             config.save()
             add_comment(text="{0} invoices created".format(invoice_count), from_time=start_time, to_time=end_time, kst=kst_filter, service_filter=service_filter)
         except Exception as err:
-            frappe.log_error( "Unable to set status. ({0})".format(err), "ZSW create_invoices")
+            frappe.log_error("Unable to set status. ({0})".format(err), "ZSW create_invoices")
     else:
         print("No bookings found.")
     return
@@ -1077,7 +1015,7 @@ def create_generic_invoices(from_date=None, to_date=None, with_time=False):
                 customer_record = frappe.get_doc("Customer", customer)
             except:
                 # customer not found
-                frappe.log_error( "Customer {0} not found in ERPNext.".format(customer), "ZSW customer not found" )
+                frappe.log_error("Customer {0} not found in ERPNext.".format(customer), "ZSW customer not found")
                 continue
             if customer_record:
                 # create lists to collect invoice items
@@ -1098,17 +1036,17 @@ def create_generic_invoices(from_date=None, to_date=None, with_time=False):
                                 # invoicing_type, e.g. "J": invoice, "N"/"W": free of charge, "P": flat rate
                                 invoice_type = level['code']
                     except Exception as err:
-                        #print("...no levels... ({0})".format(err))
+                        # print("...no levels... ({0})".format(err))
                         pass
                     if use_booking:
                         # collect properties
                         item_code = []
                         qty = []
                         customer_contact = None
-                        #print("Booking: {0}".format(booking))
+                        # print("Booking: {0}".format(booking))
                         try:
                             print("Properties: {0}".format(len(booking['properties']['WSProperty'])))
-                            #print("Property details: {0}".format(booking['properties']))
+                            # print("Property details: {0}".format(booking['properties']))
                             for p in booking['properties']['WSProperty']:
                                 print("Reading properties...")
                                 if p['key'] == 2:
@@ -1128,7 +1066,7 @@ def create_generic_invoices(from_date=None, to_date=None, with_time=False):
                                     duration = round(duration, 2)
                                     print("Duration override: {0}".format(duration))
                         except Exception as err:
-                            #print("...no properties... ({0})".format(err))
+                            # print("...no properties... ({0})".format(err))
                             pass
                         # add item to list
                         booking_id = booking['fromBookingID']
@@ -1201,7 +1139,7 @@ def create_generic_invoices(from_date=None, to_date=None, with_time=False):
                 datetime.now(), invoice_count)
             config.save()
         except Exception as err:
-            frappe.log_error( "Unable to set status. ({0})".format(err), "ZSW create_invoices")
+            frappe.log_error("Unable to set status. ({0})".format(err), "ZSW create_invoices")
     else:
         print("No bookings found.")
     return
@@ -1270,7 +1208,7 @@ def set_last_sync(date):
         config.last_sync_date = date_str
         config.save()
     except Exception as err:
-        frappe.log_error( "Unable to set end time. ({0})".format(err), "ZSW set_last_sync")
+        frappe.log_error("Unable to set end time. ({0})".format(err), "ZSW set_last_sync")
     return
 
 def add_comment(text, from_time, to_time, kst, service_filter):
@@ -1291,12 +1229,10 @@ def add_comment(text, from_time, to_time, kst, service_filter):
 # integarted test functions for integration tests
 def test_connect():
     get_employees()
-    disconnect()
-    return
 
 def test_customer():
     s = getSession()
-    #wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': "1234500" }] }
+    # wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': 1, 'code': "1234500" }] }
     wsLevelIdentArray = { 'WSLevelIdentification': [{'levelID': get_zsw_level("Customer"), 'code': "21762" }] }
     wsLevelEArray = client.service.getLevelsEByIdentification(session, wsLevelIdentArray, None)
     contentStr = "{0}".format(wsLevelEArray[0])
@@ -1304,7 +1240,6 @@ def test_customer():
     contentDict.pop('genericProperties', None)
     print("Level E: {0}".format(contentDict))
     client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
-    disconnect()
 
 @frappe.whitelist()
 def deliver_sales_order(sales_order, tenant="AT"):
@@ -1370,7 +1305,7 @@ def deliver_sales_order(sales_order, tenant="AT"):
                 qty = []
                 customer_contact = None
                 try:
-                #if True:
+                # if True:
                     try:
                         print("Properties: {0}".format(len(booking['properties']['WSProperty'])))
                     except:
@@ -1494,7 +1429,7 @@ def deliver_sales_order(sales_order, tenant="AT"):
         try:
             sales_order_object.save()
         except Exception as err:
-            frappe.log_error( "Unable to update sync time. ({0}, {1})".format(sales_order, err), "ZSW create_invoices")
+            frappe.log_error("Unable to update sync time. ({0}, {1})".format(sales_order, err), "ZSW create_invoices")
         return {'delivery_note': new_dn}
     else:
         print("No bookings found.")
@@ -1531,7 +1466,7 @@ def debug_bookings(start_date, end_date):
                 customer = level['code']
                 if customer not in customers:
                     customers.append(customer)
-                    #print("Found customer: ({0})".format(customer))
+                    # print("Found customer: ({0})".format(customer))
     print("Has {0} customers with bookings. Checking bookings...".format(len(customers)))
     # loop through all bookings
     for booking in bookings:
@@ -1670,7 +1605,3 @@ def update_customer_all_in(licence, calc_rate, tenant="AT"):
             frappe.log_error("{0} on {1}".format(err, contentDict), "ZSW update_customer_all_in customer error")
     else:
         print("Customer not found")
-
-    # close connection
-    disconnect()
-    return
