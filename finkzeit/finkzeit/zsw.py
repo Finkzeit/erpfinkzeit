@@ -26,13 +26,19 @@ ENUM_ACTION = {
 """ Low-level connect/disconnect """
 def getSession():
     global session
+    #SF global nextSessionRefresh
+    #SF if not 'session' in globals():
+    #SF   global session = None
     if not 'session' in globals():
         session = None
 
     if session:
         try:
+            #SF check for refresh timout is half sessionTimeout
+            #SF if datetime.now().timestamp() > nextRefresh
             session = client.service.refreshSession(session)
             if session:
+                #SF nextRefresh = datetime.now().timestamp() + (timeout - 60000)
                 print("Session: {0} refreshed".format(session))
                 # return a refreshed and authenticated session
                 return session
@@ -42,6 +48,8 @@ def getSession():
     try:
         #create a new session
         session = client.service.openSession(config.license)
+        #SF timeout = client.service.getSessionTimeout(session)
+        #SF nextRefresh = datetime.now().timestamp() + (timeout - 10000)
         print("Session: {0}  created".format(session))
         pw = get_decrypted_password("ZSW", "ZSW", 'password', False)
         # try to authenticate session
@@ -103,6 +111,7 @@ try:
     #client = Client(config.endpoint, plugins=[LoggingPlugin()])
     # without logging plugin
     #client = Client(config.endpoint)
+
     # with settings
     #settings = Settings(strict=False, xml_huge_tree=True)
     settings = Settings(strict=True, xml_huge_tree=False)
@@ -111,11 +120,15 @@ try:
 
     # create and initialize session variable to be used later on
     session = None
+    #SF timeout
+    #SF nextRefresh
     print("Global session variable initialized")
 except:
     frappe.log_error("Unable to create and initialize global variables", "ZSW global")
 
+#SF function disconnect() is not necessary at all
 def disconnect():
+    # global session
     if session:
         s = getSession()
         client.service.logout(s)
@@ -270,6 +283,16 @@ def get_project_bookings(zsw_project, from_time, to_time):
     if bookings:
         print("Total {0} bookings".format(len(bookings)))
     return bookings
+
+def get_pers_lock_dates(employees):
+    pers_lock_dates = {}
+    s = getSession()
+    
+    for person_id, v in employees.items():
+        lock_date = client.service.getLockDateByPersonID(s, person_id)
+        pers_lock_dates[person_id] = lock_date['timeInSeconds']
+
+    return pers_lock_dates 
 
 def mark_bookings(bookings):
     if type(bookings) is not list:
@@ -688,6 +711,10 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
     config = frappe.get_doc("ZSW", "ZSW")
     employees = get_employees()
     print("Got {0} employees.".format(len(employees)))
+    
+    # loop through all employees and fill the hash map
+    pers_lock_dates = get_pers_lock_dates(employees)
+
     # get start time (at 0:00:00)
     if from_date:
         start_time = int((datetime.strptime(from_date, "%Y-%m-%d") - datetime(1970,1,1)).total_seconds())
@@ -707,6 +734,7 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
         return
     # get bookings
     bookings = get_bookings(start_time, end_time)
+
     collected_bookings = []
     invoice_count = 0
     if bookings:
@@ -934,8 +962,11 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                     warehouse=warehouse))
                         else:
                             print("No invoicable items ({0}, {1}).".format(item_code, qty))
-                        # mark as collected
-                        collected_bookings.append(booking_id)
+
+                        # mark as collected when bookingTS > lockDate of the employee the booking belongs to
+                        if booking['from']['timeInSeconds'] > pers_lock_dates[booking['person']]:
+                            collected_bookings.append(booking_id)
+
                 # collected all items, create invoices
                 print("Customer {0} aggregated, {1} items remote, {2} items onsite.".format(customer, len(items_remote), len(items_onsite)))
                 # invoice T01
@@ -998,6 +1029,10 @@ def create_generic_invoices(from_date=None, to_date=None, with_time=False):
     config = frappe.get_doc("ZSW", "ZSW")
     employees = get_employees()
     print("Got {0} employees.".format(len(employees)))
+        
+    # loop through all employees and fill the hash map
+    pers_lock_dates = get_pers_lock_dates(employees)
+
     # get start time (at 0:00:00)
     if from_date:
         start_time = int((datetime.strptime(from_date, "%Y-%m-%d") - datetime(1970,1,1)).total_seconds())
@@ -1132,8 +1167,11 @@ def create_generic_invoices(from_date=None, to_date=None, with_time=False):
                                     qty=qty[i]))
                         else:
                             print("No invoicable items ({0}, {1}).".format(item_code, qty))
-                        # mark as collected
-                        collected_bookings.append(booking_id)
+
+                        # mark as collected when bookingTS > lockDate of the employee the booking belongs to
+                        if booking['from']['timeInSeconds'] > pers_lock_dates[booking['person']]:
+                            collected_bookings.append(booking_id)
+
                 # collected all items, create invoices
                 print("Customer {0} aggregated, {1} items.".format(customer, len(items)))
                 # create invoice
