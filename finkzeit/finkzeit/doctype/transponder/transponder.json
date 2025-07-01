@@ -21,7 +21,8 @@
   "col_uid",
   "legic_uid",
   "deister_uid",
-  "em_uid"
+  "em_uid",
+  "test_key"
  ],
  "fields": [
   {
@@ -135,9 +136,15 @@
    "fieldtype": "Data",
    "label": "EM UID",
    "read_only": 1
+  },
+  {
+   "fieldname": "test_key",
+   "fieldtype": "Check",
+   "label": "Test Key",
+   "read_only": 0
   }
  ],
- "modified": "2024-05-06 11:00:24.986888",
+ "modified": "2025-07-01 16:30:24.986888",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Transponder",

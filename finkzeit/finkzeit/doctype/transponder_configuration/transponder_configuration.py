@@ -136,7 +136,7 @@ Provide details as
  /api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.create_transponder?config=TK-00001&code=123456
 """
 @frappe.whitelist()
-def create_transponder(config, code, hitag_uid=None, mfcl_uid=None, mfdf_uid=None, legic_uid=None, deister_uid=None, em_uid=None):
+def create_transponder(config, code, hitag_uid=None, mfcl_uid=None, mfdf_uid=None, legic_uid=None, deister_uid=None, em_uid=None, test_key=0):
     if frappe.db.exists("Transponder Configuration", config):
         conf = frappe.get_doc("Transponder Configuration", config)
         if not frappe.db.exists("Transponder", code):
@@ -149,7 +149,8 @@ def create_transponder(config, code, hitag_uid=None, mfcl_uid=None, mfdf_uid=Non
                 'mfdf_uid': mfdf_uid,
                 'legic_uid': legic_uid,
                 'deister_uid': deister_uid,
-                'em_uid': em_uid
+                'em_uid': em_uid,
+                'test_key': 1 if test_key else 0
             })
             new_transponder.insert(ignore_permissions=True)
             frappe.db.commit()
