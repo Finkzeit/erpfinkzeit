@@ -5,21 +5,18 @@ import { initializeUI, addEventListeners, updateSessionInfo } from "./ui.js";
 import { executeScriptsBasedOnConfig } from "./scripts.js";
 import { verifyKey } from "./verifyKey.js";
 import logger from "./logger.js";
-import { initializeKeyOperation } from "./keyOperation.js";
+import { initializeKeyFormatting } from "./formatKey.js";
+import { initializeKeyReading } from "./readKey.js";
+import { initializeCountrySelector } from "./countrySelector.js";
 
+import { resetApp, startNewSession, isSessionValid, addAppStateListener } from "./state.js";
+
+// Application state
 let elements;
 let transponderConfig;
-let erpRestApi; // Declare this at the top level
-let sessionActive = false;
-
-let timeStart;
-let timeStop;
+let erpRestApi;
 
 document.addEventListener("DOMContentLoaded", setup);
-
-export function inSession() {
-    return sessionActive;
-}
 
 async function setup() {
     logger.debug("Setup starting");
@@ -27,12 +24,76 @@ async function setup() {
     addEventListeners(elements, startSession, handleManualNumberChange, handleConnectReader);
     await handleConnectReader();
 
-    erpRestApi = new ErpRestApi(); // Create a single instance
-    await erpRestApi.getTransponderConfigurationList(elements.firmenSelect);
+    try {
+        logger.debug("Creating ERP API instance...");
+        erpRestApi = new ErpRestApi();
+        logger.debug("ERP API instance created, setting global...");
+        window.erpRestApi = erpRestApi;
+        logger.debug("Global ERP API set, loading configuration list...");
+        await erpRestApi.getTransponderConfigurationList(elements.firmenSelect);
+        logger.debug("ERP API initialized successfully");
+    } catch (error) {
+        logger.error("Failed to initialize ERP API:", error);
+        if (!erpRestApi) {
+            logger.debug("Creating fallback ERP API instance...");
+            erpRestApi = new ErpRestApi();
+            window.erpRestApi = erpRestApi;
+            logger.debug("Fallback ERP API instance created and set globally");
+        }
+    }
 
-    initializeKeyOperation(erpRestApi); // Pass erpRestApi instance
+    logger.debug("Initializing key formatting...");
+    initializeKeyFormatting();
+    
+    logger.debug("Initializing key reading...");
+    initializeKeyReading();
+    
+    logger.debug("Initializing country selector...");
+    initializeCountrySelector();
+    
+
+
+    // Listen for app reset events to clear UI
+    addAppStateListener("appReset", clearUI);
+    addAppStateListener("appReactivated", () => {
+        logger.debug("App reactivated, ready for new operations");
+    });
 
     logger.debug("Setup completed");
+    if (window.env.NODE_ENV === "development") {
+        logger.debug("Running in development mode");
+    }
+}
+
+function clearUI() {
+    logger.debug("Clearing UI due to app reset");
+    
+    // Reset UI elements
+    if (elements) {
+        if (elements.firmenSelect) {
+            elements.firmenSelect.innerHTML = '<option value="">Firma auswählen...</option>';
+        }
+        if (elements.numberInput) {
+            elements.numberInput.value = "";
+        }
+    }
+    
+    // Reset session info
+    updateSessionInfo("reset");
+    updateSessionInfo("status", "Anwendung zurückgesetzt. Bitte Firma auswählen.");
+    updateSessionInfo("action", "Anwendung wurde zurückgesetzt");
+    
+    // Clear any detected keys
+    if (window.clearKeys) {
+        window.clearKeys();
+    }
+    
+    // Clear transponder config
+    transponderConfig = null;
+}
+
+function resetApplication() {
+    resetApp();
 }
 
 async function handleConnectReader() {
@@ -52,25 +113,21 @@ async function handleConnectReader() {
 }
 
 async function startSession() {
-    // If a session is already running, stop it first
-    if (sessionActive) {
-        sessionActive = false;
-        timeStart = Date.now();
-        logger.debug("Session already active, stopping it");
-        // Wait for ongoing operations to complete
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-    }
-
     logger.debug("startSession starting");
+    const selectedFirmaId = elements.firmenSelect.value;
+    if (!selectedFirmaId) {
+        logger.warn("No valid company selected");
+        return;
+    }
     try {
-        logger.debug(`Selected Firma ID: ${elements.firmenSelect.value}`);
-        transponderConfig = await erpRestApi.getTransponderConfiguration(elements.firmenSelect.value);
+        logger.debug(`Selected Firma ID: ${selectedFirmaId}`);
+        transponderConfig = await erpRestApi.getTransponderConfiguration(selectedFirmaId);
         logger.debug("Transponder configuration retrieved:", transponderConfig);
 
         numberHandler.reset();
         await numberHandler.initialize(transponderConfig);
 
-        const requiredKeys = transponderConfig.getRequiredKeys();
+        const requiredKeys = await transponderConfig.getRequiredKeys();
         updateSessionInfo("reset");
         updateSessionInfo("status", "Suche");
         updateSessionInfo("requiredTech", requiredKeys);
@@ -82,30 +139,22 @@ async function startSession() {
             })
         );
 
-        // Set sessionActive to true only after all setup is complete
-        sessionActive = true;
-
-        await recurringSession(transponderConfig);
+        await recurringSession(requiredKeys);
     } catch (error) {
         logger.error("Error in startSession:", error);
-    } finally {
-        sessionActive = false;
     }
 }
 
-async function recurringSession(transponderConfig) {
-    logger.debug("Recurring session starting");
-    while (sessionActive) {
+async function recurringSession(requiredKeys) {
+    const sessionId = startNewSession();
+    logger.debug(`Recurring session ${sessionId} starting`);
+    
+    while (isSessionValid(sessionId)) {
         try {
             numberHandler.readFromInput();
 
             const keyVerified = await verifyKey(transponderConfig, numberHandler);
             if (!keyVerified) {
-                if (!sessionActive) {
-                    timeStop = Date.now() - timeStart;
-                    logger.debug(`Session cancelled, stopping recurring session after ${timeStop}ms`);
-                    break;
-                }
                 logger.warn("Key verification failed, restarting session");
                 updateSessionInfo("status", "Verifizierung fehlgeschlagen");
                 updateSessionInfo("action", "Schlüsselverifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.");
@@ -113,7 +162,6 @@ async function recurringSession(transponderConfig) {
             }
 
             updateSessionInfo("number", transponderConfig.getNumber());
-            const requiredKeys = transponderConfig.getRequiredKeys();
             requiredKeys.forEach((key) => {
                 updateSessionInfo("tag", {
                     type: key,
@@ -122,7 +170,11 @@ async function recurringSession(transponderConfig) {
                 });
             });
 
-            const { allScriptsExecuted, sessionResult, errors } = await executeScriptsBasedOnConfig(transponderConfig, erpRestApi);
+            const { allScriptsExecuted, sessionResult, errors } = await executeScriptsBasedOnConfig(
+                transponderConfig,
+                requiredKeys,
+                erpRestApi
+            );
 
             if (allScriptsExecuted && sessionResult === "success") {
                 logger.debug("All scripts executed successfully");
@@ -169,7 +221,8 @@ async function recurringSession(transponderConfig) {
             break;
         }
     }
-    logger.debug("Session has ended");
+    
+    logger.debug(`Session ${sessionId} ended`);
 }
 
 function handleManualNumberChange() {
@@ -184,4 +237,10 @@ function handleError(error) {
     }
 }
 
-export { transponderConfig };
+// Make global variables available for other modules
+window.transponderConfig = () => transponderConfig;
+window.erpRestApi = () => erpRestApi;
+window.updateSessionInfo = updateSessionInfo;
+window.resetApplication = resetApplication;
+
+export { transponderConfig, erpRestApi };

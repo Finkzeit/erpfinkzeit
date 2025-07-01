@@ -1,0 +1,6 @@
+/server
+/node_modules
+.vscode
+.env
+.DS_Store
+API.py

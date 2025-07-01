@@ -30,24 +30,43 @@
                     <h2>Sitzung</h2>
                     <ul id="uiList"></ul>
                 </div>
-            </main>
-            <div id="settingsDropdown" class="dropdown">
-                <button id="settingsButton" class="dropbtn">
-                    <img src="img/gear.svg" alt="Einstellungen" style="width: 25px; height: 25px" />
-                </button>
-                <div id="settingsContent" class="dropdown-content">
-                    <a href="#" id="readKeyOption">Schlüssel Auslesen</a>
-                    <a href="#" id="formatKeyOption">Schlüssel Formatieren</a>
+                <div class="bottom-controls">
+                    <div class="country-group" role="group" aria-label="Länderwahl">
+                        <button id="austriaMode" class="country-btn active" data-country="austria" aria-pressed="true">
+                            <span class="flag" role="img" aria-label="Österreich">🇦🇹</span>
+                            <span>Österreich</span>
+                        </button>
+                        <button id="switzerlandMode" class="country-btn" data-country="switzerland" aria-pressed="false">
+                            <span class="flag" role="img" aria-label="Schweiz">🇨🇭</span>
+                            <span>Schweiz</span>
+                        </button>
+                    </div>
+                    <button id="testModeToggle" class="test-mode-btn" data-test-mode="off" aria-pressed="false">
+                        <span class="test-icon" aria-hidden="true">🧪</span>
+                        <span>Testmodus: AUS</span>
+                    </button>
+                    <div class="action-group">
+                        <button id="readKeyButton" class="btn read-key-btn">
+                            <span class="action-icon" aria-hidden="true">🔑</span>
+                            Schlüssel Lesen
+                        </button>
+                        <button id="formatKeyButton" class="btn format-key-btn">
+                            <span class="action-icon" aria-hidden="true">🛠️</span>
+                            Schlüssel Formatieren
+                        </button>
+                    </div>
                 </div>
-            </div>
+            </main>
         </div>
 
+        <script src="/js/env.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
         <script>
             $(document).ready(function () {
                 $("#firmen").select2({
                     placeholder: "Wähle eine Firma",
+                    allowClear: true,
                 });
             });
         </script>

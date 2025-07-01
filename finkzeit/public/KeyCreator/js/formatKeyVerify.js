@@ -1,7 +1,7 @@
 import * as api from "./api.js";
 import logger from "./logger.js";
 import { getSAK } from "./handler/protocolHandler.js";
-import { updateDialogMessage } from "./keyOperation.js";
+import { updateDialogMessage } from "./formatKey.js";
 
 let detectedKeys = {};
 let wrongKeys = {};
@@ -61,7 +61,7 @@ async function waitForInitialTag(shouldContinueSearchFn) {
                     const sakValue = await getSAK(result.UID);
                     tagType = identifyMifare(sakValue);
                 }
-                logger.debug("[FormatVerify] Initial tag found", result);
+                logger.info("[FormatVerify] Initial tag found", result);
                 updateDialogMessage(`${tagType} (${result.UID}) erkannt`);
                 return { uid: result.UID, tagType };
             }
@@ -96,7 +96,7 @@ async function detectAllTags(shouldContinueSearchFn) {
                 data: result,
                 TagType: tagType,
             };
-            logger.debug("[FormatVerify] New tag found", result);
+            logger.info("[FormatVerify] New tag found", result);
 
             updateDialogMessage(`${tagType} (${result.UID}) erkannt`);
         }
@@ -112,7 +112,7 @@ async function requiredKeySet() {
     logger.debug("[FormatVerify] Detected keys:", detectedKeySet);
 
     if (detectedKeySet.size > 0) {
-        logger.debug("[FormatVerify] Keys have been detected.");
+        logger.info("[FormatVerify] Keys have been detected.");
         updateDialogMessage("Schlüssel erkannt");
         Object.assign(correctKeys, detectedKeys);
         detectedKeys = {};
