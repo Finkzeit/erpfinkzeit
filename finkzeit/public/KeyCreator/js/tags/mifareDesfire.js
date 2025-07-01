@@ -10,20 +10,20 @@ export async function mifareDesfireScript(transponderConfig) {
     updateSessionInfo("action", "Starte MIFARE DESFire Operationen");
 
     try {
-        if (!(await login0Key())) throw new Error("Anmeldung mit 0-Schlüssel fehlgeschlagen");
+        if (!(await login0Key())) throw new Error("Failed to login with 0 key");
         const readMasterKeySettingsResult = await readMasterKeySettings();
-        if (!readMasterKeySettingsResult) throw new Error("Lesen der Master-Schlüsseleinstellungen fehlgeschlagen");
+        if (!readMasterKeySettingsResult) throw new Error("Failed to read master key settings");
         logger.debug("readMasterKeySettingsResult", readMasterKeySettingsResult);
 
         if (!(await changeMasterKeySettings(readMasterKeySettingsResult.keySettings, readMasterKeySettingsResult.numberOfKeys)))
-            throw new Error("Ändern der Master-Schlüsseleinstellungen fehlgeschlagen");
+            throw new Error("Failed to change master key settings");
         if (!(await changeMasterKey(transponderConfig, readMasterKeySettingsResult.keySettings, readMasterKeySettingsResult.numberOfKeys)))
-            throw new Error("Ändern des Master-Schlüssels fehlgeschlagen");
-        if (!(await loginMasterKey(transponderConfig))) throw new Error("Anmeldung mit Master-Schlüssel fehlgeschlagen");
+            throw new Error("Failed to change master key");
+        if (!(await loginMasterKey(transponderConfig))) throw new Error("Failed to login with master key");
         if (!(await createApplication(transponderConfig, readMasterKeySettingsResult.keySettings)))
-            throw new Error("Erstellen der Anwendung fehlgeschlagen");
-        if (!(await selectApplication(transponderConfig))) throw new Error("Auswählen der Anwendung fehlgeschlagen");
-        if (!(await loginAppZeroKeyAES())) throw new Error("Anmeldung mit Anwendungs-Null-Schlüssel AES fehlgeschlagen");
+            throw new Error("Failed to create application");
+        if (!(await selectApplication(transponderConfig))) throw new Error("Failed to select application");
+        if (!(await loginAppZeroKeyAES())) throw new Error("Failed to login with app zero key AES");
         if (
             !(await changeAppMasterKey(
                 transponderConfig,
@@ -31,8 +31,8 @@ export async function mifareDesfireScript(transponderConfig) {
                 readMasterKeySettingsResult.numberOfKeys
             ))
         )
-            throw new Error("Ändern des Anwendungs-Master-Schlüssels fehlgeschlagen");
-        if (!(await loginAppMasterKey(transponderConfig))) throw new Error("Anmeldung mit Anwendungs-Master-Schlüssel fehlgeschlagen");
+            throw new Error("Failed to change app master key");
+        if (!(await loginAppMasterKey(transponderConfig))) throw new Error("Failed to login with app master key");
         if (
             !(await changeApplicationReadKey(
                 transponderConfig,
@@ -40,13 +40,13 @@ export async function mifareDesfireScript(transponderConfig) {
                 readMasterKeySettingsResult.numberOfKeys
             ))
         )
-            throw new Error("Ändern des Anwendungs-Lese-Schlüssels fehlgeschlagen");
-        if (!(await selectApplication(transponderConfig))) throw new Error("Auswählen der Anwendung fehlgeschlagen");
-        if (!(await loginAppMasterKey(transponderConfig))) throw new Error("Anmeldung mit Anwendungs-Master-Schlüssel fehlgeschlagen");
-        if (!(await createDataFile(transponderConfig))) throw new Error("Erstellen der Datendatei fehlgeschlagen");
-        if (!(await writeToFile(transponderConfig))) throw new Error("Schreiben in die Datei fehlgeschlagen");
-        if (!(await loginApplicationReadKey(transponderConfig))) throw new Error("Anmeldung mit Anwendungs-Lese-Schlüssel fehlgeschlagen");
-        if (!(await readAndVerifyFile(transponderConfig))) throw new Error("Lesen und Verifizieren der Datei fehlgeschlagen");
+            throw new Error("Failed to change application read key");
+        if (!(await selectApplication(transponderConfig))) throw new Error("Failed to select application");
+        if (!(await loginAppMasterKey(transponderConfig))) throw new Error("Failed to login with app master key");
+        if (!(await createDataFile(transponderConfig))) throw new Error("Failed to create data file");
+        if (!(await writeToFile(transponderConfig))) throw new Error("Failed to write to file");
+        if (!(await loginApplicationReadKey(transponderConfig))) throw new Error("Failed to login with application read key");
+        if (!(await readAndVerifyFile(transponderConfig))) throw new Error("Failed to read and verify file");
 
         updateSessionInfo("tag", {
             type: "MIFAREDESFIRE",
@@ -56,7 +56,7 @@ export async function mifareDesfireScript(transponderConfig) {
         updateSessionInfo("action", "MIFARE DESFire Operationen erfolgreich abgeschlossen");
         return true;
     } catch (error) {
-        logger.error("Fehler in mifareDesfireScript:", error);
+        logger.error("Error in mifareDesfireScript:", error);
         updateSessionInfo("tag", {
             type: "MIFAREDESFIRE",
             uid: transponderConfig.tags.mifareDesfire.uid,
@@ -329,4 +329,51 @@ async function readAndVerifyFile(transponderConfig) {
     }
     updateSessionInfo("action", "MIFARE DESFire Verifizierung erfolgreich");
     return true;
+}
+
+export async function readMifareDesfire(transponderConfig) {
+    logger.debug("Starting readMifareDesfire function");
+    updateSessionInfo("action", "Lese MIFARE DESFire");
+
+    try {
+        await api.mifare();
+        
+        const masterKeys = [0x00000000000000000000000000000000, 0x0123456789abcdef0123456789abcdef];
+        const keyTypes = [DESF.KEYTYPE_3DES, DESF.KEYTYPE_AES];
+        
+        for (const key of masterKeys) {
+            for (const keyType of keyTypes) {
+                try {
+                    const authResult = await protocolHandler.DESFire_Authenticate(CRYPTO_ENV, 0x00, key, keyType, DESF.AUTHMODE_EV1);
+                    if (authResult) {
+                        logger.debug(`Successfully authenticated with key: ${key} and keyType: ${keyType}`);
+                        
+                        // Try to read from common file numbers
+                        for (let fileNo = 0; fileNo < 5; fileNo++) {
+                            try {
+                                const readResult = await protocolHandler.DESFire_ReadData(CRYPTO_ENV, fileNo, 0x00, 0x04, DESF.COMMSET_PLAIN);
+                                if (readResult.success) {
+                                    logger.debug(`Read data from file ${fileNo}: ${readResult.data}`);
+                                    updateSessionInfo("action", `MIFARE DESFire Daten erfolgreich gelesen: ${readResult.data}`);
+                                    return readResult.data.toString();
+                                }
+                            } catch (error) {
+                                logger.debug(`Failed to read file ${fileNo}: ${error.message}`);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    logger.debug(`Authentication failed with key ${key} and keyType ${keyType}: ${error.message}`);
+                }
+            }
+        }
+        
+        logger.warn("Could not read number from MIFARE DESFire tag");
+        updateSessionInfo("action", "Keine Daten von MIFARE DESFire Tag gelesen");
+        return null;
+    } catch (error) {
+        logger.error(`Error reading MIFARE DESFire number: ${error.message}`);
+        updateSessionInfo("action", `Fehler beim Lesen von MIFARE DESFire: ${error.message}`);
+        return null;
+    }
 }

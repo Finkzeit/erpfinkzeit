@@ -2,8 +2,7 @@ import * as api from "./api.js";
 import logger from "./logger.js";
 import { getSAK } from "./handler/protocolHandler.js";
 import { updateSessionInfo } from "./ui.js";
-import { getIsFormatting, addFormattingChangeListener, removeFormattingChangeListener } from "./state.js";
-import { inSession } from "./app.js";
+import { getIsFormatting, addFormattingChangeListener, removeFormattingChangeListener, isAppActive } from "./state.js";
 
 let detectedKeys = {};
 let wrongKeys = {};
@@ -25,7 +24,7 @@ export async function verifyKey(transponderConfig, numberHandler) {
     updateSessionInfo("status", "Schlüssel wird überprüft");
     let tagDetected = false;
 
-    while (!tagDetected && inSession()) {
+    while (!tagDetected && isAppActive()) {
         if (getIsFormatting()) {
             logger.debug("[verifyKey] Formatting in progress, stopping detection.");
             await new Promise((resolve) => {
@@ -42,25 +41,17 @@ export async function verifyKey(transponderConfig, numberHandler) {
         if (getIsFormatting()) continue; // Skip detection if formatting is still in progress
 
         logger.debug("[verifyKey] Detecting tag....");
-
         tagDetected = await detectFirstTag(transponderConfig);
-
-        logger.debug("[verifyKey] Tag detected:", tagDetected);
+        logger.debug("[verifyKey] Tag detected 1:", tagDetected);
         if (tagDetected) {
             await validateNumber(transponderConfig, numberHandler);
             const requiredKeysCorrect = await requiredKeySet(transponderConfig);
             if (requiredKeysCorrect) {
                 return true; // Return true if all required keys are correct
             }
-            return false;
-        }
-
-        if (!inSession()) {
-            logger.debug("[verifyKey] Session cancelled, stopping verification");
-            return false;
         }
     }
-    return tagDetected;
+    return false; // Return false if the loop exits without finding correct keys
 }
 
 export async function detectFirstTag(transponderConfig) {
@@ -69,14 +60,19 @@ export async function detectFirstTag(transponderConfig) {
 
     const searchFunctions = [api.hitag1s, api.mifare, api.deister, api.em];
 
-    while (inSession()) {
+    while (isAppActive()) {
         if (getIsFormatting()) {
             logger.debug("[verifyKey] Formatting in progress, stopping detection.");
             return false; // Exit the loop if formatting is in progress
         }
 
-        logger.debug("[verifyKey] Searching for tag...");
+        logger.debug("[verifyKey] Searching for tag.....");
         for (const searchFunction of searchFunctions) {
+            if (!isAppActive()) {
+                logger.debug("[verifyKey] App not active, stopping detection");
+                return false;
+            }
+            
             const result = await searchFunction();
             if (result.Result) {
                 if (correctKeys[result.UID] || wrongKeys[result.UID]) {
@@ -94,7 +90,7 @@ export async function detectFirstTag(transponderConfig) {
                         data: result,
                         TagType: tagType,
                     };
-                    logger.debug("[verifyKey] New tag found", result);
+                    logger.info("[verifyKey] New tag found", result);
 
                     await setUIDInTransponderConfig(transponderConfig, result);
 
@@ -107,7 +103,7 @@ export async function detectFirstTag(transponderConfig) {
                 } else {
                     detectedKeys[result.UID].count += 1;
                     if (detectedKeys[result.UID].count === 2) {
-                        logger.debug("[verifyKey] UID detected twice, stopping loop", result);
+                        logger.info("[verifyKey] UID detected twice, stopping loop", result);
                         return detectedKeys;
                     }
                 }
@@ -116,6 +112,8 @@ export async function detectFirstTag(transponderConfig) {
             }
         }
     }
+    
+    logger.debug("[verifyKey] Detection loop ended due to app state change");
     return false;
 }
 
@@ -153,7 +151,7 @@ async function setUIDInTransponderConfig(transponderConfig, result) {
             break;
     }
 
-    logger.debug("[verifyKey] Updated transponderConfig:", JSON.stringify(transponderConfig, null, 2));
+    logger.debug("[verifyKey] transponderConfig:", JSON.stringify(transponderConfig, null, 2));
 }
 
 async function requiredKeySet(transponderConfig) {
@@ -176,7 +174,7 @@ async function requiredKeySet(transponderConfig) {
                     case "em":
                         return "EM";
                     case "legic":
-                        return null;
+                        return null; // Exclude LEGIC from the required keys set
                     default:
                         return key;
                 }
@@ -190,7 +188,7 @@ async function requiredKeySet(transponderConfig) {
     logger.debug("[verifyKey] Detected keys:", detectedKeySet);
 
     if (requiredKeySet.size === detectedKeySet.size && [...requiredKeySet].every((key) => detectedKeySet.has(key))) {
-        logger.debug("[verifyKey] All required keys have been detected.");
+        logger.info("[verifyKey] All required keys have been detected.");
         updateSessionInfo("status", "Alle erforderlichen Schlüssel erkannt");
         Object.assign(correctKeys, detectedKeys);
         detectedKeys = {};

@@ -1,6 +1,6 @@
 export class Logger {
-    constructor(isDevelopment = true) {
-        this.isDevelopment = isDevelopment;
+    constructor(isProduction = false) {
+        this.isProduction = isProduction;
     }
 
     info(...args) {
@@ -16,16 +16,14 @@ export class Logger {
     }
 
     debug(...args) {
-        if (this.isDevelopment) {
-            const timestamp = Date.now();
-            console.debug(`[DEBUG] [${timestamp}]`, ...args);
+        if (!this.isProduction) {
+            console.debug("[DEBUG]", ...args);
         }
     }
 }
 
 // Create a default instance
-const isDevelopment = false; // Set this to false if in production
-const logger = new Logger(isDevelopment);
+const logger = new Logger(window.env.NODE_ENV === "production");
 
 // Export the default instance
 export default logger;

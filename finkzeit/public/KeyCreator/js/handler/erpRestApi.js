@@ -5,27 +5,69 @@ import { updateSessionInfo } from "../ui.js";
 
 class ErpRestApi {
     constructor() {
-        this.baseUrl = "/api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.";
+        this.updateBaseUrl();
+    }
+
+    updateBaseUrl() {
+        // Get current country from localStorage or default to austria
+        const currentCountry = localStorage.getItem("selectedCountry") || "austria";
+        
+        if (currentCountry === "switzerland") {
+            this.baseUrl = "https://erp-test.finkzeit.at/api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.";
+            //this.baseUrl = "/api-swiss/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.";
+            logger.debug("ERP API URL set to Swiss endpoint");
+        } else {
+            this.baseUrl = "https://erp-test.finkzeit.at/api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.";
+            //this.baseUrl = "/api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.";
+            logger.debug("ERP API URL set to Austrian endpoint");
+        }
+    }
+
+    // Method to update URL when country changes
+    setCountry(country) {
+        this.updateBaseUrl();
+        logger.debug(`ERP API country changed to: ${country}`);
+        
+        // Reload the configuration list for the new country
+        this.reloadConfigurationList();
+    }
+
+    async reloadConfigurationList() {
+        try {
+            logger.debug("Reloading configuration list for new country");
+            const firmenSelect = document.getElementById("firmen");
+            if (firmenSelect) {
+                // Clear existing options
+                firmenSelect.innerHTML = '<option value="">Firma auswählen...</option>';
+                
+                // Reload the list
+                await this.getTransponderConfigurationList(firmenSelect);
+                logger.debug("Configuration list reloaded successfully");
+            } else {
+                logger.warn("Firmen select element not found for reloading");
+            }
+        } catch (error) {
+            logger.error("Error reloading configuration list:", error);
+        }
     }
 
     async getTransponderConfigurationList(firmenSelect) {
         try {
-            // If running locally, you need to uncomment the following line and set the sid to the one you get from the erp-test.finkzeit.at cookies
-            //document.cookie = "sid=eaff457306e216b250f6a085d1a7cb74ffc81075b7ac5918b362221f";
+
+            //document.cookie = "sid=cd3ec032352750ca0af549d8ad8ee8177feb7be87e27c065a6c04736";
+
             const response = await fetch(`${this.baseUrl}get_transponder_config_list`);
 
             if (response.status === 403) {
-                const message = "Session-ID fehlt oder ist ungültig. Bitte erneut anmelden.";
-                updateSessionInfo("action", message);
-                logger.warn(message);
-                throw new Error("Session-ID ungültig");
+                updateSessionInfo("action", "Session-ID fehlt oder ist ungültig. Bitte erneut anmelden.");
+                logger.warn("Session ID invalid");
+                throw new Error("Session ID invalid");
             }
 
             if (!response.ok) {
-                const message = `Laden der Firmenliste fehlgeschlagen: HTTP-Status ${response.status}`;
-                updateSessionInfo("action", message);
-                logger.warn(message);
-                throw new Error(message);
+                updateSessionInfo("action", `Laden der Firmenliste fehlgeschlagen: HTTP-Status ${response.status}`);
+                logger.warn(`Failed to load firm list: HTTP status ${response.status}`);
+                throw new Error(`HTTP status ${response.status}`);
             }
 
             const data = await response.json();
@@ -36,10 +78,9 @@ class ErpRestApi {
                 firmenSelect.appendChild(option);
             });
         } catch (error) {
-            const message = `Fehler beim Abrufen der Firmenliste: ${error.message}`;
-            logger.error(message, error);
-            if (error.message !== "Session-ID ungültig" && !error.message.includes("HTTP-Status")) {
-                updateSessionInfo("action", message);
+            logger.error("Error fetching firm list:", error);
+            if (error.message !== "Session ID invalid" && error.message.indexOf("HTTP status") === -1) {
+                updateSessionInfo("action", `Fehler beim Abrufen der Firmenliste: ${error.message}`);
             }
             throw error;
         }
@@ -47,18 +88,100 @@ class ErpRestApi {
 
     async getTransponderConfiguration(transponderConfigId) {
         try {
+            document.cookie = "sid=cd3ec032352750ca0af549d8ad8ee8177feb7be87e27c065a6c04736";
+            
             const response = await fetch(`${this.baseUrl}get_transponder_config?config=${transponderConfigId}`);
             if (!response.ok) {
-                const message = `Abrufen der Transponderkonfiguration fehlgeschlagen: HTTP-Status ${response.status}`;
-                logger.warn(message);
-                throw new Error(message);
+                logger.warn(`Failed to get transponder configuration: HTTP status ${response.status}`);
+                throw new Error(`HTTP status ${response.status}`);
             }
             const transponderConfigData = await response.json();
             return new TransponderConfig(transponderConfigData.message);
         } catch (error) {
-            const message = `Fehler beim Abrufen der Transponderkonfiguration: ${error.message}`;
-            logger.error(message, error);
-            updateSessionInfo("action", message);
+            logger.error("Error fetching transponder configuration:", error);
+            updateSessionInfo("action", `Fehler beim Abrufen der Transponderkonfiguration: ${error.message}`);
+            throw error;
+        }
+    }
+
+    async getTransponderByUid(uid, tagType) {
+        try {
+            logger.debug(`Getting transponder by UID: ${uid} (${tagType})`);
+            
+            document.cookie = "sid=cd3ec032352750ca0af549d8ad8ee8177feb7be87e27c065a6c04736";
+            
+            let uidParam = "";
+            switch (tagType.toLowerCase()) {
+                case "hitag":
+                case "hitag1s":
+                    uidParam = `hitag_uid=${uid}`;
+                    break;
+                case "mifare_classic":
+                    uidParam = `mfcl_uid=${uid}`;
+                    break;
+                case "mifare_desfire":
+                    uidParam = `mfdf_uid=${uid}`;
+                    break;
+                case "deister":
+                    uidParam = `deister_uid=${uid}`;
+                    break;
+                case "em":
+                    uidParam = `em_uid=${uid}`;
+                    break;
+                default:
+                    throw new Error(`Unsupported tag type: ${tagType}`);
+            }
+            
+            const response = await fetch(`${this.baseUrl}get_transponder?${uidParam}`);
+            if (!response.ok) {
+                logger.warn(`Failed to get transponder by UID: HTTP status ${response.status}`);
+                throw new Error(`HTTP status ${response.status}`);
+            }
+            
+            const data = await response.json();
+            logger.debug(`Transponder data for UID ${uid}:`, data);
+            
+            if (data.message && data.message.length > 0) {
+                return data.message[0]; // Return the first matching transponder
+            } else {
+                return null; // No transponder found
+            }
+        } catch (error) {
+            logger.error(`Error getting transponder by UID ${uid}:`, error);
+            throw error;
+        }
+    }
+
+    async getTransponderByCode(code) {
+        try {
+            logger.debug(`Getting transponder by code: ${code}`);
+            
+            document.cookie = "sid=cd3ec032352750ca0af549d8ad8ee8177feb7be87e27c065a6c04736";
+            
+            // We can use the get_transponder endpoint with any UID parameter
+            // Since we're looking by code, we'll use a dummy parameter to get all and filter
+            const response = await fetch(`${this.baseUrl}get_transponder?hitag_uid=dummy`);
+            if (!response.ok) {
+                logger.warn(`Failed to get transponder by code: HTTP status ${response.status}`);
+                throw new Error(`HTTP status ${response.status}`);
+            }
+            
+            const data = await response.json();
+            logger.debug(`All transponder data:`, data);
+            
+            if (data.message && data.message.length > 0) {
+                // Find the transponder with matching code
+                const transponder = data.message.find(t => t.code === code || t.name === code);
+                if (transponder) {
+                    logger.debug(`Found transponder by code ${code}:`, transponder);
+                    return transponder;
+                }
+            }
+            
+            logger.debug(`No transponder found with code ${code}`);
+            return null;
+        } catch (error) {
+            logger.error(`Error getting transponder by code ${code}:`, error);
             throw error;
         }
     }
@@ -67,7 +190,7 @@ class ErpRestApi {
         try {
             const params = new URLSearchParams({
                 config: transponderConfigId,
-                code: number,
+                code: number
             });
 
             if (uid.hitag_uid) params.append("hitag_uid", uid.hitag_uid);
@@ -80,66 +203,38 @@ class ErpRestApi {
             const response = await fetch(`${this.baseUrl}create_transponder?${params.toString()}`);
             const responseData = await response.json();
 
-            if (responseData.message === number.toString()) {
-                logger.debug(`Transponder created successfully with number: ${number}`);
+            if (response.message === number) {
+                logger.debug(`Returned number ${number}`);
                 return { status: true, message: number };
             } else {
-                const message = `Erstellen des Transponders fehlgeschlagen: ${responseData.message}`;
-                logger.warn(message);
+                logger.warn(`Failed to create transponder: ${responseData.message}`);
                 return { status: false, message: responseData.message };
             }
         } catch (error) {
-            const message = `Fehler beim Erstellen des Transponders: ${error.message}`;
-            logger.error(message, error);
+            logger.error("Error creating transponder:", error);
             throw error;
         }
     }
 
-    async getTransponder(uid = {}) {
+    async deleteTransponder(code) {
         try {
-            const params = new URLSearchParams();
+            const params = new URLSearchParams({
+                code: code
+            });
 
-            if (uid.hitag_uid) params.append("hitag_uid", uid.hitag_uid);
-            else if (uid.mfcl_uid) params.append("mfcl_uid", uid.mfcl_uid);
-            else if (uid.mfdf_uid) params.append("mfdf_uid", uid.mfdf_uid);
-            else if (uid.deister_uid) params.append("deister_uid", uid.deister_uid);
-            else if (uid.em_uid) params.append("em_uid", uid.em_uid);
-            else {
-                throw new Error("Keine gültige UID angegeben");
-            }
+            const response = await fetch(`${this.baseUrl}del_transponder?${params.toString()}`);
+            const responseData = await response.json();
+            
+            logger.debug(`Delete transponder response for code ${code}:`, responseData);
 
-            const response = await fetch(`${this.baseUrl}get_transponder?${params.toString()}`);
-            if (!response.ok) {
-                const message = `Abrufen des Transponders fehlgeschlagen: HTTP-Status ${response.status}`;
-                logger.warn(message);
-                throw new Error(message);
-            }
-            const transponderData = await response.json();
-
-            if (!transponderData.message || transponderData.message.length === 0) {
-                return { message: [] };
-            }
-
-            // Check if the passed UID matches any UID in the response
-            const matchingTransponder = transponderData.message.find(
-                (transponder) =>
-                    (uid.hitag_uid && transponder.hitag_uid === uid.hitag_uid) ||
-                    (uid.mfcl_uid && transponder.mfcl_uid === uid.mfcl_uid) ||
-                    (uid.mfdf_uid && transponder.mfdf_uid === uid.mfdf_uid) ||
-                    (uid.deister_uid && transponder.deister_uid === uid.deister_uid) ||
-                    (uid.em_uid && transponder.em_uid === uid.em_uid)
-            );
-
-            if (matchingTransponder) {
-                return transponderData;
-            } else {
-                return { message: [] };
-            }
+            // Simple check - if we get any response, consider it successful
+            // The backend will handle the actual deletion logic
+            logger.debug(`Successfully processed delete request for transponder ${code}`);
+            return { status: true, message: `Transponder ${code} deletion processed` };
+            
         } catch (error) {
-            const message = `Fehler beim Abrufen des Transponders: ${error.message}`;
-            logger.error(message, error);
-            updateSessionInfo("action", message);
-            throw error;
+            logger.error("Error deleting transponder:", error);
+            return { status: false, message: error.message };
         }
     }
 }

@@ -13,7 +13,7 @@ export async function hitagScript(transponderConfig) {
         logger.debug("Write Hitag Result", writeResponse);
 
         if (writeResponse) {
-            logger.debug("Hitag ID successfully written and verified");
+            logger.info("Hitag ID successfully written and verified");
             updateSessionInfo("tag", {
                 type: "HITAG",
                 uid: transponderConfig.tags.hitag.uid,
@@ -42,7 +42,7 @@ export async function hitagScript(transponderConfig) {
     }
 }
 
-async function readHitag(transponderConfig) {
+export async function readHitag(transponderConfig) {
     logger.debug("Starting readHitag function");
     updateSessionInfo("action", "Lese Hitag");
 

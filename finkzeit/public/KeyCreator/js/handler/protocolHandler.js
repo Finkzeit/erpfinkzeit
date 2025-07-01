@@ -25,7 +25,7 @@ export function parseBytes(index, numBytes, recvStr) {
         );
         return res;
     }
-    logger.error("parseByte Fehler: Index + Anzahl der Bytes * 2 ist außerhalb des gültigen Bereichs");
+    logger.error("parseByte Error: index + number of Bytes * 2 is out of bounds");
 }
 
 export function createTagMask(tagArr) {
@@ -53,7 +53,7 @@ function parseVersion(recvStr) {
     const len = parseByte(0, recvStr); // Adjusted to read the length from the correct position
     if (len * 2 > recvStr.length) {
         // Multiply by 2 because each byte is represented by 2 hex characters
-        return `Fehler: VersionsArrayLänge (${recvStr.length}) < Analysierter Längenparameter (${len * 2})`;
+        return `Error: VersionArrayLength (${recvStr.length}) < ParsedLengthParameter (${len * 2})`;
     }
 
     return String.fromCharCode.apply(String, parseBytes(2, len, recvStr)); // Adjusted to read the correct number of bytes
@@ -84,7 +84,7 @@ export async function searchTag() {
         const recvStr = String(response);
 
         if (recvStr.slice(0, 2) === "00") {
-            logger.debug("Kein Tag gefunden");
+            logger.info("No tag found");
             return { Result: false, TagType: null, IDBitCount: 0, UID: null };
         }
 
@@ -113,7 +113,7 @@ export async function searchTag() {
         logger.debug("Returning result object:", resultObj);
         return resultObj;
     } catch (error) {
-        logger.error("Fehler beim Suchen nach Tag:", error);
+        logger.error("Error searching for tag:", error);
         return { Result: false, TagType: null, IDBitCount: 0, UID: null };
     }
 }
@@ -150,7 +150,7 @@ export async function hitag1S_ReadBlock(blockAddress) {
     logger.debug("hitag1S_ReadBlock response length:", response.length);
 
     if (!response || !response.length > 2) {
-        logger.error("Ungültige Antwort erhalten:", response);
+        logger.error("Invalid response received:", response);
         return { Result: false, Data: null };
     }
 
@@ -178,7 +178,7 @@ export async function hitag1S_WriteBlock(blockAddress, data) {
     const response = await sendCommand(SP_CMD.HITAG_WRITE_BLOCK, commandStr);
 
     if (!response || response.length < 4) {
-        logger.error("Ungültige Antwort erhalten:", response);
+        logger.error("Invalid response received:", response);
         return { Result: false, BytesWritten: 0 };
     }
 
@@ -250,9 +250,9 @@ export async function DESFire_CreateApplication(
 
     const response = await sendCommand(SP_CMD.DESFIRE_CREATE_APP, paramStr);
     if (response === "01") {
-        logger.debug("Anwendung erstellt mit ID", AID);
+        logger.info("Application created with id", AID);
     } else {
-        logger.warn("Anwendungserstellung fehlgeschlagen oder Anwendung existiert bereits");
+        logger.warn("Application creation failed or application already exists");
     }
     return response === "01";
 }
@@ -279,7 +279,7 @@ export async function DESFire_Authenticate(cryptoEnv, keyNoTag, key, keyType, mo
     } else if (keyType === DESF.KEYTYPE_3K3DES) {
         keyLen = DESF.KEYLEN_3K3DES;
     } else {
-        throw new Error("Ungültiger Schlüsseltyp");
+        throw new Error("Invalid key type");
     }
     // Convert parameters to hexadecimal strings
     const cryptoEnvHex = hex(cryptoEnv, 2);
@@ -334,7 +334,7 @@ export async function DESFire_ReadData(cryptoEnv, fileNo, offset, length, commSe
     const response = await sendCommand(SP_CMD.DESFIRE_READ_DATA, paramStr);
 
     if (response.length < 2) {
-        throw new Error("Ungültige Antwortlänge");
+        throw new Error("Invalid response length");
     }
 
     const result = response.slice(0, 2) === "01";
@@ -428,7 +428,7 @@ export async function DESFire_ChangeKey(
     } else if (keyType === DESF.KEYTYPE_3K3DES) {
         keyLen = DESF.KEYLEN_3K3DES;
     } else {
-        throw new Error("Ungültiger Schlüsseltyp");
+        throw new Error("Invalid key type");
     }
 
     // Function to format key
@@ -436,18 +436,18 @@ export async function DESFire_ChangeKey(
         if (typeof key === "string") {
             // If key is a string, assume it's already in hex format
             if (key.length > keyLen * 2) {
-                throw new Error(`Schlüssel ist zu lang. Erwartet wurden ${keyLen * 2} Zeichen, erhalten wurden ${key.length}`);
+                throw new Error(`Key is too long. Expected ${keyLen * 2} characters, got ${key.length}`);
             }
             return key.padEnd(keyLen * 2, "0");
         } else if (typeof key === "number") {
             // If key is a number, convert to hex string
             const hexKey = key.toString(16).padStart(keyLen * 2, "0");
             if (hexKey.length > keyLen * 2) {
-                throw new Error(`Schlüssel ist zu lang. Erwartet wurden ${keyLen * 2} Zeichen, erhalten wurden ${hexKey.length}`);
+                throw new Error(`Key is too long. Expected ${keyLen * 2} characters, got ${hexKey.length}`);
             }
             return hexKey;
         } else {
-            throw new Error("Ungültiges Schlüsselformat. Erwartet wurde ein String oder eine Zahl.");
+            throw new Error("Invalid key format. Expected string or number.");
         }
     };
 
@@ -490,7 +490,7 @@ export async function DESFire_GetApplicationIDs(cryptoEnv, MaxAIDCnt) {
     const response = await sendCommand(SP_CMD.DESFIRE_GET_APP_IDS, paramStr);
 
     if (response.length < 2) {
-        throw new Error("Ungültige Antwortlänge");
+        throw new Error("Invalid response length");
     }
 
     const result = response.slice(0, 2) === "01";
@@ -524,7 +524,7 @@ export async function DESFire_GetFileIDs(cryptoEnv, maxFileIDCount) {
     const response = await sendCommand(SP_CMD.DESFIRE_GET_FILE_IDS, paramStr);
 
     if (response.length < 2) {
-        throw new Error("Ungültige Antwortlänge");
+        throw new Error("Invalid response length");
     }
 
     const result = response.slice(0, 2) === "01";
@@ -548,7 +548,7 @@ export async function DESFire_GetFileSettings(cryptoEnv, fileNo) {
     const response = await sendCommand(SP_CMD.DESFIRE_GET_FILE_SETTINGS, paramStr);
 
     if (response.length < 2) {
-        throw new Error("Ungültige Antwortlänge");
+        throw new Error("Invalid response length");
     }
 
     const result = response.slice(0, 2) === "01";
@@ -558,7 +558,7 @@ export async function DESFire_GetFileSettings(cryptoEnv, fileNo) {
 
     if (response.length < 42) {
         // 2 (result) + 40 (20 bytes of file settings)
-        throw new Error("Ungültige Länge der Dateieinstellungen");
+        throw new Error("Invalid file settings length");
     }
 
     const fileSettings = response.slice(2, 42);
@@ -573,7 +573,7 @@ export async function DESFire_GetVersion(cryptoEnv) {
     const response = await sendCommand(SP_CMD.DESFIRE_GET_VERSION, paramStr);
 
     if (response.length < 2) {
-        throw new Error("Ungültige Antwortlänge");
+        throw new Error("Invalid response length");
     }
 
     const result = response.slice(0, 2) === "01";
@@ -583,7 +583,7 @@ export async function DESFire_GetVersion(cryptoEnv) {
 
     if (response.length < 70) {
         // 2 (result) + 68 (34 bytes of version info)
-        throw new Error("Ungültige Länge der Versionsinformationen");
+        throw new Error("Invalid version information length");
     }
 
     const versionInfo = response.slice(2, 70);
@@ -606,7 +606,7 @@ export async function DESFire_GetUID(cryptoEnv, bufferSize) {
     const response = await sendCommand(SP_CMD.DESFIRE_GET_UID, paramStr);
 
     if (response.length < 2) {
-        throw new Error("Ungültige Antwortlänge");
+        throw new Error("Invalid response length");
     }
 
     const result = response.slice(0, 2) === "01";
@@ -629,7 +629,7 @@ export async function DESFire_ReadRecords(cryptoEnv, fileNo, offset, numberOfRec
     const response = await sendCommand(SP_CMD.DESFIRE_READ_RECORDS, paramStr);
 
     if (response.length < 2) {
-        throw new Error("Ungültige Antwortlänge");
+        throw new Error("Invalid response length");
     }
 
     const result = response.slice(0, 2) === "01";

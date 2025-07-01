@@ -2,39 +2,88 @@ import { sendBeep, setTagTypes, searchTag, getVersionString, createSingleTagMask
 import { TAG_TYPES } from "./constants/constants.js";
 import { initPortHandler } from "./handler/commandHandler.js";
 import logger from "./logger.js";
+import { isAppActive } from "./state.js";
 
 export async function startKeyCreator() {
     await initPortHandler();
 }
 
 async function setAndSearchTag(lfTag, hfTag) {
+    if (!isAppActive()) {
+        logger.debug("App not active, skipping tag search");
+        return { Result: false, TagType: null, IDBitCount: 0, UID: null };
+    }
+    
     await setTagTypes(createSingleTagMask(lfTag), createSingleTagMask(hfTag));
     return await searchTag();
 }
 
 export async function hitag1s() {
-    logger.debug("setAndSearch HITAG1S");
+    if (!isAppActive()) {
+        logger.debug("App not active, skipping HITAG1S search");
+        return { Result: false, TagType: null, IDBitCount: 0, UID: null };
+    }
+    
+    logger.debug("trying to run HITAG1S");
+    logger.debug("setting tag types");
     return await setAndSearchTag(TAG_TYPES.LF.HITAG1S, TAG_TYPES.HF.NONE);
 }
 
 export async function mifare() {
-    logger.debug("setAndSearch Mifare Classic");
+    if (!isAppActive()) {
+        logger.debug("App not active, skipping Mifare search");
+        return { Result: false, TagType: null, IDBitCount: 0, UID: null };
+    }
+    
+    logger.debug("trying to run Mifare Classic");
+    logger.debug("setting tag types");
     return await setAndSearchTag(TAG_TYPES.LF.NONE, TAG_TYPES.HF.MIFARE_CLASSIC);
 }
 
 export async function deister() {
-    logger.debug("setAndSearch Deister");
+    if (!isAppActive()) {
+        logger.debug("App not active, skipping Deister search");
+        return { Result: false, TagType: null, IDBitCount: 0, UID: null };
+    }
+    
+    logger.debug("trying to run Deister");
+    logger.debug("setting tag types");
     return await setAndSearchTag(TAG_TYPES.LF.DEISTER, TAG_TYPES.HF.NONE);
 }
 
 export async function em() {
-    logger.debug("setAndSearch EM");
+    if (!isAppActive()) {
+        logger.debug("App not active, skipping EM search");
+        return { Result: false, TagType: null, IDBitCount: 0, UID: null };
+    }
+    
+    logger.debug("trying to run EM");
+    logger.debug("setting tag types");
     return await setAndSearchTag(TAG_TYPES.LF.EM4102, TAG_TYPES.HF.NONE);
 }
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 export async function beepOk() {
-    logger.debug("trying to run beepOk");
-    await sendBeep(20, 2000, 500, 500);
+    logger.debug("playing beepOk sequence");
+    // Three ascending beeps: 1500Hz, 2000Hz, 2500Hz
+    await sendBeep(20, 1500, 100, 50);
+    await sleep(120);
+    await sendBeep(20, 2000, 100, 50);
+    await sleep(120);
+    await sendBeep(20, 2500, 100, 50);
+}
+
+export async function beepError() {
+    logger.debug("playing beepError sequence");
+    // Three descending beeps: 2000Hz, 1200Hz, 800Hz
+    await sendBeep(40, 2000, 120, 60);
+    await sleep(140);
+    await sendBeep(40, 1200, 120, 60);
+    await sleep(140);
+    await sendBeep(40, 800, 180, 80);
 }
 
 export async function getVersion() {
