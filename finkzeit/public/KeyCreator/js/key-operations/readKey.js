@@ -1,8 +1,9 @@
-import logger from "./logger.js";
-import * as api from "./api.js";
-import * as protocolHandler from "./handler/protocolHandler.js";
-import { getSAK } from "./handler/protocolHandler.js";
-import { DESF } from "./constants/constants.js";
+import logger from "../core/logger.js";
+import * as api from "../handler/api.js";
+import * as protocolHandler from "../handler/protocolHandler.js";
+import { getSAK } from "../handler/protocolHandler.js";
+import { DESF } from "../constants/constants.js";
+import { setIsReading } from "../core/state.js";
 
 let shouldContinueSearch = true;
 
@@ -28,6 +29,8 @@ async function handleReadKey() {
 
     const dialog = showDialog("Schlüssel wird gesucht. Bitte legen Sie einen Schlüssel auf den Leser.");
     shouldContinueSearch = true;
+    logger.debug("Setting isReading to true");
+    setIsReading(true);
 
     try {
         updateDialogMessage("Tag wird gesucht...");
@@ -59,12 +62,6 @@ async function handleReadKey() {
     } catch (error) {
         logger.error("Error in handleReadKey:", error);
         updateDialogText(dialog, "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
-    } finally {
-        setTimeout(() => {
-            if (dialog.overlay && dialog.overlay.parentNode) {
-                dialog.overlay.parentNode.removeChild(dialog.overlay);
-            }
-        }, 2000);
     }
 }
 
@@ -87,6 +84,8 @@ function showDialog(message) {
 
     document.getElementById("cancelBtn").addEventListener("click", () => {
         shouldContinueSearch = false;
+        logger.debug("Read operation cancelled by user");
+        setIsReading(false);
         if (overlay.parentNode) {
             overlay.parentNode.removeChild(overlay);
         }
@@ -660,17 +659,29 @@ function showDetailedModal(tagDetails, originalDialog) {
 
     // Add close functionality
     document.getElementById("closeModalBtn").addEventListener("click", () => {
+        logger.debug("Detailed modal closed by button");
         if (overlay.parentNode) {
             overlay.parentNode.removeChild(overlay);
         }
+        // Set reading to false after a short delay to allow modal to close properly
+        setTimeout(() => {
+            logger.debug("Setting isReading to false after modal close");
+            setIsReading(false);
+        }, 500);
     });
 
     // Close on overlay click
     overlay.addEventListener("click", (e) => {
         if (e.target === overlay) {
+            logger.debug("Detailed modal closed by overlay click");
             if (overlay.parentNode) {
                 overlay.parentNode.removeChild(overlay);
             }
+            // Set reading to false after a short delay to allow modal to close properly
+            setTimeout(() => {
+                logger.debug("Setting isReading to false after modal close");
+                setIsReading(false);
+            }, 500);
         }
     });
 } 

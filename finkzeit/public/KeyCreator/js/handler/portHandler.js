@@ -1,5 +1,5 @@
 const delimiter = "\r";
-import logger from "../logger.js";
+import logger from "../core/logger.js";
 
 export class PortHandler {
     constructor() {

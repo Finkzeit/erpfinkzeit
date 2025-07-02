@@ -1,8 +1,8 @@
-import { updateSessionInfo } from "../ui.js";
+import { updateSessionInfo } from "../ui/ui.js";
 import { parseBytes } from "../handler/protocolHandler.js";
-import * as api from "../api.js";
+import * as api from "../handler/api.js";
 import { hitag1S_ReadBlock, hitag1S_WriteBlock } from "../handler/protocolHandler.js";
-import logger from "../logger.js";
+import logger from "../core/logger.js";
 
 export async function hitagScript(transponderConfig) {
     logger.debug("Starting hitagScript function");

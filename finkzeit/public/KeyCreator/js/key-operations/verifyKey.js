@@ -1,8 +1,8 @@
-import * as api from "./api.js";
-import logger from "./logger.js";
-import { getSAK } from "./handler/protocolHandler.js";
-import { updateSessionInfo } from "./ui.js";
-import { getIsFormatting, addFormattingChangeListener, removeFormattingChangeListener, isAppActive } from "./state.js";
+import * as api from "../handler/api.js";
+import logger from "../core/logger.js";
+import { getSAK } from "../handler/protocolHandler.js";
+import { updateSessionInfo } from "../ui/ui.js";
+import { getIsFormatting, addFormattingChangeListener, removeFormattingChangeListener, isAppActive, getIsReading, addReadingChangeListener, removeReadingChangeListener } from "../core/state.js";
 
 let detectedKeys = {};
 let wrongKeys = {};
@@ -25,20 +25,10 @@ export async function verifyKey(transponderConfig, numberHandler) {
     let tagDetected = false;
 
     while (!tagDetected && isAppActive()) {
-        if (getIsFormatting()) {
-            logger.debug("[verifyKey] Formatting in progress, stopping detection.");
-            await new Promise((resolve) => {
-                const handleFormattingChange = (value) => {
-                    if (!value) {
-                        removeFormattingChangeListener(handleFormattingChange);
-                        resolve();
-                    }
-                };
-                addFormattingChangeListener(handleFormattingChange);
-            });
+        if (getIsFormatting() || getIsReading()) {
+            logger.debug("[verifyKey] Formatting or reading in progress, stopping detection.");
+            return false; // Exit the loop if formatting or reading is in progress
         }
-
-        if (getIsFormatting()) continue; // Skip detection if formatting is still in progress
 
         logger.debug("[verifyKey] Detecting tag....");
         tagDetected = await detectFirstTag(transponderConfig);
@@ -61,9 +51,9 @@ export async function detectFirstTag(transponderConfig) {
     const searchFunctions = [api.hitag1s, api.mifare, api.deister, api.em];
 
     while (isAppActive()) {
-        if (getIsFormatting()) {
-            logger.debug("[verifyKey] Formatting in progress, stopping detection.");
-            return false; // Exit the loop if formatting is in progress
+        if (getIsFormatting() || getIsReading()) {
+            logger.debug("[verifyKey] Formatting or reading in progress, stopping detection.");
+            return false; // Exit the loop if formatting or reading is in progress
         }
 
         logger.debug("[verifyKey] Searching for tag.....");

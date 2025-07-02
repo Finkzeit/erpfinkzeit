@@ -1,6 +1,6 @@
 import { SP_ERROR } from "../constants/constants.js";
 import { PortHandler } from "./portHandler.js";
-import logger from "../logger.js";
+import logger from "../core/logger.js";
 
 /** @type {PortHandler} */
 let portHandler;
