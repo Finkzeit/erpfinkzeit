@@ -611,6 +611,7 @@ function showDetailedModal(tagDetails, originalDialog) {
                         <table class="info-table">
                             <tr><td>Code/Name:</td><td>${tag.erpInfo.code || tag.erpInfo.name || 'N/A'}</td></tr>
                             <tr><td>Konfiguration:</td><td>${tag.erpInfo.transponder_configuration || 'N/A'}</td></tr>
+                            <tr><td>Testschlüssel:</td><td>${tag.erpInfo.test_key ? '🧪 Ja' : '❌ Nein'}</td></tr>
                             <tr><td>Erstellt:</td><td>${tag.erpInfo.creation ? new Date(tag.erpInfo.creation).toLocaleDateString() : 'N/A'}</td></tr>
                             <tr><td>Geändert:</td><td>${tag.erpInfo.modified ? new Date(tag.erpInfo.modified).toLocaleDateString() : 'N/A'}</td></tr>
                         </table>

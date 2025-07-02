@@ -101,7 +101,14 @@ async function executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpR
             logger.debug("ResponseMessage:", response.message);
             logger.debug("Number:", number);
 
-            if (response.message === number.toString()) {
+            // Convert both to strings for comparison
+            const responseMessage = String(response.message);
+            const numberString = String(number);
+            
+            logger.debug(`Comparing response message: "${responseMessage}" with number: "${numberString}"`);
+            logger.debug(`Types - responseMessage: ${typeof responseMessage}, numberString: ${typeof numberString}`);
+            
+            if (responseMessage === numberString) {
                 logger.debug("Transponder created successfully");
                 updateSessionInfo("action", `Transponder mit Nummer ${number} erfolgreich erstellt`);
             } else {
