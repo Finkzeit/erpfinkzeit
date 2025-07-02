@@ -3,15 +3,16 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>RFID Chip Beschreiben</title>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" type="text/css" />
+        <title>KeyCreator</title>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔑</text></svg>">
+        <link rel="stylesheet" href="css/select2.min.css" type="text/css" />
         <link rel="stylesheet" href="css/style.css" type="text/css" />
     </head>
 
     <body>
         <div id="app">
             <header>
-                <h1>RFID Chip Beschreiben</h1>
+                <h1>KeyCreator</h1>
                 <img src="img/logo.svg" alt="Fink Zeitsysteme Logo" />
             </header>
             <main>
@@ -35,6 +36,9 @@
                         <span class="test-icon" aria-hidden="true">🧪</span>
                         <span>Testmodus: AUS</span>
                     </button>
+                    <button id="muteToggle" class="mute-btn" data-mute="off" aria-pressed="false">
+                        <span class="mute-icon" aria-hidden="true">🔊</span>
+                    </button>
                     <div class="action-group">
                         <button id="readKeyButton" class="btn read-key-btn">
                             <span class="action-icon" aria-hidden="true">🔑</span>
@@ -49,9 +53,8 @@
             </main>
         </div>
 
-        <script src="js/env.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+        <script src="js/ui/jquery.min.js"></script>
+        <script src="js/ui/select2.min.js"></script>
         <script>
             $(document).ready(function () {
                 $("#firmen").select2({
@@ -60,6 +63,6 @@
                 });
             });
         </script>
-        <script type="module" src="js/app.js"></script>
+        <script type="module" src="js/core/app.js"></script>
     </body>
 </html>

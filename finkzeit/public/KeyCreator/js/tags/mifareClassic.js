@@ -1,8 +1,8 @@
 import { parseByte } from "../handler/protocolHandler.js";
 import * as protocolHandler from "../handler/protocolHandler.js";
 import { hex, swap32 } from "../handler/commandHandler.js";
-import { updateSessionInfo } from "../ui.js";
-import logger from "../logger.js";
+import { updateSessionInfo } from "../ui/ui.js";
+import logger from "../core/logger.js";
 
 export async function mifareClassicScript(transponderConfig) {
     logger.debug("Starting mifareClassicScript with config:", transponderConfig);

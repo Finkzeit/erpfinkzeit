@@ -1,6 +1,6 @@
 import { NUM2TECH, DB2TECH } from "../constants/constants.js";
-import logger from "../logger.js";
-import { updateSessionInfo } from "../ui.js";
+import logger from "../core/logger.js";
+import { updateSessionInfo } from "../ui/ui.js";
 
 class NumberHandler {
     constructor() {

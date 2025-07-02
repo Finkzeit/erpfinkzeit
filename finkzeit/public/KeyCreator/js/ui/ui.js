@@ -1,4 +1,4 @@
-import logger from "./logger.js";
+import logger from "../core/logger.js";
 
 export function initializeUI() {
     logger.debug("Initializing elements");

@@ -1,8 +1,8 @@
-import { sendBeep, setTagTypes, searchTag, getVersionString, createSingleTagMask } from "./handler/protocolHandler.js";
-import { TAG_TYPES } from "./constants/constants.js";
-import { initPortHandler } from "./handler/commandHandler.js";
-import logger from "./logger.js";
-import { isAppActive } from "./state.js";
+import { sendBeep, setTagTypes, searchTag, getVersionString, createSingleTagMask } from "../handler/protocolHandler.js";
+import { TAG_TYPES } from "../constants/constants.js";
+import { initPortHandler } from "../handler/commandHandler.js";
+import logger from "../core/logger.js";
+import { isAppActive } from "../core/state.js";
 
 export async function startKeyCreator() {
     await initPortHandler();
@@ -68,22 +68,22 @@ function sleep(ms) {
 
 export async function beepOk() {
     logger.debug("playing beepOk sequence");
-    // Three ascending beeps: 1500Hz, 2000Hz, 2500Hz
-    await sendBeep(20, 1500, 100, 50);
+    // Three ascending beeps: 1500Hz, 2000Hz, 2500Hz (LOUDER)
+    await sendBeep(60, 1500, 100, 50);
     await sleep(120);
-    await sendBeep(20, 2000, 100, 50);
+    await sendBeep(60, 2000, 100, 50);
     await sleep(120);
-    await sendBeep(20, 2500, 100, 50);
+    await sendBeep(60, 2500, 100, 50);
 }
 
 export async function beepError() {
     logger.debug("playing beepError sequence");
-    // Three descending beeps: 2000Hz, 1200Hz, 800Hz
-    await sendBeep(40, 2000, 120, 60);
+    // Three descending beeps: 2000Hz, 1200Hz, 800Hz (LOUDER)
+    await sendBeep(80, 2000, 120, 60);
     await sleep(140);
-    await sendBeep(40, 1200, 120, 60);
+    await sendBeep(80, 1200, 120, 60);
     await sleep(140);
-    await sendBeep(40, 800, 180, 80);
+    await sendBeep(80, 800, 180, 80);
 }
 
 export async function getVersion() {

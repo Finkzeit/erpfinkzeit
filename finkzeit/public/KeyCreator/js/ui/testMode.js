@@ -1,4 +1,4 @@
-import logger from "./logger.js";
+import logger from "../core/logger.js";
 
 let testModeActive = false;
 
@@ -54,7 +54,10 @@ function updateTestModeButton() {
     
     if (testModeActive) {
         testModeBtn.classList.add("active");
-        testModeBtn.textContent = "🧪 TESTMODUS: AKTIV";
+        testModeBtn.innerHTML = `
+            <span class="action-icon" aria-hidden="true">🧪</span>
+            <span>TESTMODUS: AKTIV</span>
+        `;
         testModeBtn.setAttribute("data-test-mode", "on");
         testModeBtn.setAttribute("aria-pressed", "true");
         testModeBtn.style.backgroundColor = "#ff6b6b";
@@ -64,7 +67,10 @@ function updateTestModeButton() {
         testModeBtn.style.boxShadow = "0 0 10px rgba(255, 107, 107, 0.5)";
     } else {
         testModeBtn.classList.remove("active");
-        testModeBtn.textContent = "🧪 Testmodus: AUS";
+        testModeBtn.innerHTML = `
+            <span class="action-icon" aria-hidden="true">🧪</span>
+            <span>Testmodus: AUS</span>
+        `;
         testModeBtn.setAttribute("data-test-mode", "off");
         testModeBtn.setAttribute("aria-pressed", "false");
         testModeBtn.style.backgroundColor = "";

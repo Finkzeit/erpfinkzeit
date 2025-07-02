@@ -1,6 +1,6 @@
-import * as api from "./api.js";
-import logger from "./logger.js";
-import { getSAK } from "./handler/protocolHandler.js";
+import * as api from "../handler/api.js";
+import logger from "../core/logger.js";
+import { getSAK } from "../handler/protocolHandler.js";
 import { updateDialogMessage } from "./formatKey.js";
 
 let detectedKeys = {};

@@ -1,11 +1,11 @@
-import logger from "./logger.js";
+import logger from "../core/logger.js";
 import { verifyKey } from "./formatKeyVerify.js";
-import * as protocolHandler from "./handler/protocolHandler.js";
-import * as api from "./api.js";
-import { DESF } from "./constants/constants.js";
-import { setIsFormatting } from "./state.js";
+import * as protocolHandler from "../handler/protocolHandler.js";
+import * as api from "../handler/api.js";
+import { DESF } from "../constants/constants.js";
+import { setIsFormatting } from "../core/state.js";
 import { clearKeys } from "./verifyKey.js";
-import { updateSessionInfo } from "./ui.js";
+import { updateSessionInfo } from "../ui/ui.js";
 
 const CRYPTO_ENV = DESF.CRYPTO_ENV0;
 
@@ -70,13 +70,21 @@ async function handleFormatKey() {
         logger.error("Error in handleFormatKey:", error);
         updateDialogText(dialog, "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
     } finally {
-        setTimeout(() => {
-            if (dialog.overlay && dialog.overlay.parentNode) {
-                dialog.overlay.parentNode.removeChild(dialog.overlay);
+        // Start countdown for auto-close
+        let countdown = 3;
+        const countdownInterval = setInterval(() => {
+            if (countdown > 0) {
+                updateCountdownText(dialog, `Dialog schließt in ${countdown}...`);
+                countdown--;
+            } else {
+                clearInterval(countdownInterval);
+                if (dialog.overlay && dialog.overlay.parentNode) {
+                    dialog.overlay.parentNode.removeChild(dialog.overlay);
+                }
+                logger.debug("Setting isFormatting to false");
+                setIsFormatting(false);
             }
-            logger.debug("Setting isFormatting to false");
-            setIsFormatting(false);
-        }, 4000);
+        }, 1000);
     }
 }
 
@@ -89,6 +97,7 @@ function showDialog(message) {
     dialogElement.className = "dialog";
     dialogElement.innerHTML = `
         <p id="dialogText">${message}</p>
+        <p id="countdownText" style="display: none; color: #666; font-size: 0.9em; margin-top: 10px;"></p>
         <div id="dialogButtons">
             <button class="btn" id="cancelBtn">Abbrechen</button>
         </div>
@@ -111,6 +120,15 @@ function updateDialogText(dialog, message) {
     logger.debug("Updating dialog text:", message);
     const textElement = dialog.dialogElement.querySelector("#dialogText");
     textElement.textContent = message;
+}
+
+function updateCountdownText(dialog, message) {
+    logger.debug("Updating countdown text:", message);
+    const countdownElement = dialog.dialogElement.querySelector("#countdownText");
+    if (countdownElement) {
+        countdownElement.textContent = message;
+        countdownElement.style.display = "block";
+    }
 }
 
 function getConfirmation(dialog, showFormatButton) {

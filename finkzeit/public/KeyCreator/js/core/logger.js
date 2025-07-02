@@ -1,6 +1,12 @@
 export class Logger {
-    constructor(isProduction = false) {
-        this.isProduction = isProduction;
+    constructor() {
+        // Automatically detect if we're in development (localhost) or production
+        this.isProduction = !this.isLocalhost();
+    }
+
+    isLocalhost() {
+        const hostname = window.location.hostname;
+        return hostname === 'localhost' || hostname === '127.0.0.1';
     }
 
     info(...args) {
@@ -23,7 +29,7 @@ export class Logger {
 }
 
 // Create a default instance
-const logger = new Logger(window.env?.NODE_ENV === "production");
+const logger = new Logger();
 
 // Export the default instance
 export default logger;

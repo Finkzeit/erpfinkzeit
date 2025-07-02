@@ -1,9 +1,9 @@
 "use strict";
 
-import logger from "../logger.js";
-import { updateSessionInfo } from "../ui.js";
-import { getEnvironmentBaseUrl, getEnvironmentCountry } from "../environmentDetector.js";
-import { isTestModeActive } from "../testMode.js";
+import logger from "../core/logger.js";
+import { updateSessionInfo } from "../ui/ui.js";
+import { getEnvironmentBaseUrl, getEnvironmentCountry } from "../api/environmentDetector.js";
+import { isTestModeActive } from "../ui/testMode.js";
 
 class ErpRestApi {
     constructor() {

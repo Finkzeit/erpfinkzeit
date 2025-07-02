@@ -27,6 +27,7 @@ class EventEmitter {
 
 // Application state
 let isFormatting = false;
+let isReading = false;
 let appActive = true;
 let currentSessionId = 0;
 let isSessionActive = false;
@@ -49,6 +50,24 @@ export function addFormattingChangeListener(callback) {
 
 export function removeFormattingChangeListener(callback) {
     stateEmitter.removeListener("formattingChange", callback);
+}
+
+// Reading state management
+export function getIsReading() {
+    return isReading;
+}
+
+export function setIsReading(value) {
+    isReading = value;
+    stateEmitter.emit("readingChange", value);
+}
+
+export function addReadingChangeListener(callback) {
+    stateEmitter.on("readingChange", callback);
+}
+
+export function removeReadingChangeListener(callback) {
+    stateEmitter.removeListener("readingChange", callback);
 }
 
 // Application state management

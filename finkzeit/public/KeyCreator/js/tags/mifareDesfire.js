@@ -1,7 +1,7 @@
 import { DESF } from "../constants/constants.js";
 import * as protocolHandler from "../handler/protocolHandler.js";
-import { updateSessionInfo } from "../ui.js";
-import logger from "../logger.js";
+import { updateSessionInfo } from "../ui/ui.js";
+import logger from "../core/logger.js";
 
 const CRYPTO_ENV = DESF.CRYPTO_ENV0;
 

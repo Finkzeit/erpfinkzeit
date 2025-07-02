@@ -1,10 +1,10 @@
-import { hitagScript } from "./tags/hitag1s.js";
-import { mifareClassicScript } from "./tags/mifareClassic.js";
-import { mifareDesfireScript } from "./tags/mifareDesfire.js";
-import numberHandler from "./handler/numberHandler.js";
-import { updateSessionInfo } from "./ui.js";
-import logger from "./logger.js";
-import { beepOk, beepError } from "./api.js";
+import { hitagScript } from "../tags/hitag1s.js";
+import { mifareClassicScript } from "../tags/mifareClassic.js";
+import { mifareDesfireScript } from "../tags/mifareDesfire.js";
+import numberHandler from "../handler/numberHandler.js";
+import { updateSessionInfo } from "../ui/ui.js";
+import logger from "../core/logger.js";
+import { beepOkIfNotMuted, beepErrorIfNotMuted } from "../ui/muteHandler.js";
 
 async function executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpRestApi) {
     const scriptMapping = {
@@ -134,9 +134,9 @@ async function executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpR
 
     updateSessionInfo("sessionResult", sessionResult);
     if (allScriptsExecuted && sessionResult === "success") {
-        await beepOk();
+        await beepOkIfNotMuted();
     } else {
-        await beepError();
+        await beepErrorIfNotMuted();
     }
     return { allScriptsExecuted, sessionResult, errors };
 }

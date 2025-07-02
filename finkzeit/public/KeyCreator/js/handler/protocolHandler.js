@@ -1,7 +1,7 @@
 import { sendCommand, hex, swap16, swap32 } from "./commandHandler.js";
 import { SP_CMD, TAG_TYPES, DESF } from "../constants/constants.js";
-import * as api from "../api.js";
-import logger from "../logger.js";
+import * as api from "./api.js";
+import logger from "../core/logger.js";
 
 // Utility functions
 export function parseByte(index, recvStr) {

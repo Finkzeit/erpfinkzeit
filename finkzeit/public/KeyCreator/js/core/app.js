@@ -1,16 +1,17 @@
-import * as api from "./api.js";
-import { ErpRestApi } from "./handler/erpRestApi.js";
-import numberHandler from "./handler/numberHandler.js";
-import { initializeUI, addEventListeners, updateSessionInfo } from "./ui.js";
-import { executeScriptsBasedOnConfig } from "./scripts.js";
-import { verifyKey } from "./verifyKey.js";
+import * as api from "../handler/api.js";
+import { ErpRestApi } from "../api/erpRestApi.js";
+import numberHandler from "../handler/numberHandler.js";
+import { initializeUI, addEventListeners, updateSessionInfo } from "../ui/ui.js";
+import { executeScriptsBasedOnConfig } from "../key-operations/scripts.js";
+import { verifyKey } from "../key-operations/verifyKey.js";
 import logger from "./logger.js";
-import { initializeKeyFormatting } from "./formatKey.js";
-import { initializeKeyReading } from "./readKey.js";
-import { updateEnvironmentDisplay } from "./environmentDetector.js";
-import { initializeTestMode } from "./testMode.js";
+import { initializeKeyFormatting } from "../key-operations/formatKey.js";
+import { initializeKeyReading } from "../key-operations/readKey.js";
+import { updateEnvironmentDisplay } from "../api/environmentDetector.js";
+import { initializeTestMode } from "../ui/testMode.js";
+import { initializeMuteToggle } from "../ui/muteHandler.js";
 
-import { resetApp, startNewSession, isSessionValid, addAppStateListener } from "./state.js";
+import { resetApp, startNewSession, isSessionValid, addAppStateListener, getIsFormatting, getIsReading } from "./state.js";
 
 // Application state
 let elements;
@@ -53,6 +54,9 @@ async function setup() {
     logger.debug("Initializing key reading...");
     initializeKeyReading();
     
+    logger.debug("Initializing mute toggle...");
+    initializeMuteToggle();
+    
     logger.debug("Updating environment display...");
     updateEnvironmentDisplay();
     
@@ -65,9 +69,7 @@ async function setup() {
     });
 
     logger.debug("Setup completed");
-    if (window.env.NODE_ENV === "development") {
-        logger.debug("Running in development mode");
-    }
+    logger.debug("Running in development mode");
 }
 
 function clearUI() {
@@ -156,6 +158,13 @@ async function recurringSession(requiredKeys) {
     
     while (isSessionValid(sessionId)) {
         try {
+            // Check if formatting or reading mode is active - pause the main loop
+            if (getIsFormatting() || getIsReading()) {
+                logger.debug("Formatting or reading mode active, pausing main loop");
+                await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms before checking again
+                continue;
+            }
+            
             numberHandler.readFromInput();
 
             const keyVerified = await verifyKey(transponderConfig, numberHandler);
