@@ -7,7 +7,8 @@ import { verifyKey } from "./verifyKey.js";
 import logger from "./logger.js";
 import { initializeKeyFormatting } from "./formatKey.js";
 import { initializeKeyReading } from "./readKey.js";
-import { initializeCountrySelector } from "./countrySelector.js";
+import { updateEnvironmentDisplay } from "./environmentDetector.js";
+import { initializeTestMode } from "./testMode.js";
 
 import { resetApp, startNewSession, isSessionValid, addAppStateListener } from "./state.js";
 
@@ -23,6 +24,9 @@ async function setup() {
     elements = initializeUI();
     addEventListeners(elements, startSession, handleManualNumberChange, handleConnectReader);
     await handleConnectReader();
+
+    // Initialize test mode button
+    initializeTestMode();
 
     try {
         logger.debug("Creating ERP API instance...");
@@ -40,6 +44,7 @@ async function setup() {
             window.erpRestApi = erpRestApi;
             logger.debug("Fallback ERP API instance created and set globally");
         }
+        updateSessionInfo("action", "ERP API Initialisierung fehlgeschlagen. Bitte überprüfen Sie Ihre Verbindung.");
     }
 
     logger.debug("Initializing key formatting...");
@@ -48,8 +53,8 @@ async function setup() {
     logger.debug("Initializing key reading...");
     initializeKeyReading();
     
-    logger.debug("Initializing country selector...");
-    initializeCountrySelector();
+    logger.debug("Updating environment display...");
+    updateEnvironmentDisplay();
     
 
 

@@ -3,7 +3,7 @@ import logger from "./logger.js";
 let testModeActive = false;
 
 export function initializeTestMode() {
-    logger.debug("Test mode functionality disabled - button remains for future use");
+    logger.debug("Initializing test mode functionality");
     
     const testModeBtn = document.getElementById("testModeToggle");
     
@@ -12,13 +12,21 @@ export function initializeTestMode() {
         return;
     }
     
-    // Set button to disabled state
-    testModeBtn.disabled = true;
-    testModeBtn.textContent = "Testmodus: DEAKTIVIERT";
-    testModeBtn.setAttribute("data-test-mode", "disabled");
-    testModeBtn.title = "Testmodus-Funktionalität wird später hinzugefügt";
+    // Load saved state from localStorage
+    const savedState = localStorage.getItem("testModeActive");
+    if (savedState !== null) {
+        testModeActive = savedState === "true";
+        logger.debug(`Loaded test mode state from localStorage: ${testModeActive}`);
+    }
     
-    logger.debug("Test mode button disabled");
+    // Enable the button and add event listener
+    testModeBtn.disabled = false;
+    testModeBtn.addEventListener("click", toggleTestMode);
+    
+    // Update button appearance
+    updateTestModeButton();
+    
+    logger.debug("Test mode button initialized and enabled");
 }
 
 export function toggleTestMode() {
@@ -30,8 +38,15 @@ export function toggleTestMode() {
     
     logger.debug(`Test mode ${testModeActive ? 'activated' : 'deactivated'}`);
     
-    // You can add additional logic here based on test mode
-    // For example, different API endpoints, debug logging, etc.
+    // Show immediate feedback to user
+    const actionMessage = testModeActive 
+        ? "🧪 TESTMODUS AKTIV - Alle neuen Transponder werden als Testschlüssel markiert!" 
+        : "✅ Testmodus deaktiviert - Normale Transponder-Erstellung";
+    
+    // Update UI to show the current state
+    if (window.updateSessionInfo) {
+        window.updateSessionInfo("action", actionMessage);
+    }
 }
 
 function updateTestModeButton() {
@@ -39,18 +54,29 @@ function updateTestModeButton() {
     
     if (testModeActive) {
         testModeBtn.classList.add("active");
-        testModeBtn.textContent = "Testmodus: AKTIV";
+        testModeBtn.textContent = "🧪 TESTMODUS: AKTIV";
         testModeBtn.setAttribute("data-test-mode", "on");
+        testModeBtn.setAttribute("aria-pressed", "true");
+        testModeBtn.style.backgroundColor = "#ff6b6b";
+        testModeBtn.style.color = "white";
+        testModeBtn.style.borderColor = "#ff4757";
+        testModeBtn.style.fontWeight = "bold";
+        testModeBtn.style.boxShadow = "0 0 10px rgba(255, 107, 107, 0.5)";
     } else {
         testModeBtn.classList.remove("active");
-        testModeBtn.textContent = "Testmodus: AUS";
+        testModeBtn.textContent = "🧪 Testmodus: AUS";
         testModeBtn.setAttribute("data-test-mode", "off");
+        testModeBtn.setAttribute("aria-pressed", "false");
+        testModeBtn.style.backgroundColor = "";
+        testModeBtn.style.color = "";
+        testModeBtn.style.borderColor = "";
+        testModeBtn.style.fontWeight = "";
+        testModeBtn.style.boxShadow = "";
     }
 }
 
 export function isTestModeActive() {
-    // Test mode is always disabled for now
-    return false;
+    return testModeActive;
 }
 
 export function setTestMode(active) {

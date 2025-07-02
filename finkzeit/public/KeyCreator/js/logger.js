@@ -23,7 +23,7 @@ export class Logger {
 }
 
 // Create a default instance
-const logger = new Logger(window.env.NODE_ENV === "production");
+const logger = new Logger(window.env?.NODE_ENV === "production");
 
 // Export the default instance
 export default logger;

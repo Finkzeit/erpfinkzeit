@@ -2,6 +2,8 @@
 
 import logger from "../logger.js";
 import { updateSessionInfo } from "../ui.js";
+import { getEnvironmentBaseUrl, getEnvironmentCountry } from "../environmentDetector.js";
+import { isTestModeActive } from "../testMode.js";
 
 class ErpRestApi {
     constructor() {
@@ -9,26 +11,21 @@ class ErpRestApi {
     }
 
     updateBaseUrl() {
-        // Get current country from localStorage or default to austria
-        const currentCountry = localStorage.getItem("selectedCountry") || "austria";
+        // Get base URL from environment detector
+        this.baseUrl = getEnvironmentBaseUrl();
+        const country = getEnvironmentCountry();
         
-        if (currentCountry === "switzerland") {
-            this.baseUrl = "https://erp-test.finkzeit.at/api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.";
-            //this.baseUrl = "/api-swiss/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.";
-            logger.debug("ERP API URL set to Swiss endpoint");
-        } else {
-            this.baseUrl = "https://erp-test.finkzeit.at/api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.";
-            //this.baseUrl = "/api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.";
-            logger.debug("ERP API URL set to Austrian endpoint");
-        }
+        logger.debug(`ERP API URL set to ${country} endpoint: ${this.baseUrl}`);
     }
 
-    // Method to update URL when country changes
+
+
+    // Method to update URL when environment changes (kept for compatibility)
     setCountry(country) {
         this.updateBaseUrl();
-        logger.debug(`ERP API country changed to: ${country}`);
+        logger.debug(`ERP API environment updated, current country: ${country}`);
         
-        // Reload the configuration list for the new country
+        // Reload the configuration list for the new environment
         this.reloadConfigurationList();
     }
 
@@ -53,9 +50,6 @@ class ErpRestApi {
 
     async getTransponderConfigurationList(firmenSelect) {
         try {
-
-            //document.cookie = "sid=cd3ec032352750ca0af549d8ad8ee8177feb7be87e27c065a6c04736";
-
             const response = await fetch(`${this.baseUrl}get_transponder_config_list`);
 
             if (response.status === 403) {
@@ -88,8 +82,6 @@ class ErpRestApi {
 
     async getTransponderConfiguration(transponderConfigId) {
         try {
-            document.cookie = "sid=cd3ec032352750ca0af549d8ad8ee8177feb7be87e27c065a6c04736";
-            
             const response = await fetch(`${this.baseUrl}get_transponder_config?config=${transponderConfigId}`);
             if (!response.ok) {
                 logger.warn(`Failed to get transponder configuration: HTTP status ${response.status}`);
@@ -107,8 +99,6 @@ class ErpRestApi {
     async getTransponderByUid(uid, tagType) {
         try {
             logger.debug(`Getting transponder by UID: ${uid} (${tagType})`);
-            
-            document.cookie = "sid=cd3ec032352750ca0af549d8ad8ee8177feb7be87e27c065a6c04736";
             
             let uidParam = "";
             switch (tagType.toLowerCase()) {
@@ -156,8 +146,6 @@ class ErpRestApi {
         try {
             logger.debug(`Getting transponder by code: ${code}`);
             
-            document.cookie = "sid=cd3ec032352750ca0af549d8ad8ee8177feb7be87e27c065a6c04736";
-            
             // We can use the get_transponder endpoint with any UID parameter
             // Since we're looking by code, we'll use a dummy parameter to get all and filter
             const response = await fetch(`${this.baseUrl}get_transponder?hitag_uid=dummy`);
@@ -200,11 +188,30 @@ class ErpRestApi {
             if (uid.deister_uid) params.append("deister_uid", uid.deister_uid);
             if (uid.em_uid) params.append("em_uid", uid.em_uid);
 
+            // Set test_key param based on test mode
+            // Only send test_key=1 when test mode is active
+            // When test mode is inactive, don't send the parameter at all (defaults to 0 in ERP)
+            const testModeActive = isTestModeActive();
+            if (testModeActive) {
+                params.append("test_key", 1);
+                logger.debug(`Test mode active: true, setting test_key: 1`);
+            } else {
+                logger.debug(`Test mode active: false, not sending test_key parameter (will default to 0)`);
+            }
+
             const response = await fetch(`${this.baseUrl}create_transponder?${params.toString()}`);
             const responseData = await response.json();
 
-            if (response.message === number) {
-                logger.debug(`Returned number ${number}`);
+            logger.debug(`Response:`, responseData);
+            logger.debug(`ResponseMessage:`, responseData.message);
+            logger.debug(`Number:`, number);
+
+            // Convert both to strings for comparison
+            const responseMessage = String(responseData.message);
+            const numberString = String(number);
+            
+            if (responseMessage === numberString) {
+                logger.debug(`Transponder created successfully`);
                 return { status: true, message: number };
             } else {
                 logger.warn(`Failed to create transponder: ${responseData.message}`);
