@@ -48,8 +48,10 @@ function detectEnvironment() {
             return CONFIG.DEFAULT_ENV;
         }
         
-        // Production - use hostname as environment
-        return hostname;
+        // Production - extract subdomain from hostname
+        const subdomain = hostname.split('.')[0];
+        logger.debug(`Extracted subdomain: ${subdomain} from hostname: ${hostname}`);
+        return subdomain;
         
     } catch (error) {
         logger.error('Error detecting environment:', error);
