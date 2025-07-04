@@ -44,7 +44,7 @@ export function isMutedState() {
 // Wrapper functions for beepOk and beepError that respect mute state
 export async function beepOkIfNotMuted() {
     if (!isMuted) {
-        const { beepOk } = await import("./api.js");
+        const { beepOk } = await import("../handler/api.js");
         await beepOk();
     } else {
         logger.debug("Beep suppressed - mute is enabled");
@@ -53,7 +53,7 @@ export async function beepOkIfNotMuted() {
 
 export async function beepErrorIfNotMuted() {
     if (!isMuted) {
-        const { beepError } = await import("./api.js");
+        const { beepError } = await import("../handler/api.js");
         await beepError();
     } else {
         logger.debug("Beep suppressed - mute is enabled");
