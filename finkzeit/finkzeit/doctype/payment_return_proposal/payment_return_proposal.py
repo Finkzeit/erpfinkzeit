@@ -269,7 +269,7 @@ def create_payment_return_proposal(company=None, account=None):
             'amount': pe.get('outstanding_amount'),
             'transaction_date': pe.get('transaction_date'),
             'currency': pe.get('currency'),
-            'skonto_date': datetime.now() + timedelta(days=1),
+            'skonto_date': datetime.now(),              # same day requeste (GM) + timedelta(days=1),
             'skonto_amount': pe.get('skonto_amount'),
             'payment_type': pe.get('payment_type'),
             'iban': pe.get('iban')
@@ -284,7 +284,7 @@ def create_payment_return_proposal(company=None, account=None):
     new_proposal = frappe.get_doc({
         'doctype': "Payment Return Proposal",
         'title': "{year:04d}-{month:02d}-{day:02d}".format(year=now.year, month=now.month, day=now.day),
-        'date': "{year:04d}-{month:02d}-{day:02d}".format(year=date.year, month=date.month, day=date.day),
+        'date': "{year:04d}-{month:02d}-{day:02d}".format(year=now.year, month=now.month, day=now.day),
         'payment_entries': records,
         'company': company,
         'total': total
