@@ -2,22 +2,20 @@ import * as api from "../handler/api.js";
 import logger from "../core/logger.js";
 import { getSAK } from "../handler/protocolHandler.js";
 import { updateSessionInfo } from "../ui/ui.js";
-import { getIsFormatting, addFormattingChangeListener, removeFormattingChangeListener, isAppActive, getIsReading, addReadingChangeListener, removeReadingChangeListener } from "../core/state.js";
+import {
+    getIsFormatting,
+    addFormattingChangeListener,
+    removeFormattingChangeListener,
+    isAppActive,
+    getIsReading,
+    addReadingChangeListener,
+    removeReadingChangeListener,
+} from "../core/state.js";
+import { identifyMifareType } from "../utils/mifareUtils.js";
 
 let detectedKeys = {};
 let wrongKeys = {};
 let correctKeys = {};
-
-function checkBit(value, bitNumber) {
-    return (value & (1 << bitNumber)) !== 0;
-}
-
-function identifyMifare(sakValue) {
-    logger.debug(`[verifyKey] Identifying MIFARE type for SAK value: ${sakValue}`);
-    if (checkBit(sakValue, 1)) return "ERROR";
-    if (checkBit(sakValue, 3)) return "MIFARE_CLASSIC";
-    return "MIFARE_DESFIRE";
-}
 
 export async function verifyKey(transponderConfig, numberHandler) {
     logger.debug("[verifyKey] Starting key verification...");
@@ -62,7 +60,7 @@ export async function detectFirstTag(transponderConfig) {
                 logger.debug("[verifyKey] App not active, stopping detection");
                 return false;
             }
-            
+
             const result = await searchFunction();
             if (result.Result) {
                 if (correctKeys[result.UID] || wrongKeys[result.UID]) {
@@ -73,7 +71,7 @@ export async function detectFirstTag(transponderConfig) {
                     let tagType = result.TagType || "Unknown";
                     if (tagType === "MIFARE") {
                         const sakValue = await getSAK(result.UID);
-                        tagType = identifyMifare(sakValue);
+                        tagType = identifyMifareType(sakValue, "verifyKey");
                     }
                     detectedKeys[result.UID] = {
                         count: 1,
@@ -102,7 +100,7 @@ export async function detectFirstTag(transponderConfig) {
             }
         }
     }
-    
+
     logger.debug("[verifyKey] Detection loop ended due to app state change");
     return false;
 }
@@ -111,7 +109,7 @@ async function setUIDInTransponderConfig(transponderConfig, result) {
     let tagType = result.TagType;
     if (tagType === "MIFARE") {
         const sakValue = await getSAK(result.UID);
-        tagType = identifyMifare(sakValue);
+        tagType = identifyMifareType(sakValue, "verifyKey");
     }
     switch (tagType) {
         case "HITAG1S":

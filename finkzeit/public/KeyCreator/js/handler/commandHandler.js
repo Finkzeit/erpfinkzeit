@@ -1,75 +1,75 @@
 import { SP_ERROR } from "../constants/constants.js";
-import { PortHandler } from "./portHandler.js";
 import logger from "../core/logger.js";
 
-/** @type {PortHandler} */
-let portHandler;
+export class CommandProtocol {
+    #portHandler;
 
-let commandQueue = [];
-let isProcessing = false;
+    constructor(portHandler) {
+        this.#portHandler = portHandler;
+    }
 
-export async function initPortHandler() {
-    portHandler = new PortHandler();
-    await portHandler.serialPortHandler.open();
+    async sendCommand(command, paramStr) {
+        // Write command
+        const commandStr = `${this.#hex(command, 4)}${paramStr}\r`;
+        this.#portHandler.write(commandStr);
+
+        // Read response
+        const response = await this.#portHandler.read({
+            timeout: 3000,
+            delimiter: "\r",
+        });
+
+        // Check for delimiter
+        if (!response.endsWith("\r")) {
+            throw new Error("Invalid response format: missing delimiter");
+        }
+
+        // Remove delimiter
+        const responseData = response.slice(0, -1);
+
+        // Check error code (first byte)
+        const errorCode = parseInt(responseData.slice(0, 2), 16);
+
+        switch (errorCode) {
+            case SP_ERROR.ERR_NONE:
+                return responseData.slice(2);
+            case SP_ERROR.ERR_UNKNOWN_FUNCTION:
+                throw new Error("Unknown function");
+            case SP_ERROR.ERR_MISSING_PARAMETER:
+                throw new Error("Missing parameter");
+            case SP_ERROR.ERR_UNUSED_PARAMETERS:
+                throw new Error("Unused parameters");
+            case SP_ERROR.ERR_INVALID_FUNCTION:
+                throw new Error("Invalid function");
+            case SP_ERROR.ERR_PARSER:
+                throw new Error("Parser error");
+            default:
+                throw new Error(`Unknown error code: ${errorCode}`);
+        }
+    }
+
+    #hex(value, length) {
+        return value.toString(16).padStart(length, "0").toUpperCase();
+    }
 }
 
+// Global instance for backward compatibility
+let globalCommandProtocol = null;
+
+// Backward compatibility function
 export async function sendCommand(command, paramStr) {
-    return new Promise((resolve, reject) => {
-        commandQueue.push({ command, paramStr, resolve, reject });
-        processQueue();
-    });
+    if (!globalCommandProtocol) {
+        throw new Error("CommandProtocol not initialized. Call initCommandProtocol() first.");
+    }
+    return await globalCommandProtocol.sendCommand(command, paramStr);
 }
 
-async function processQueue() {
-    if (isProcessing || commandQueue.length === 0) {
-        return;
-    }
-
-    isProcessing = true;
-    const { command, paramStr, resolve, reject } = commandQueue.shift();
-
-    try {
-        let byteArr = `${hex(command, 4)}${paramStr}\r`;
-        logger.debug(`sendCommand sent: ${byteArr}`);
-        await portHandler.serialPortHandler.write(byteArr);
-
-        byteArr = "";
-        const timeout = Date.now() + 5000; // Increase timeout to 5 seconds
-
-        while (Date.now() < timeout) {
-            const bytes = await portHandler.serialPortHandler.read();
-            byteArr += bytes;
-            if (byteArr.endsWith("\r")) {
-                logger.debug(`Received response: ${byteArr}`);
-                break;
-            }
-        }
-
-        if (!byteArr.endsWith("\r")) {
-            logger.warn("No valid delimiter found");
-            reject("No valid delimiter found");
-        } else if (byteArr.length < 3) {
-            logger.error("Timeout or incomplete response");
-            reject("Timeout or incomplete response");
-        } else {
-            const errCode = parseInt(byteArr.slice(0, 2), 16);
-            if (errCode !== SP_ERROR.ERR_NONE) {
-                logger.warn("Error code found");
-                reject("Error code found");
-            } else {
-                const response = byteArr.slice(2, -1);
-                await resolve(response);
-            }
-        }
-    } catch (error) {
-        logger.error(`Error in processQueue: ${error}`);
-        reject(error);
-    } finally {
-        isProcessing = false;
-        processQueue();
-    }
+// Initialize function for backward compatibility
+export async function initCommandProtocol(portHandler) {
+    globalCommandProtocol = new CommandProtocol(portHandler);
 }
 
+// Utility functions for backward compatibility
 export function hex(value, length) {
     if (typeof value !== "number" || isNaN(value)) {
         throw new TypeError("Value must be a number");

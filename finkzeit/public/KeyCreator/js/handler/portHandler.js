@@ -1,156 +1,198 @@
-const delimiter = "\r";
 import logger from "../core/logger.js";
 
-export class PortHandler {
+export class SerialPort {
+    #port = undefined;
+    #usbVendorId = 2520;
+    #baudRate = 115200;
+
+    #encoder = new TextEncoder();
+    #decoder = new TextDecoder();
+
     constructor() {
-        if (!("serial" in navigator)) {
-            logger.error("Web Serial API is not supported in your browser.");
+        if (navigator.serial === undefined) {
+            throw new Error("Web Serial API not supported");
+        }
+
+        navigator.serial.addEventListener("connect", this.#connect.bind(this));
+        navigator.serial.addEventListener("disconnect", this.#disconnect.bind(this));
+    }
+
+    async connect() {
+        if (this.#checkPort()) {
             return;
         }
 
-        this.serialPortHandler = new SerialPortHandler({ baudRate: 115200 }, this.#onDisconnect.bind(this));
-    }
-
-    #onDisconnect() {
-        logger.info("Device disconnected.");
-        this.#disconnectHandler();
-    }
-
-    async #disconnectHandler() {
-        if (!this.serialPortHandler.isOpened) return;
-        await this.serialPortHandler.close();
-    }
-}
-
-class SerialPortHandler {
-    constructor(options, onConnect, onDisconnect) {
-        this.encoder = new TextEncoder();
-        this.decoder = new TextDecoder();
-        this.onConnect = onConnect;
-        this.onDisconnect = onDisconnect;
-        this.options = options;
-        this.port = null;
-        this.isOpened = false;
-        this.writeQueue = Promise.resolve();
-        this.readQueue = Promise.resolve();
-        this.#setupListeners();
-    }
-
-    async open() {
         try {
+            // First try to get an already authorized port
             const ports = await navigator.serial.getPorts();
             if (ports.length > 0) {
-                this.port = ports[0];
-                await this.port.open(this.options);
+                this.#port = ports[0];
+                await this.#open();
                 logger.info("Reconnected to the most recently accessed port");
-            } else {
-                this.port = await navigator.serial.requestPort();
-                await this.port.open(this.options);
-                logger.info("Port opened successfully");
+                return;
             }
 
-            this.isOpened = true;
-            return this.port.getInfo();
+            // If no authorized ports, request a new one
+            await this.#requestPort();
         } catch (error) {
-            logger.error("Failed to open port:", error);
+            logger.error("Failed to connect to port:", error);
             throw error;
         }
     }
 
-    async close() {
-        if (this.port) {
-            try {
-                await this.port.close();
-                this.isOpened = false;
-                logger.info("Port closed successfully");
-            } catch (error) {
-                logger.error("Failed to close port:", error);
-            }
-        }
-    }
-
-    async write(data) {
-        if (!this.isOpened) {
-            await this.open();
+    write(data) {
+        if (!this.#checkPort()) {
+            throw new Error("No port connected");
         }
 
-        await this.clearBuffer(); // Clear the buffer before writing
-
-        const writer = this.port.writable.getWriter();
+        const writer = this.#port.writable.getWriter();
         try {
-            const encoded = this.encoder.encode(data);
-            await writer.write(encoded);
+            const encoded = this.#encoder.encode(data);
+            writer.write(encoded);
         } catch (error) {
-            logger.error("Failed to write data (Porthandler):", error);
+            logger.error("Write failed:", error);
             throw error;
         } finally {
             writer.releaseLock();
         }
     }
 
-    async read() {
-        if (!this.isOpened) {
-            await this.open();
+    read(options = {}) {
+        if (!this.#checkPort()) {
+            throw new Error("No port connected");
         }
 
-        while (this.port.readable) {
-            const reader = this.port.readable.getReader();
-            let chunks = "";
+        const { timeout = 5000, delimiter = "\r", maxLength = 1024 } = options;
 
-            try {
-                while (true) {
-                    const { value, done } = await reader.read();
-                    const decoded = this.decoder.decode(value);
-                    chunks += decoded;
+        // Synchronous wrapper around async read
+        return new Promise((resolve, reject) => {
+            const reader = this.#port.readable.getReader();
+            let response = "";
+            const startTime = Date.now();
 
-                    if (done || decoded.includes(delimiter)) {
-                        break;
-                    }
-                }
-                return chunks;
-            } catch (error) {
-                logger.error("Failed to read data (Porthandler):", error);
-                throw error;
-            } finally {
-                reader.releaseLock();
-            }
-        }
-    }
-
-    async clearBuffer() {
-        if (this.port && this.port.readable) {
-            const reader = this.port.readable.getReader();
-            const timeout = 5; // 5ms timeout to clear buffer
-            let dataCleared = false;
-
-            try {
-                await Promise.race([
-                    (async () => {
-                        while (true) {
-                            const { value, done } = await reader.read();
-                            if (value) {
-                                dataCleared = true;
+            const readChunk = () => {
+                reader
+                    .read()
+                    .then(({ value, done }) => {
+                        if (done) {
+                            reader.releaseLock();
+                            // If we have some response but no delimiter, return what we have
+                            if (response.length > 0) {
+                                resolve(response);
+                            } else {
+                                reject(new Error("Stream ended unexpectedly"));
                             }
-                            if (done) {
-                                break;
-                            }
+                            return;
                         }
-                    })(),
-                    new Promise((resolve) => setTimeout(resolve, timeout)),
-                ]);
 
-                if (dataCleared) {
-                    logger.info("Buffer cleared");
-                }
-            } catch (error) {
-                logger.error("Failed to clear buffer", error);
-            } finally {
-                reader.releaseLock();
-            }
+                        const chunk = this.#decoder.decode(value, { stream: true });
+                        response += chunk;
+
+                        // Check for delimiter
+                        if (response.includes(delimiter)) {
+                            this.#decoder.decode(); // Final decode
+                            reader.releaseLock();
+                            resolve(response);
+                            return;
+                        }
+
+                        // Check for maximum length
+                        if (response.length > maxLength) {
+                            reader.releaseLock();
+                            reject(new Error("Response exceeded maximum length"));
+                            return;
+                        }
+
+                        // Check timeout
+                        if (Date.now() - startTime >= timeout) {
+                            reader.releaseLock();
+                            // If we have some response but no delimiter, return what we have
+                            if (response.length > 0) {
+                                resolve(response);
+                            } else {
+                                reject(new Error(`Read timeout: No delimiter '${delimiter}' found within ${timeout}ms`));
+                            }
+                            return;
+                        }
+
+                        // Continue reading
+                        readChunk();
+                    })
+                    .catch((error) => {
+                        reader.releaseLock();
+                        logger.error("Read failed:", error);
+                        reject(error);
+                    });
+            };
+
+            readChunk();
+        });
+    }
+
+    async #connect(event) {
+        this.#port = event.target;
+        await this.#open();
+        logger.info("Serial port connected:", event);
+    }
+
+    async #open() {
+        if (!this.#checkPort()) {
+            throw new Error("Port is undefined");
+        }
+        await this.#port.open({ baudRate: this.#baudRate });
+        logger.info("Port opened successfully");
+    }
+
+    #disconnect(event) {
+        this.#close();
+        logger.info("Serial port disconnected:", event);
+    }
+
+    #close() {
+        if (!this.#checkPort()) {
+            throw new Error("Port is undefined");
+        }
+
+        this.#port.close();
+        this.#port = undefined;
+        logger.info("Port closed successfully");
+    }
+
+    async #requestPort() {
+        const filter = { usbVendorId: this.#usbVendorId };
+        try {
+            const port = await navigator.serial.requestPort({ filters: [filter] });
+            return await this.#handleFulfilled(port);
+        } catch (error) {
+            this.#handleRejected(error);
+            throw error;
         }
     }
 
-    #setupListeners() {
-        navigator.serial.addEventListener("disconnect", this.onDisconnect);
+    async #handleFulfilled(value) {
+        this.#port = value;
+        await this.#open(value);
+        const info = value.getInfo();
+        logger.info("Port connected successfully");
+        return info;
+    }
+
+    #handleRejected(reason) {
+        logger.error("Port request rejected:", reason);
+    }
+
+    #checkPort() {
+        return this.#port !== undefined;
+    }
+
+    getInfo() {
+        if (!this.#checkPort()) {
+            throw new Error("Port is undefined");
+        }
+        return this.#port.getInfo();
+    }
+
+    getPortSelectedHandler() {
+        return async () => await this.#requestPort();
     }
 }
