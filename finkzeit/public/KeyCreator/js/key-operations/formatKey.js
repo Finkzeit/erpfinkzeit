@@ -600,57 +600,466 @@ async function mifareDesfireScript(config, transponderData) {
             }
         }
 
-        // Try to authenticate with ERP master key if available
+        // Check if ERP config exists - if yes, use it; if no, prompt for custom config
+        let erpMasterKey = null;
         if (erpConfig && erpConfig.tags.mifareDesfire.master_key) {
-            const erpMasterKey = erpConfig.tags.mifareDesfire.master_key;
-            logger.debug(`Trying ERP master key: ${erpMasterKey}`);
+            erpMasterKey = erpConfig.tags.mifareDesfire.master_key;
+            logger.debug(`ERP config found, using ERP master key: ${erpMasterKey}`);
+        } else {
+            // No ERP config, prompt for custom config
+            logger.info("No ERP config found - prompting for custom configuration");
+            updateDialogMessage("Keine ERP-Konfiguration gefunden - versuche benutzerdefinierte Konfiguration...");
 
-            // Try AES first, then 3DES
-            for (const keyType of [DESF.KEYTYPE_AES, DESF.KEYTYPE_3DES]) {
-                try {
-                    const authResult = await protocolHandler.DESFire_Authenticate(
-                        CRYPTO_ENV,
-                        0x00,
-                        erpMasterKey,
-                        keyType,
-                        DESF.AUTHMODE_EV1
-                    );
-                    if (authResult) {
-                        logger.info(
-                            `Successfully authenticated with ERP master key using ${keyType === DESF.KEYTYPE_AES ? "AES" : "3DES"}`
-                        );
-                        updateDialogMessage("Authentifizierung mit ERP-Schlüssel erfolgreich - formatiere Tag...");
-
-                        // Reset the tag to default
-                        const resetResult = await resetDesfireToDefault(erpConfig);
-                        if (resetResult) {
-                            logger.info("Successfully reset DESFire tag to default");
-                            updateDialogMessage("DESFire-Tag erfolgreich auf Standard zurückgesetzt");
-                            return true;
-                        } else {
-                            logger.error("Failed to reset DESFire tag to default");
-                            updateDialogMessage("DESFire-Tag konnte nicht auf Standard zurückgesetzt werden");
-                            return false;
+            try {
+                const erpRestApi = window.erpRestApi;
+                if (erpRestApi) {
+                    const allConfigs = await erpRestApi.fetchAllTransponderConfigs();
+                    if (allConfigs && allConfigs.length > 0) {
+                        // Show config selection modal
+                        const selectedConfigId = await showConfigSelectionModal(allConfigs, "MIFARE DESFire");
+                        if (selectedConfigId) {
+                            const customConfig = await erpRestApi.getTransponderConfiguration(selectedConfigId);
+                            if (customConfig && customConfig.tags && customConfig.tags.mifareDesfire) {
+                                erpMasterKey = customConfig.tags.mifareDesfire.master_key;
+                                logger.debug(`Custom config selected, using master key: ${erpMasterKey}`);
+                            }
                         }
                     }
-                } catch (error) {
-                    logger.debug(
-                        `ERP master key authentication failed with ${keyType === DESF.KEYTYPE_AES ? "AES" : "3DES"}: ${error.message}`
-                    );
                 }
+            } catch (error) {
+                logger.warn("Failed to get custom configuration:", error);
             }
         }
 
-        // If we can't authenticate with ERP keys, the tag is already empty/default
-        logger.info("Cannot authenticate with ERP keys - tag is already empty/default");
-        updateDialogMessage("Tag ist bereits leer/Standard - keine Aktion erforderlich");
-        return true;
+        // Try ERP key with AES first
+        let erpAuthSuccess = false;
+        let erpAuthKeyType = null;
+        if (erpMasterKey) {
+            logger.debug(`Trying ERP master key with AES: ${erpMasterKey}`);
+            updateDialogMessage("Versuche ERP-Schlüssel mit AES...");
+
+            try {
+                const authResult = await protocolHandler.DESFire_Authenticate(
+                    CRYPTO_ENV,
+                    0x00,
+                    erpMasterKey,
+                    DESF.KEYTYPE_AES,
+                    DESF.AUTHMODE_EV1
+                );
+                if (authResult) {
+                    erpAuthSuccess = true;
+                    erpAuthKeyType = DESF.KEYTYPE_AES;
+                    logger.info("Successfully authenticated with ERP master key using AES");
+                    updateDialogMessage("Authentifizierung mit ERP-Schlüssel (AES) erfolgreich");
+                }
+            } catch (error) {
+                logger.debug(`ERP master key authentication failed with AES: ${error.message}`);
+            }
+        }
+
+        // If ERP key with AES failed, try default key with AES
+        let defaultAuthSuccess = false;
+        let defaultAuthKeyType = null;
+        if (!erpAuthSuccess) {
+            logger.debug("ERP key with AES failed, trying default key with AES");
+            updateDialogMessage("ERP-Schlüssel mit AES fehlgeschlagen - versuche Standard-Schlüssel mit AES...");
+
+            try {
+                const defaultAuthResult = await protocolHandler.DESFire_Authenticate(
+                    CRYPTO_ENV,
+                    0x00,
+                    "00000000000000000000000000000000",
+                    DESF.KEYTYPE_AES,
+                    DESF.AUTHMODE_EV1
+                );
+                if (defaultAuthResult) {
+                    defaultAuthSuccess = true;
+                    defaultAuthKeyType = DESF.KEYTYPE_AES;
+                    logger.info("Successfully authenticated with default key using AES");
+                    updateDialogMessage("Authentifizierung mit Standard-Schlüssel (AES) erfolgreich");
+                }
+            } catch (error) {
+                logger.debug(`Default key authentication failed with AES: ${error.message}`);
+            }
+        }
+
+        // If default key with AES failed, try default key with 3DES
+        if (!defaultAuthSuccess) {
+            logger.debug("Default key with AES failed, trying default key with 3DES");
+            updateDialogMessage("Standard-Schlüssel mit AES fehlgeschlagen - versuche Standard-Schlüssel mit 3DES...");
+
+            try {
+                const defaultAuthResult = await protocolHandler.DESFire_Authenticate(
+                    CRYPTO_ENV,
+                    0x00,
+                    "00000000000000000000000000000000",
+                    DESF.KEYTYPE_3DES,
+                    DESF.AUTHMODE_EV1
+                );
+                if (defaultAuthResult) {
+                    defaultAuthSuccess = true;
+                    defaultAuthKeyType = DESF.KEYTYPE_3DES;
+                    logger.info("Successfully authenticated with default key using 3DES");
+                    updateDialogMessage("Authentifizierung mit Standard-Schlüssel (3DES) erfolgreich");
+                }
+            } catch (error) {
+                logger.debug(`Default key authentication failed with 3DES: ${error.message}`);
+            }
+        }
+
+        // If default key with 3DES works, we're finished
+        if (defaultAuthSuccess && defaultAuthKeyType === DESF.KEYTYPE_3DES) {
+            logger.info("Default key with 3DES works - formatting complete");
+            updateDialogMessage("Standard-Schlüssel mit 3DES funktioniert - Formatierung abgeschlossen");
+            return true;
+        }
+
+        // Execute the formatting script with the determined authentication method
+        return await executeDesfireFormattingScript(erpAuthSuccess, erpMasterKey, defaultAuthSuccess, defaultAuthKeyType);
     } catch (error) {
         logger.error("Error in mifareDesfireScript:", error);
         updateDialogMessage(`Fehler beim Formatieren von MIFARE_DESFIRE (${config.tags.mifareDesfire.uid}): ${error.message}`);
         return false;
     }
 }
+
+// ============================================================================
+// DESFire Formatting Script Functions
+// ============================================================================
+
+/**
+ * Main DESFire formatting script that orchestrates the entire process
+ */
+async function executeDesfireFormattingScript(erpAuthSuccess, erpMasterKey, defaultAuthSuccess, defaultAuthKeyType) {
+    logger.debug("Executing DESFire formatting script");
+
+    // Case 1: Default key with 3DES works - we're finished
+    if (defaultAuthSuccess && defaultAuthKeyType === DESF.KEYTYPE_3DES) {
+        logger.info("Default key with 3DES works - formatting complete");
+        updateDialogMessage("Standard-Schlüssel mit 3DES funktioniert - Formatierung abgeschlossen");
+        return true;
+    }
+
+    // Case 2: Default key with AES works - change key settings to 3DES
+    if (defaultAuthSuccess && defaultAuthKeyType === DESF.KEYTYPE_AES) {
+        logger.info("Default key with AES works - changing key settings to 3DES");
+        updateDialogMessage("Standard-Schlüssel mit AES funktioniert - ändere Schlüsseleinstellungen auf 3DES...");
+        return await changeKeySettingsTo3DES();
+    }
+
+    // Case 3: ERP key worked - execute complex sequence
+    if (erpAuthSuccess) {
+        logger.info("ERP key with AES works - executing complex sequence");
+        updateDialogMessage("ERP-Schlüssel mit AES funktioniert - führe komplexe Sequenz aus...");
+        return await executeComplexErpSequence(erpMasterKey);
+    }
+
+    // Case 4: No authentication worked
+    logger.warn("No authentication method worked - cannot format tag");
+    updateDialogMessage("Keine Authentifizierungsmethode funktioniert - Tag kann nicht formatiert werden");
+    return false;
+}
+
+/**
+ * Change key settings to 3DES (for default key authentication)
+ */
+async function changeKeySettingsTo3DES() {
+    logger.debug("Changing key settings to 3DES");
+
+    // Get current key settings
+    const currentKeySettings = await protocolHandler.DESFire_GetKeySettings(CRYPTO_ENV);
+    if (!currentKeySettings.success) {
+        logger.warn("Could not read current key settings");
+        updateDialogMessage("Aktuelle Schlüsseleinstellungen konnten nicht gelesen werden");
+        return false;
+    }
+
+    logger.info("Current key settings:", currentKeySettings);
+    updateDialogMessage(`Aktuelle Schlüsseleinstellungen: ${currentKeySettings.keyType === DESF.KEYTYPE_3DES ? "3DES" : "AES"}`);
+
+    // Change key settings using existing settings but change key type to 3DES
+    updateDialogMessage("Ändere Schlüsseleinstellungen auf 3DES...");
+    const changeKeySettingsResult = await protocolHandler.DESFire_ChangeKeySettings(
+        CRYPTO_ENV,
+        currentKeySettings.keySettings.changeKeyAccessRights, // Use existing access rights
+        currentKeySettings.keySettings.configurationChangeable, // Use existing config changeable
+        currentKeySettings.keySettings.freeCreateDelete, // Use existing free create/delete
+        currentKeySettings.keySettings.freeDirectoryList, // Use existing free directory list
+        currentKeySettings.keySettings.allowChangeMasterKey, // Use existing allow change master key
+        currentKeySettings.numberOfKeys, // Use existing number of keys
+        DESF.KEYTYPE_3DES // Only change the key type to 3DES
+    );
+
+    if (changeKeySettingsResult) {
+        logger.info("Key settings successfully changed to 3DES");
+        updateDialogMessage("Schlüsseleinstellungen erfolgreich auf 3DES geändert");
+
+        // Now change the master key to default (like in the old working version)
+        logger.debug("Changing master key to default after enabling 3DES");
+        updateDialogMessage("Ändere Master-Schlüssel auf Standard nach 3DES-Aktivierung...");
+
+        const changeMasterKeyResult = await protocolHandler.DESFire_ChangeKey(
+            CRYPTO_ENV,
+            0x00, // key number
+            "00000000000000000000000000000000", // old key (default)
+            "00000000000000000000000000000000", // new key (default) - same key
+            0x00, // key version
+            currentKeySettings.keySettings.changeKeyAccessRights, // Use existing access rights
+            currentKeySettings.keySettings.configurationChangeable, // Use existing config changeable
+            currentKeySettings.keySettings.freeCreateDelete, // Use existing free create/delete
+            currentKeySettings.keySettings.freeDirectoryList, // Use existing free directory list
+            currentKeySettings.keySettings.allowChangeMasterKey, // Use existing allow change master key
+            currentKeySettings.numberOfKeys, // Use existing number of keys
+            DESF.KEYTYPE_3DES // Use 3DES key type
+        );
+
+        if (changeMasterKeyResult) {
+            logger.info("Master key successfully changed to default with 3DES");
+            updateDialogMessage("Master-Schlüssel erfolgreich auf Standard mit 3DES geändert");
+            return true;
+        } else {
+            logger.warn("Failed to change master key to default with 3DES");
+            updateDialogMessage("Master-Schlüssel konnte nicht auf Standard mit 3DES geändert werden");
+            return false;
+        }
+    } else {
+        logger.warn("Failed to change key settings to 3DES");
+        updateDialogMessage("Schlüsseleinstellungen konnten nicht auf 3DES geändert werden");
+        return false;
+    }
+}
+
+/**
+ * Execute complex ERP sequence: format tag, change master key, change key settings
+ */
+async function executeComplexErpSequence(erpMasterKey) {
+    logger.debug("Executing complex ERP sequence");
+
+    // Step 1: Re-authenticate with ERP key AES before formatting
+    logger.debug("Re-authenticating with ERP key AES before formatting");
+    updateDialogMessage("Authentifiziere erneut mit ERP-Schlüssel vor Formatierung...");
+
+    try {
+        const reAuthResult = await protocolHandler.DESFire_Authenticate(
+            CRYPTO_ENV,
+            0x00,
+            erpMasterKey,
+            DESF.KEYTYPE_AES,
+            DESF.AUTHMODE_EV1
+        );
+        if (!reAuthResult) {
+            logger.warn("Failed to re-authenticate with ERP key before formatting");
+            updateDialogMessage("Authentifizierung mit ERP-Schlüssel vor Formatierung fehlgeschlagen");
+            return false;
+        }
+        logger.info("Successfully re-authenticated with ERP key before formatting");
+        updateDialogMessage("Authentifizierung mit ERP-Schlüssel vor Formatierung erfolgreich");
+    } catch (error) {
+        logger.warn(`Re-authentication with ERP key failed: ${error.message}`);
+        updateDialogMessage("Authentifizierung mit ERP-Schlüssel vor Formatierung fehlgeschlagen");
+        return false;
+    }
+
+    // Step 2: Format the tag
+    if (!(await formatDesfireTag())) {
+        return false;
+    }
+
+    // Step 3: Authenticate again with ERP key AES
+    if (!(await authenticateWithErpKeyAfterFormat(erpMasterKey))) {
+        return false;
+    }
+
+    // Step 4: Change key settings to 3DES first
+    if (!(await changeKeySettingsTo3DESInComplexSequence())) {
+        return false;
+    }
+
+    // Step 5: Now that we're in 3DES mode, change master key to default
+    logger.debug("Changing master key to default after enabling 3DES");
+    updateDialogMessage("Ändere Master-Schlüssel auf Standard nach 3DES-Aktivierung...");
+
+    const changeMasterKeyResult = await protocolHandler.DESFire_ChangeKey(
+        CRYPTO_ENV,
+        0x00, // key number
+        erpMasterKey, // old key (ERP key)
+        "00000000000000000000000000000000", // new key (default)
+        0x00, // key version
+        0x0f, // changeKeyAccessRights: allow all key changes
+        1, // configurationChangeable: allow configuration changes
+        1, // freeCreateDelete: allow free create/delete
+        1, // freeDirectoryList: allow free directory listing
+        1, // allowChangeMasterKey: allow master key changes
+        1, // numberOfKeys
+        DESF.KEYTYPE_3DES // Use 3DES key type
+    );
+
+    if (!changeMasterKeyResult) {
+        logger.warn("Failed to change master key to default with 3DES");
+        updateDialogMessage("Master-Schlüssel konnte nicht auf Standard mit 3DES geändert werden");
+        return false;
+    }
+
+    logger.info("Successfully changed master key to default with 3DES");
+    updateDialogMessage("Master-Schlüssel erfolgreich auf Standard mit 3DES geändert");
+
+    // Step 6: Final authentication with default key 3DES
+    return await finalAuthenticationWithDefaultKey3DES();
+}
+
+/**
+ * Format the DESFire tag
+ */
+async function formatDesfireTag() {
+    logger.debug("Formatting DESFire tag");
+    updateDialogMessage("DESFire-Tag wird formatiert...");
+
+    const formatResult = await protocolHandler.DESFire_FormatTag(CRYPTO_ENV);
+    if (!formatResult) {
+        logger.warn("Failed to format DESFire tag");
+        updateDialogMessage("DESFire-Tag konnte nicht formatiert werden");
+        return false;
+    }
+
+    logger.info("DESFire tag successfully formatted");
+    updateDialogMessage("DESFire-Tag erfolgreich formatiert");
+    return true;
+}
+
+/**
+ * Authenticate with ERP key AES after formatting
+ */
+async function authenticateWithErpKeyAfterFormat(erpMasterKey) {
+    logger.debug("Authenticating with ERP key AES after formatting");
+    updateDialogMessage("Authentifiziere erneut mit ERP-Schlüssel AES...");
+
+    try {
+        const erpAuthResult = await protocolHandler.DESFire_Authenticate(
+            CRYPTO_ENV,
+            0x00,
+            erpMasterKey,
+            DESF.KEYTYPE_AES,
+            DESF.AUTHMODE_EV1
+        );
+        if (erpAuthResult) {
+            logger.info("Successfully authenticated with ERP key AES after formatting");
+            updateDialogMessage("Authentifizierung mit ERP-Schlüssel AES nach Formatierung erfolgreich");
+            return true;
+        }
+    } catch (error) {
+        logger.debug(`ERP key AES authentication after formatting failed: ${error.message}`);
+    }
+
+    logger.warn("Cannot authenticate with ERP key AES after formatting");
+    updateDialogMessage("Authentifizierung mit ERP-Schlüssel AES nach Formatierung fehlgeschlagen");
+    return false;
+}
+
+/**
+ * Authenticate with default key AES
+ */
+async function authenticateWithDefaultKeyAES() {
+    logger.debug("Authenticating with default key AES");
+    updateDialogMessage("Authentifiziere erneut mit Standard-Schlüssel AES...");
+
+    try {
+        const defaultAuthResult = await protocolHandler.DESFire_Authenticate(
+            CRYPTO_ENV,
+            0x00,
+            "00000000000000000000000000000000",
+            DESF.KEYTYPE_AES,
+            DESF.AUTHMODE_EV1
+        );
+        if (defaultAuthResult) {
+            logger.info("Successfully authenticated with default key AES after master key change");
+            updateDialogMessage("Authentifizierung mit Standard-Schlüssel AES nach Master-Schlüssel-Änderung erfolgreich");
+            return true;
+        }
+    } catch (error) {
+        logger.debug(`Default key AES authentication after master key change failed: ${error.message}`);
+    }
+
+    logger.warn("Cannot authenticate with default key AES after master key change");
+    updateDialogMessage("Authentifizierung mit Standard-Schlüssel AES nach Master-Schlüssel-Änderung fehlgeschlagen");
+    return false;
+}
+
+/**
+ * Change key settings to 3DES (for complex sequence)
+ */
+async function changeKeySettingsTo3DESInComplexSequence() {
+    logger.debug("Changing key settings to 3DES in complex sequence");
+    updateDialogMessage("Ändere Schlüsseleinstellungen auf 3DES...");
+
+    // Read current key settings first (like in creation process)
+    logger.debug("Reading current key settings before changing");
+    updateDialogMessage("Lese aktuelle Schlüsseleinstellungen...");
+
+    const currentKeySettings = await protocolHandler.DESFire_GetKeySettings(CRYPTO_ENV);
+    if (!currentKeySettings.success) {
+        logger.warn("Could not read current key settings");
+        updateDialogMessage("Aktuelle Schlüsseleinstellungen konnten nicht gelesen werden");
+        return false;
+    }
+
+    logger.info("Current key settings:", currentKeySettings);
+    updateDialogMessage(`Aktuelle Schlüsseleinstellungen gelesen: ${currentKeySettings.keyType === DESF.KEYTYPE_3DES ? "3DES" : "AES"}`);
+
+    // Change key settings using existing settings but change key type to 3DES
+    const changeKeySettingsResult = await protocolHandler.DESFire_ChangeKeySettings(
+        CRYPTO_ENV,
+        currentKeySettings.keySettings.changeKeyAccessRights, // Use existing access rights
+        currentKeySettings.keySettings.configurationChangeable, // Use existing config changeable
+        currentKeySettings.keySettings.freeCreateDelete, // Use existing free create/delete
+        currentKeySettings.keySettings.freeDirectoryList, // Use existing free directory list
+        currentKeySettings.keySettings.allowChangeMasterKey, // Use existing allow change master key
+        currentKeySettings.numberOfKeys, // Use existing number of keys
+        DESF.KEYTYPE_3DES // Only change the key type to 3DES
+    );
+
+    if (!changeKeySettingsResult) {
+        logger.warn("Failed to change key settings to 3DES");
+        updateDialogMessage("Schlüsseleinstellungen konnten nicht auf 3DES geändert werden");
+        return false;
+    }
+
+    logger.info("Key settings successfully changed to 3DES");
+    updateDialogMessage("Schlüsseleinstellungen erfolgreich auf 3DES geändert");
+    return true;
+}
+
+/**
+ * Final authentication with default key 3DES
+ */
+async function finalAuthenticationWithDefaultKey3DES() {
+    logger.debug("Final authentication with default key 3DES");
+    updateDialogMessage("Versuche Anmeldung mit Standard-Schlüssel 3DES...");
+
+    try {
+        const finalAuthResult = await protocolHandler.DESFire_Authenticate(
+            CRYPTO_ENV,
+            0x00,
+            "00000000000000000000000000000000",
+            DESF.KEYTYPE_3DES,
+            DESF.AUTHMODE_EV1
+        );
+        if (finalAuthResult) {
+            logger.info("Successfully authenticated with default key 3DES - formatting successful");
+            updateDialogMessage("Authentifizierung mit Standard-Schlüssel 3DES erfolgreich - Formatierung erfolgreich");
+            return true;
+        }
+    } catch (error) {
+        logger.debug(`Final authentication with default key 3DES failed: ${error.message}`);
+    }
+
+    logger.warn("Final authentication with default key 3DES failed");
+    updateDialogMessage("Finale Authentifizierung mit Standard-Schlüssel 3DES fehlgeschlagen");
+    return false;
+}
+
+// ============================================================================
+// Modal Functions
+// ============================================================================
 
 // Simple modal for config selection
 async function showConfigSelectionModal(configs, tagType, isFallback = false) {
@@ -729,319 +1138,4 @@ async function showConfigSelectionModal(configs, tagType, isFallback = false) {
         });
         select.focus();
     });
-}
-
-// Wrapper functions for backward compatibility
-async function showConfigSelectionModalSelect2(configs, tagType) {
-    return showConfigSelectionModal(configs, tagType, false);
-}
-
-async function showConfigFallbackModalSelect2(configs, tagType) {
-    return showConfigSelectionModal(configs, tagType, true);
-}
-
-// Simple config selection in existing dialog
-async function showConfigSelectionInDialog(dialog, configs, tagType) {
-    return new Promise((resolve) => {
-        const dialogContent = dialog.dialogElement;
-
-        // Create simple message
-        const messageDiv = document.createElement("div");
-        messageDiv.innerHTML = `
-            <p><strong>Keine passende Konfiguration gefunden</strong></p>
-            <p>Bitte wählen Sie eine Konfiguration aus:</p>
-        `;
-        dialogContent.appendChild(messageDiv);
-
-        // Create Select2 dropdown
-        const select = document.createElement("select");
-        select.style.width = "100%";
-        select.style.margin = "1em 0";
-        configs.forEach((cfg) => {
-            const option = document.createElement("option");
-            option.value = cfg.name;
-            option.textContent = cfg.customer_name;
-            select.appendChild(option);
-        });
-        dialogContent.appendChild(select);
-
-        // Create buttons using existing styles
-        const btnContainer = document.createElement("div");
-        btnContainer.style.textAlign = "right";
-        btnContainer.style.marginTop = "1em";
-
-        const cancelBtn = document.createElement("button");
-        cancelBtn.textContent = "Abbrechen";
-        cancelBtn.onclick = () => {
-            $(select).select2("destroy");
-            dialogContent.removeChild(messageDiv);
-            dialogContent.removeChild(select);
-            dialogContent.removeChild(btnContainer);
-            resolve(null);
-        };
-        btnContainer.appendChild(cancelBtn);
-
-        const okBtn = document.createElement("button");
-        okBtn.textContent = "Übernehmen";
-        okBtn.onclick = () => {
-            const selected = select.value;
-            $(select).select2("destroy");
-            dialogContent.removeChild(messageDiv);
-            dialogContent.removeChild(select);
-            dialogContent.removeChild(btnContainer);
-            resolve(selected);
-        };
-        btnContainer.appendChild(okBtn);
-
-        dialogContent.appendChild(btnContainer);
-
-        // Initialize Select2
-        $(select).select2({
-            dropdownParent: $(dialogContent),
-            width: "100%",
-        });
-        select.focus();
-    });
-}
-
-// Utility: exact config/tag type match for combo or single keys
-function isConfigMatchingTagCombo(config, detectedTagTypes) {
-    if (!config || !config.tags) return false;
-    const configTagKeys = Object.keys(config.tags).filter(Boolean).sort();
-    const detectedKeys = detectedTagTypes.map((t) => t.toLowerCase()).sort();
-    if (configTagKeys.length !== detectedKeys.length) return false;
-    for (let i = 0; i < configTagKeys.length; i++) {
-        if (configTagKeys[i] !== detectedKeys[i]) return false;
-    }
-    // For HITAG1S, also check feig_coding if present
-    if (detectedKeys.includes("hitag") && config.tags.hitag && config.tags.hitag.feig_coding !== 1) return false;
-    return true;
-}
-
-// Simple function to reset DESFire tag to default
-async function resetDesfireToDefault(erpConfig) {
-    logger.debug("Resetting DESFire tag to default");
-    updateDialogMessage("DESFire-Tag wird auf Standard zurückgesetzt...");
-
-    try {
-        const erpMasterKey = erpConfig.tags.mifareDesfire.master_key;
-        const defaultKey = "00000000000000000000000000000000";
-        let authenticatedWithERP = false;
-        let authenticatedWithDefault = false;
-
-        // 1. Try to authenticate with ERP master key first
-        logger.debug("Trying ERP master key authentication...");
-        for (const keyType of [DESF.KEYTYPE_AES, DESF.KEYTYPE_3DES]) {
-            try {
-                const authResult = await protocolHandler.DESFire_Authenticate(CRYPTO_ENV, 0x00, erpMasterKey, keyType, DESF.AUTHMODE_EV1);
-                if (authResult) {
-                    authenticatedWithERP = true;
-                    logger.info(`Authenticated with ERP master key using ${keyType === DESF.KEYTYPE_AES ? "AES" : "3DES"}`);
-                    break;
-                }
-            } catch (error) {
-                logger.debug(
-                    `ERP master key authentication failed with ${keyType === DESF.KEYTYPE_AES ? "AES" : "3DES"}: ${error.message}`
-                );
-            }
-        }
-
-        // 2. If ERP authentication failed, try default key
-        if (!authenticatedWithERP) {
-            logger.debug("ERP authentication failed, trying default key...");
-            for (const keyType of [DESF.KEYTYPE_3DES, DESF.KEYTYPE_AES]) {
-                try {
-                    const defaultAuthResult = await protocolHandler.DESFire_Authenticate(
-                        CRYPTO_ENV,
-                        0x00,
-                        defaultKey,
-                        keyType,
-                        DESF.AUTHMODE_EV1
-                    );
-                    if (defaultAuthResult) {
-                        authenticatedWithDefault = true;
-                        logger.info(`Authenticated with default key using ${keyType === DESF.KEYTYPE_AES ? "AES" : "3DES"}`);
-                        break;
-                    }
-                } catch (error) {
-                    logger.debug(
-                        `Default key authentication failed with ${keyType === DESF.KEYTYPE_AES ? "AES" : "3DES"}: ${error.message}`
-                    );
-                }
-            }
-
-            // 3. If default key works, check if tag is already in default state
-            if (authenticatedWithDefault) {
-                logger.debug("Default key authentication successful, checking if already formatted...");
-                try {
-                    const keySettingsResult = await protocolHandler.DESFire_GetKeySettings(CRYPTO_ENV);
-                    if (keySettingsResult.success) {
-                        logger.debug(
-                            `Key settings with default key: numberOfKeys=${keySettingsResult.numberOfKeys}, keyType=${keySettingsResult.keyType}`
-                        );
-                        // Check if key settings indicate default state (1 key, either 3DES or AES type)
-                        if (keySettingsResult.numberOfKeys === 1 && (keySettingsResult.keyType === 0 || keySettingsResult.keyType === 2)) {
-                            // 0 = 3DES, 2 = AES - both are valid default states
-                            const keyTypeName = keySettingsResult.keyType === 0 ? "3DES" : "AES";
-                            logger.info(`Tag is already in default state (${keyTypeName}) - no formatting needed`);
-                            updateDialogMessage(`Tag ist bereits im Standard-Zustand (${keyTypeName}) - keine Formatierung erforderlich`);
-                            return true;
-                        } else {
-                            logger.info("Tag has default key but non-default settings - proceeding with formatting");
-                            updateDialogMessage("Tag hat Standard-Schlüssel aber nicht-Standard-Einstellungen - formatiere...");
-                        }
-                    }
-                } catch (error) {
-                    logger.warn("Error checking key settings:", error);
-                    updateDialogMessage("Fehler beim Prüfen der Schlüsseleinstellungen");
-                }
-            }
-        }
-
-        // 4. If neither ERP nor default key worked, we can't proceed
-        if (!authenticatedWithERP && !authenticatedWithDefault) {
-            logger.warn("Cannot authenticate with either ERP master key or default key");
-            updateDialogMessage("Keine Authentifizierung möglich - Tag kann nicht formatiert werden");
-            return false;
-        }
-
-        // 5. If ERP key worked, follow documentation order: format → change key settings → change master key
-        if (authenticatedWithERP) {
-            logger.info("ERP authentication successful, following documentation order...");
-            updateDialogMessage("ERP-Authentifizierung erfolgreich - folge Dokumentationsreihenfolge...");
-
-            // 5a. Format the tag
-            updateDialogMessage("Tag wird formatiert...");
-            const formatResult = await protocolHandler.DESFire_FormatTag(CRYPTO_ENV);
-            if (!formatResult) {
-                logger.warn("Failed to format tag");
-                updateDialogMessage("Tag konnte nicht formatiert werden");
-                return false;
-            }
-            logger.info("Tag successfully formatted");
-            updateDialogMessage("Tag erfolgreich formatiert");
-
-            // 5b. Verify formatting worked by checking if we can get key settings without authentication
-            // After formatting, the tag should allow getting key settings without authentication
-            updateDialogMessage("Verifiziere Formatierung...");
-            try {
-                const keySettingsResult = await protocolHandler.DESFire_GetKeySettings(CRYPTO_ENV);
-                if (keySettingsResult.success) {
-                    logger.info("Formatting verified - can get key settings without authentication");
-                    updateDialogMessage("Formatierung verifiziert - Schlüsseleinstellungen lesbar");
-
-                    // Check if key settings indicate default state (1 key, either 3DES or AES type)
-                    logger.debug(
-                        `Key settings after formatting: numberOfKeys=${keySettingsResult.numberOfKeys}, keyType=${keySettingsResult.keyType}`
-                    );
-                    if (keySettingsResult.numberOfKeys === 1 && (keySettingsResult.keyType === 0 || keySettingsResult.keyType === 2)) {
-                        // 0 = 3DES, 2 = AES - both are valid default states
-                        const keyTypeName = keySettingsResult.keyType === 0 ? "3DES" : "AES";
-                        logger.info(`Key settings confirm default state (${keyTypeName})`);
-                        updateDialogMessage(`Schlüsseleinstellungen bestätigen Standard-Zustand (${keyTypeName})`);
-                    } else {
-                        logger.warn(
-                            `Key settings don't match expected default state: expected numberOfKeys=1, keyType=0 (3DES) or 2 (AES), got numberOfKeys=${keySettingsResult.numberOfKeys}, keyType=${keySettingsResult.keyType}`
-                        );
-                        updateDialogMessage("Schlüsseleinstellungen entsprechen nicht dem erwarteten Standard");
-                    }
-                } else {
-                    logger.warn("Cannot get key settings after formatting - formatting may have failed");
-                    updateDialogMessage("Schlüsseleinstellungen nach Formatierung nicht lesbar");
-                    return false;
-                }
-            } catch (error) {
-                logger.warn("Error verifying formatting with key settings:", error);
-                updateDialogMessage("Fehler bei der Formatierungsverifikation");
-                return false;
-            }
-
-            // 5c. Try to authenticate with default key (optional verification)
-            updateDialogMessage("Teste Authentifizierung mit Standard-Schlüssel...");
-            let reAuthenticated = false;
-            for (const keyType of [DESF.KEYTYPE_3DES, DESF.KEYTYPE_AES]) {
-                try {
-                    logger.debug(`Trying to authenticate with default key using ${keyType === DESF.KEYTYPE_AES ? "AES" : "3DES"}...`);
-                    const reAuthResult = await protocolHandler.DESFire_Authenticate(
-                        CRYPTO_ENV,
-                        0x00,
-                        defaultKey,
-                        keyType,
-                        DESF.AUTHMODE_EV1
-                    );
-                    if (reAuthResult) {
-                        reAuthenticated = true;
-                        logger.info(`Successfully authenticated with default key using ${keyType === DESF.KEYTYPE_AES ? "AES" : "3DES"}`);
-                        break;
-                    } else {
-                        logger.debug(`Authentication with default key failed using ${keyType === DESF.KEYTYPE_AES ? "AES" : "3DES"}`);
-                    }
-                } catch (error) {
-                    logger.debug(`Re-authentication failed with ${keyType === DESF.KEYTYPE_AES ? "AES" : "3DES"}: ${error.message}`);
-                }
-            }
-
-            if (!reAuthenticated) {
-                logger.warn("Cannot authenticate with default key after formatting - but key settings verification succeeded");
-                updateDialogMessage("Authentifizierung mit Standard-Schlüssel fehlgeschlagen - aber Schlüsseleinstellungen OK");
-                // Don't fail here - the key settings verification is more reliable
-            }
-
-            // 5d. Set master key to default value (all zeros)
-            // After formatting, we need to explicitly set the master key to default
-            updateDialogMessage("Master-Schlüssel wird auf Standard gesetzt...");
-            try {
-                // Try to authenticate with ERP key again to set the master key
-                const reAuthERP = await protocolHandler.DESFire_Authenticate(
-                    CRYPTO_ENV,
-                    0x00,
-                    erpMasterKey,
-                    DESF.KEYTYPE_AES,
-                    DESF.AUTHMODE_EV1
-                );
-                if (reAuthERP) {
-                    logger.info("Re-authenticated with ERP key to set master key to default");
-
-                    // Change master key to default
-                    const changeKeyResult = await protocolHandler.DESFire_ChangeKey(
-                        CRYPTO_ENV,
-                        0x00, // Master key
-                        erpMasterKey, // Old key (current ERP key)
-                        defaultKey, // New key (default key - all zeros)
-                        0x00, // Key version
-                        0x0f, // Allow all key changes
-                        true, // configurationChangeable
-                        true, // freeCreateDelete
-                        true, // freeDirectoryList
-                        true, // allowChangeMasterKey
-                        1, // numberOfKeys
-                        DESF.KEYTYPE_AES
-                    );
-
-                    if (changeKeyResult) {
-                        logger.info("Master key successfully set to default");
-                        updateDialogMessage("Master-Schlüssel erfolgreich auf Standard gesetzt");
-                    } else {
-                        logger.warn("Failed to set master key to default");
-                        updateDialogMessage("Master-Schlüssel konnte nicht auf Standard gesetzt werden");
-                    }
-                } else {
-                    logger.warn("Cannot re-authenticate with ERP key to set master key");
-                    updateDialogMessage("Keine Re-Authentifizierung mit ERP-Schlüssel möglich");
-                }
-            } catch (error) {
-                logger.warn("Error setting master key to default:", error);
-                updateDialogMessage("Fehler beim Setzen des Master-Schlüssels");
-            }
-        }
-
-        // Success - tag is now formatted and in default state
-        logger.info("DESFire tag successfully reset to default state");
-        updateDialogMessage("DESFire-Tag erfolgreich auf Standard zurückgesetzt");
-        return true;
-    } catch (error) {
-        logger.error("Error resetting DESFire to default:", error);
-        updateDialogMessage("Fehler beim Zurücksetzen des DESFire-Tags");
-        return false;
-    }
 }

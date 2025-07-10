@@ -70,8 +70,6 @@ export async function mifareDesfireScript(transponderConfig) {
 async function login0Key() {
     const keyNoTag = 0x00;
     const key = 0x00000000000000000000000000000000;
-    //dev
-    //const keyType = DESF.KEYTYPE_AES;
     const keyType = DESF.KEYTYPE_3DES;
     const mode = DESF.AUTHMODE_EV1;
 
@@ -304,7 +302,7 @@ async function writeToFile(transponderConfig) {
 }
 
 async function loginApplicationReadKey(transponderConfig) {
-    const keyNoTag = 0x00;
+    const keyNoTag = 0x01;
     const key = transponderConfig.tags.mifareDesfire.app_read_key;
     const keyType = DESF.KEYTYPE_AES;
     const mode = DESF.AUTHMODE_EV1;
@@ -337,21 +335,27 @@ export async function readMifareDesfire(transponderConfig) {
 
     try {
         await api.mifare();
-        
+
         const masterKeys = [0x00000000000000000000000000000000, 0x0123456789abcdef0123456789abcdef];
         const keyTypes = [DESF.KEYTYPE_3DES, DESF.KEYTYPE_AES];
-        
+
         for (const key of masterKeys) {
             for (const keyType of keyTypes) {
                 try {
                     const authResult = await protocolHandler.DESFire_Authenticate(CRYPTO_ENV, 0x00, key, keyType, DESF.AUTHMODE_EV1);
                     if (authResult) {
                         logger.debug(`Successfully authenticated with key: ${key} and keyType: ${keyType}`);
-                        
+
                         // Try to read from common file numbers
                         for (let fileNo = 0; fileNo < 5; fileNo++) {
                             try {
-                                const readResult = await protocolHandler.DESFire_ReadData(CRYPTO_ENV, fileNo, 0x00, 0x04, DESF.COMMSET_PLAIN);
+                                const readResult = await protocolHandler.DESFire_ReadData(
+                                    CRYPTO_ENV,
+                                    fileNo,
+                                    0x00,
+                                    0x04,
+                                    DESF.COMMSET_PLAIN
+                                );
                                 if (readResult.success) {
                                     logger.debug(`Read data from file ${fileNo}: ${readResult.data}`);
                                     updateSessionInfo("action", `MIFARE DESFire Daten erfolgreich gelesen: ${readResult.data}`);
@@ -367,7 +371,7 @@ export async function readMifareDesfire(transponderConfig) {
                 }
             }
         }
-        
+
         logger.warn("Could not read number from MIFARE DESFire tag");
         updateSessionInfo("action", "Keine Daten von MIFARE DESFire Tag gelesen");
         return null;
