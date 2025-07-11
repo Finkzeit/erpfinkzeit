@@ -11,26 +11,81 @@ import { updateEnvironmentDisplay } from "../api/environmentDetector.js";
 import { initializeTestMode } from "../ui/testMode.js";
 import { initializeMuteToggle } from "../ui/muteHandler.js";
 
-import { resetApp, startNewSession, isSessionValid, addAppStateListener, getIsFormatting, getIsReading } from "./state.js";
+import {
+    resetApp,
+    startNewSession,
+    isSessionValid,
+    addAppStateListener,
+    getIsFormatting,
+    getIsReading,
+    setIsFormatting,
+    setIsReading,
+    addFormattingChangeListener,
+    addReadingChangeListener,
+} from "./state.js";
 
 // Application state
 let elements;
 let transponderConfig;
 let erpRestApi;
+let currentSessionPromise = null;
+let currentSessionId = null;
 
 document.addEventListener("DOMContentLoaded", setup);
 
-async function setup() {
+export async function setup() {
     logger.debug("Setup starting");
-    elements = initializeUI();
-    addEventListeners(elements, startSession, handleManualNumberChange, handleConnectReader);
-    await handleConnectReader();
-
-    // Initialize test mode button
-    initializeTestMode();
 
     try {
-        logger.debug("Creating ERP API instance...");
+        await initializeElements();
+        await setupEventListeners();
+        await initializeKeyCreator();
+        await setupTestMode();
+        await initializeErpApi();
+        await initializeKeyFormatting();
+        await initializeKeyReading();
+        await initializeMuteToggle();
+        await updateEnvironmentDisplay();
+
+        // Listen for app reset events to clear UI
+        addAppStateListener("appReset", clearUI);
+        addAppStateListener("appReactivated", () => {
+            logger.debug("App reactivated, ready for new operations");
+        });
+
+        logger.debug("Setup completed");
+        logger.debug("Running in development mode");
+    } catch (error) {
+        logger.error("Setup failed:", error);
+    }
+}
+
+async function initializeElements() {
+    logger.debug("Initializing elements");
+    elements = initializeUI();
+    logger.debug("Elements initialized:", elements);
+}
+
+async function setupEventListeners() {
+    logger.debug("Adding event listeners");
+    addEventListeners(elements, startSession, handleManualNumberChange, handleConnectReader);
+    logger.debug("Event listeners added");
+}
+
+async function initializeKeyCreator() {
+    logger.debug("Initializing key creator");
+    await handleConnectReader();
+}
+
+async function setupTestMode() {
+    logger.debug("Initializing test mode functionality");
+    initializeTestMode();
+    logger.debug("Test mode button initialized and enabled");
+}
+
+async function initializeErpApi() {
+    logger.debug("Creating ERP API instance...");
+    try {
         erpRestApi = new ErpRestApi();
         logger.debug("ERP API instance created, setting global...");
         window.erpRestApi = erpRestApi;
@@ -47,34 +102,11 @@ async function setup() {
         }
         updateSessionInfo("action", "ERP API Initialisierung fehlgeschlagen. Bitte überprüfen Sie Ihre Verbindung.");
     }
-
-    logger.debug("Initializing key formatting...");
-    initializeKeyFormatting();
-    
-    logger.debug("Initializing key reading...");
-    initializeKeyReading();
-    
-    logger.debug("Initializing mute toggle...");
-    initializeMuteToggle();
-    
-    logger.debug("Updating environment display...");
-    updateEnvironmentDisplay();
-    
-
-
-    // Listen for app reset events to clear UI
-    addAppStateListener("appReset", clearUI);
-    addAppStateListener("appReactivated", () => {
-        logger.debug("App reactivated, ready for new operations");
-    });
-
-    logger.debug("Setup completed");
-    logger.debug("Running in development mode");
 }
 
 function clearUI() {
     logger.debug("Clearing UI due to app reset");
-    
+
     // Reset UI elements
     if (elements) {
         if (elements.firmenSelect) {
@@ -84,17 +116,17 @@ function clearUI() {
             elements.numberInput.value = "";
         }
     }
-    
+
     // Reset session info
     updateSessionInfo("reset");
     updateSessionInfo("status", "Anwendung zurückgesetzt. Bitte Firma auswählen.");
     updateSessionInfo("action", "Anwendung wurde zurückgesetzt");
-    
+
     // Clear any detected keys
     if (window.clearKeys) {
         window.clearKeys();
     }
-    
+
     // Clear transponder config
     transponderConfig = null;
 }
@@ -153,18 +185,61 @@ async function startSession() {
 }
 
 async function recurringSession(requiredKeys) {
-    const sessionId = startNewSession();
-    logger.debug(`Recurring session ${sessionId} starting`);
-    
-    while (isSessionValid(sessionId)) {
+    currentSessionId = startNewSession();
+    logger.debug(`Recurring session ${currentSessionId} starting`);
+
+    // Set up state change listeners for this session
+    let sessionPaused = false;
+    let pauseResolve = null;
+
+    const onFormattingChange = (isFormatting) => {
+        if (isFormatting && !sessionPaused) {
+            logger.debug("Formatting started, pausing main session loop");
+            sessionPaused = true;
+        } else if (!isFormatting && sessionPaused) {
+            logger.debug("Formatting ended, resuming main session loop");
+            sessionPaused = false;
+            if (pauseResolve) {
+                pauseResolve();
+                pauseResolve = null;
+            }
+        }
+    };
+
+    const onReadingChange = (isReading) => {
+        if (isReading && !sessionPaused) {
+            logger.debug("Reading started, pausing main session loop");
+            sessionPaused = true;
+        } else if (!isReading && sessionPaused) {
+            logger.debug("Reading ended, resuming main session loop");
+            sessionPaused = false;
+            if (pauseResolve) {
+                pauseResolve();
+                pauseResolve = null;
+            }
+        }
+    };
+
+    // Add listeners
+    addFormattingChangeListener(onFormattingChange);
+    addReadingChangeListener(onReadingChange);
+
+    while (isSessionValid(currentSessionId)) {
         try {
-            // Check if formatting or reading mode is active - pause the main loop
+            // Check if session should be paused
             if (getIsFormatting() || getIsReading()) {
-                logger.debug("Formatting or reading mode active, pausing main loop");
-                await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms before checking again
+                if (!sessionPaused) {
+                    logger.debug("Formatting or reading mode active, pausing main loop");
+                    sessionPaused = true;
+                }
+
+                // Wait for state to change back
+                await new Promise((resolve) => {
+                    pauseResolve = resolve;
+                });
                 continue;
             }
-            
+
             numberHandler.readFromInput();
 
             const keyVerified = await verifyKey(transponderConfig, numberHandler);
@@ -235,8 +310,8 @@ async function recurringSession(requiredKeys) {
             break;
         }
     }
-    
-    logger.debug(`Session ${sessionId} ended`);
+
+    logger.debug(`Session ${currentSessionId} ended`);
 }
 
 function handleManualNumberChange() {

@@ -292,7 +292,7 @@ export async function DESFire_Authenticate(cryptoEnv, keyNoTag, key, keyType, mo
     logger.debug("kryptenv", cryptoEnvHex, "keynotag", keyNoTagHex, "key", keyHex, "keytype", keyTypeHex, "mode", modeHex);
     const paramStr = `${cryptoEnvHex}${keyNoTagHex}${keyHex}${keyTypeHex}${modeHex}`;
 
-    logger.debug("DESFire_CreateKey command sent with parameters:", paramStr);
+    logger.debug("DESFire_Authenticate command sent with parameters:", paramStr);
 
     const response = await sendCommand(SP_CMD.DESFIRE_AUTHENTICATE, paramStr);
     return response === "01";
@@ -402,6 +402,7 @@ export async function DESFire_ChangeKeySettings(
     logger.debug("DESFire_ChangeKeySettings command sent with parameters:", paramStr);
 
     const response = await sendCommand(SP_CMD.DESFIRE_CHANGE_KEY_SETTINGS, paramStr);
+    logger.debug("DESFire_ChangeKeySettings response:", response);
     return response === "01";
 }
 

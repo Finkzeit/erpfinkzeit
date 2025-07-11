@@ -1,22 +1,12 @@
 import * as api from "../handler/api.js";
 import logger from "../core/logger.js";
 import { getSAK } from "../handler/protocolHandler.js";
-import { updateDialogMessage } from "./formatKey.js";
+import { updateDialogMessage } from "../utils/dialogUtils.js";
+import { identifyMifareType } from "../utils/mifareUtils.js";
 
 let detectedKeys = {};
 let wrongKeys = {};
 let correctKeys = {};
-
-function checkBit(value, bitNumber) {
-    return (value & (1 << bitNumber)) !== 0;
-}
-
-function identifyMifare(sakValue) {
-    logger.debug(`[FormatVerify] Identifying MIFARE type for SAK value: ${sakValue}`);
-    if (checkBit(sakValue, 1)) return "ERROR";
-    if (checkBit(sakValue, 3)) return "MIFARE_CLASSIC";
-    return "MIFARE_DESFIRE";
-}
 
 export async function verifyKey(shouldContinueSearchFn) {
     logger.debug("[FormatVerify] Starting key verification...");
@@ -59,7 +49,7 @@ async function waitForInitialTag(shouldContinueSearchFn) {
                 let tagType = result.TagType || "Unknown";
                 if (tagType === "MIFARE") {
                     const sakValue = await getSAK(result.UID);
-                    tagType = identifyMifare(sakValue);
+                    tagType = identifyMifareType(sakValue, "FormatVerify");
                 }
                 logger.info("[FormatVerify] Initial tag found", result);
                 updateDialogMessage(`${tagType} (${result.UID}) erkannt`);
@@ -90,7 +80,7 @@ async function detectAllTags(shouldContinueSearchFn) {
             let tagType = result.TagType || "Unknown";
             if (tagType === "MIFARE") {
                 const sakValue = await getSAK(result.UID);
-                tagType = identifyMifare(sakValue);
+                tagType = identifyMifareType(sakValue, "FormatVerify");
             }
             detectedKeys[result.UID] = {
                 data: result,

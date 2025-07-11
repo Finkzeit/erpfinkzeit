@@ -88,14 +88,14 @@ export function resetApp() {
     logger.debug("=== RESETTING APPLICATION ===");
     killApp();
     stateEmitter.emit("appReset");
-    
+
     // Reactivate after reset
     setTimeout(() => {
         appActive = true;
         logger.debug("Application reactivated");
         stateEmitter.emit("appReactivated");
     }, 1000);
-    
+
     logger.debug("=== APPLICATION RESET COMPLETE ===");
 }
 

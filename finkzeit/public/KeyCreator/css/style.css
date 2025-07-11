@@ -84,7 +84,8 @@ select {
     border: 1px solid var(--border-color);
 }
 
-.btn, button {
+.btn,
+button {
     font-family: var(--font-family);
     cursor: pointer;
     padding: 10px 22px;
@@ -94,8 +95,8 @@ select {
     border: 1.5px solid var(--border-color);
     font-size: 16px;
     font-weight: 500;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    transition: all 0.18s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
     margin: 0 8px 8px 0;
     outline: none;
     display: inline-flex;
@@ -103,21 +104,24 @@ select {
     gap: 8px;
 }
 
-.btn:hover, button:hover {
+.btn:hover,
+button:hover {
     background-color: #f3f6fa;
     border-color: var(--border-color-hover);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
     transform: translateY(-2px) scale(1.03);
 }
 
-.btn:active, button:active {
+.btn:active,
+button:active {
     background-color: #e9ecef;
     border-color: var(--primary-color);
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     transform: scale(0.98);
 }
 
-.btn:disabled, button:disabled {
+.btn:disabled,
+button:disabled {
     background-color: #f8f9fa;
     color: #b0b0b0;
     border-color: #e0e0e0;
@@ -227,8 +231,6 @@ select {
     box-shadow: none;
 }
 
-
-
 #ui {
     font-weight: bold;
     padding: 10px;
@@ -257,37 +259,35 @@ select {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     padding: 6px 12px;
-    border-radius: 16px;
+    border-radius: 10px;
     font-weight: 600;
     font-size: 13px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
-    border: 1px solid rgba(255,255,255,0.2);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     white-space: nowrap;
     transition: all 0.2s ease;
-}
-
-.env-badge:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
 .env-icon {
     font-size: 16px;
 }
 
-.test-mode-btn:hover, .test-mode-btn:focus {
+.test-mode-btn:hover,
+.test-mode-btn:focus {
     background: #ffe066;
     color: #000;
     border-color: #e0a800;
 }
 
-.read-key-btn:hover, .read-key-btn:focus {
+.read-key-btn:hover,
+.read-key-btn:focus {
     background: #007bff;
     color: #fff;
     border-color: #0056b3;
 }
 
-.format-key-btn:hover, .format-key-btn:focus {
+.format-key-btn:hover,
+.format-key-btn:focus {
     background: #dc3545;
     color: #fff;
     border-color: #b52a37;
@@ -404,7 +404,8 @@ select {
     color: var(--secondary-color);
 }
 
-.config-json, .tech-json {
+.config-json,
+.tech-json {
     background-color: #f8f9fa;
     border: 1px solid var(--border-color);
     border-radius: 4px;
@@ -417,7 +418,8 @@ select {
     overflow-y: auto;
 }
 
-.blocks-container, .blocks-grid {
+.blocks-container,
+.blocks-grid {
     display: flex;
     flex-direction: column;
     gap: 10px;

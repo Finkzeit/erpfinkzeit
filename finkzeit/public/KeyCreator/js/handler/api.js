@@ -1,11 +1,14 @@
 import { sendBeep, setTagTypes, searchTag, getVersionString, createSingleTagMask } from "../handler/protocolHandler.js";
 import { TAG_TYPES } from "../constants/constants.js";
-import { initPortHandler } from "../handler/commandHandler.js";
+import { initCommandProtocol } from "../handler/commandHandler.js";
+import { SerialPort } from "../handler/portHandler.js";
 import logger from "../core/logger.js";
 import { isAppActive } from "../core/state.js";
 
 export async function startKeyCreator() {
-    await initPortHandler();
+    const serialPort = new SerialPort();
+    await serialPort.connect();
+    await initCommandProtocol(serialPort);
 }
 
 async function setAndSearchTag(lfTag, hfTag) {
@@ -13,7 +16,7 @@ async function setAndSearchTag(lfTag, hfTag) {
         logger.debug("App not active, skipping tag search");
         return { Result: false, TagType: null, IDBitCount: 0, UID: null };
     }
-    
+
     await setTagTypes(createSingleTagMask(lfTag), createSingleTagMask(hfTag));
     return await searchTag();
 }
@@ -23,7 +26,7 @@ export async function hitag1s() {
         logger.debug("App not active, skipping HITAG1S search");
         return { Result: false, TagType: null, IDBitCount: 0, UID: null };
     }
-    
+
     logger.debug("trying to run HITAG1S");
     logger.debug("setting tag types");
     return await setAndSearchTag(TAG_TYPES.LF.HITAG1S, TAG_TYPES.HF.NONE);
@@ -34,7 +37,7 @@ export async function mifare() {
         logger.debug("App not active, skipping Mifare search");
         return { Result: false, TagType: null, IDBitCount: 0, UID: null };
     }
-    
+
     logger.debug("trying to run Mifare Classic");
     logger.debug("setting tag types");
     return await setAndSearchTag(TAG_TYPES.LF.NONE, TAG_TYPES.HF.MIFARE_CLASSIC);
@@ -45,7 +48,7 @@ export async function deister() {
         logger.debug("App not active, skipping Deister search");
         return { Result: false, TagType: null, IDBitCount: 0, UID: null };
     }
-    
+
     logger.debug("trying to run Deister");
     logger.debug("setting tag types");
     return await setAndSearchTag(TAG_TYPES.LF.DEISTER, TAG_TYPES.HF.NONE);
@@ -56,14 +59,14 @@ export async function em() {
         logger.debug("App not active, skipping EM search");
         return { Result: false, TagType: null, IDBitCount: 0, UID: null };
     }
-    
+
     logger.debug("trying to run EM");
     logger.debug("setting tag types");
     return await setAndSearchTag(TAG_TYPES.LF.EM4102, TAG_TYPES.HF.NONE);
 }
 
 function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 export async function beepOk() {
