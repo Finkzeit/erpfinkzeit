@@ -1,6 +1,6 @@
 import { parseByte } from "../handler/protocolHandler.js";
 import * as protocolHandler from "../handler/protocolHandler.js";
-import { hex, swap32 } from "../handler/commandHandler.js";
+import { hex, swap32 } from "../utils/hexUtils.js";
 import { updateSessionInfo } from "../ui/ui.js";
 import logger from "../core/logger.js";
 

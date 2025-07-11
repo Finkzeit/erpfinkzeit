@@ -229,29 +229,53 @@ async function formatDetectedTags(tags, dialog) {
         }
     }
 
-    // Step 3: Delete from ERP only if ALL tags were formatted successfully
-    if (results.failed.length === 0 && results.skipped.length === 0 && results.formatted.length > 0) {
-        // All tags formatted successfully, now delete from ERP
-        for (const physicalNumber of physicalNumbers) {
-            if (erpRestApi) {
-                logger.debug(`Attempting to delete transponder ${physicalNumber} from ERP...`);
-                updateDialogMessage(`Lösche Transponder ${physicalNumber} aus dem ERP...`);
+    // Step 3: Delete from ERP if all detected tags are in default state
+    // This includes: successfully formatted tags, empty tags, and tags that are already in default state
+    const allTagsInDefaultState = results.failed.length === 0 && results.skipped.length === 0 && results.formatted.length > 0;
 
-                const deleteResult = await deleteTransponderFromERP(physicalNumber);
-                logger.debug(`Delete result for ${physicalNumber}:`, deleteResult);
-                if (deleteResult.status) {
-                    updateDialogMessage(`Transponder ${physicalNumber} erfolgreich aus ERP gelöscht`);
+    logger.debug("ERP deletion check:", {
+        failed: results.failed.length,
+        skipped: results.skipped.length,
+        formatted: results.formatted.length,
+        allTagsInDefaultState: allTagsInDefaultState,
+        physicalNumbers: Array.from(physicalNumbers),
+    });
+
+    if (allTagsInDefaultState) {
+        // All detected tags are in default state (formatted/empty), delete from ERP
+        logger.debug("All tags in default state - proceeding with ERP deletion");
+
+        if (physicalNumbers.size === 0) {
+            logger.debug("No transponders found in ERP to delete");
+            updateDialogMessage("Keine Transponder im ERP gefunden - nichts zu löschen");
+        } else {
+            for (const physicalNumber of physicalNumbers) {
+                if (erpRestApi) {
+                    logger.debug(`Attempting to delete transponder ${physicalNumber} from ERP...`);
+                    updateDialogMessage(`Lösche Transponder ${physicalNumber} aus dem ERP...`);
+
+                    const deleteResult = await deleteTransponderFromERP(physicalNumber);
+                    logger.debug(`Delete result for ${physicalNumber}:`, deleteResult);
+                    if (deleteResult.status) {
+                        updateDialogMessage(`Transponder ${physicalNumber} erfolgreich aus ERP gelöscht`);
+                    } else {
+                        updateDialogMessage(`Fehler beim Löschen aus ERP: ${deleteResult.message}`);
+                    }
                 } else {
-                    updateDialogMessage(`Fehler beim Löschen aus ERP: ${deleteResult.message}`);
+                    logger.warn(`ERP API not available for deletion of ${physicalNumber}`);
+                    updateDialogMessage(`ERP API nicht verfügbar für Löschung von ${physicalNumber}`);
                 }
             }
         }
     } else {
         // Some tags failed or were skipped, don't delete from ERP
+        logger.debug("ERP deletion skipped - not all tags in default state");
         if (results.failed.length > 0) {
             updateDialogMessage(`Formatierung fehlgeschlagen - Transponder bleiben im ERP`);
         } else if (results.skipped.length > 0) {
             updateDialogMessage(`Einige Tags übersprungen - Transponder bleiben im ERP`);
+        } else if (results.formatted.length === 0) {
+            updateDialogMessage(`Keine Tags verarbeitet - Transponder bleiben im ERP`);
         }
     }
 
@@ -272,6 +296,23 @@ async function formatDetectedTags(tags, dialog) {
 
     if (results.formatted.length === 0 && results.skipped.length === 0 && results.failed.length === 0) {
         finalMessage = "Keine Tags verarbeitet.";
+    }
+
+    // Add ERP deletion status
+    if (allTagsInDefaultState) {
+        if (physicalNumbers.size === 0) {
+            finalMessage += `\nℹ️ ERP-Löschung: Keine Transponder im ERP gefunden - nichts zu löschen`;
+        } else if (erpRestApi) {
+            finalMessage += `\n🗑️ ERP-Löschung: Transponder aus ERP entfernt`;
+        } else {
+            finalMessage += `\n⚠️ ERP-Löschung: ERP API nicht verfügbar - Transponder bleiben im ERP`;
+        }
+    } else if (results.failed.length > 0) {
+        finalMessage += `\n⚠️ ERP-Löschung: Formatierung fehlgeschlagen - Transponder bleiben im ERP`;
+    } else if (results.skipped.length > 0) {
+        finalMessage += `\n⚠️ ERP-Löschung: Einige Tags übersprungen - Transponder bleiben im ERP`;
+    } else if (results.formatted.length === 0) {
+        finalMessage += `\n⚠️ ERP-Löschung: Keine Tags verarbeitet - Transponder bleiben im ERP`;
     }
 
     updateDialogMessage(finalMessage);
@@ -458,7 +499,8 @@ async function mifareClassicScript(config, transponderData) {
         if (loginResult) {
             logger.info("Authenticated with default key - tag is empty");
             updateDialogMessage("Schlüssel leer - Tag ist bereits im Standard-Zustand");
-            return true; // Tag is already empty/default
+            logger.debug("MIFARE Classic tag is already in default state - returning true for ERP deletion");
+            return true; // Tag is already empty/default - consider it formatted for ERP deletion
         }
     } catch (error) {
         logger.debug(`Default key authentication failed: ${error.message}`);

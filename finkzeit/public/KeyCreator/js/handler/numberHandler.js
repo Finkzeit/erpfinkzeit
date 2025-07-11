@@ -24,39 +24,44 @@ class NumberHandler {
     }
 
     readFromInput() {
-        if (this.inputElement) {
-            this.currentNumber = parseInt(this.inputElement.value, 10) || this.currentNumber;
-            logger.debug("Read number from input:", this.currentNumber);
-            if (this.currentNumber != null) {
-                updateSessionInfo("number", this.currentNumber.toString());
-            }
-        } else {
+        if (!this.inputElement) {
             logger.error("Input element not found. Make sure initialize() has been called.");
             updateSessionInfo("action", "Fehler: Nummern-Eingabeelement nicht gefunden");
+            return;
+        }
+
+        this.currentNumber = parseInt(this.inputElement.value, 10) || this.currentNumber;
+        logger.debug("Read number from input:", this.currentNumber);
+
+        if (this.currentNumber != null) {
+            updateSessionInfo("number", this.currentNumber.toString());
         }
     }
 
     writeToInput() {
-        if (this.inputElement) {
-            this.inputElement.value = this.currentNumber;
-            logger.debug("Written value to input element:", this.currentNumber);
-            if (this.currentNumber != null) {
-                updateSessionInfo("number", this.currentNumber.toString());
-            }
-        } else {
+        if (!this.inputElement) {
             logger.error("Input element not found. Make sure initialize() has been called.");
             updateSessionInfo("action", "Fehler: Nummern-Eingabeelement nicht gefunden");
+            return;
+        }
+
+        this.inputElement.value = this.currentNumber;
+        logger.debug("Written value to input element:", this.currentNumber);
+
+        if (this.currentNumber != null) {
+            updateSessionInfo("number", this.currentNumber.toString());
         }
     }
 
     async setDefaultNumber() {
         const translatedKeys = this.translateKeys(this.relevantKeys);
-        let minNumber = Infinity,
-            maxNumber = -Infinity;
+        let minNumber = Infinity;
+        let maxNumber = -Infinity;
 
         for (const [rangeStartKey, chips] of Object.entries(NUM2TECH)) {
             const rangeStartInt = parseInt(rangeStartKey, 10);
             const rangeEndInt = rangeStartInt + 99999;
+
             if (translatedKeys.every((key) => chips.includes(key))) {
                 minNumber = Math.min(minNumber, rangeStartInt);
                 maxNumber = Math.max(maxNumber, rangeEndInt);
@@ -87,6 +92,7 @@ class NumberHandler {
             this.currentNumber += 1;
             this.writeToInput();
             logger.debug("Incremented number:", this.currentNumber);
+
             if (this.currentNumber != null) {
                 updateSessionInfo("number", this.currentNumber.toString());
             }
@@ -106,40 +112,13 @@ class NumberHandler {
             return false;
         }
 
-        this.currentNumber = number; // Set the current number if it's valid
+        this.currentNumber = number;
         if (this.currentNumber != null) {
             updateSessionInfo("number", this.currentNumber.toString());
         }
+
         return true;
     }
-
-    /*async validateNumber(number) {
-        const translatedKeys = this.translateKeys(this.relevantKeys);
-
-        if (number < this.allowedRange.min || number > this.allowedRange.min + 99999) {
-            logger.error(
-                `Number ${number} is out of the allowed range (${this.allowedRange.min} - ${
-                    this.allowedRange.min + 99999
-                })`
-            );
-            return false;
-        }
-
-        for (const [rangeStartKey, chips] of Object.entries(NUM2TECH)) {
-            const rangeStartInt = parseInt(rangeStartKey, 10);
-            const rangeEndInt = rangeStartInt + 99999;
-            if (
-                number >= rangeStartInt &&
-                number <= rangeEndInt &&
-                translatedKeys.every((key) => chips.includes(key))
-            ) {
-                this.currentNumber = number; // Set the current number if it's valid
-                return true;
-            }
-        }
-        logger.error(`Number ${number} is invalid`);
-        return false;
-    }*/
 
     translateKeys(keys) {
         return keys.map((key) => DB2TECH[key]);

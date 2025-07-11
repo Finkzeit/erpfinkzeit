@@ -1,16 +1,5 @@
-import * as api from "../handler/api.js";
-import { ErpRestApi } from "../api/erpRestApi.js";
-import numberHandler from "../handler/numberHandler.js";
-import { initializeUI, addEventListeners, updateSessionInfo } from "../ui/ui.js";
-import { executeScriptsBasedOnConfig } from "../key-operations/scripts.js";
-import { verifyKey } from "../key-operations/verifyKey.js";
+// Core imports
 import logger from "./logger.js";
-import { initializeKeyFormatting } from "../key-operations/formatKey.js";
-import { initializeKeyReading } from "../key-operations/readKey.js";
-import { updateEnvironmentDisplay } from "../api/environmentDetector.js";
-import { initializeTestMode } from "../ui/testMode.js";
-import { initializeMuteToggle } from "../ui/muteHandler.js";
-
 import {
     resetApp,
     startNewSession,
@@ -18,17 +7,33 @@ import {
     addAppStateListener,
     getIsFormatting,
     getIsReading,
-    setIsFormatting,
-    setIsReading,
     addFormattingChangeListener,
     addReadingChangeListener,
 } from "./state.js";
+
+// API and handler imports
+import * as api from "../handler/api.js";
+import { ErpRestApi } from "../api/erpRestApi.js";
+import numberHandler from "../handler/numberHandler.js";
+
+// UI imports
+import { initializeUI, addEventListeners, updateSessionInfo } from "../ui/ui.js";
+import { initializeTestMode } from "../ui/testMode.js";
+import { initializeMuteToggle } from "../ui/muteHandler.js";
+
+// Key operation imports
+import { executeScriptsBasedOnConfig } from "../key-operations/scripts.js";
+import { verifyKey } from "../key-operations/verifyKey.js";
+import { initializeKeyFormatting } from "../key-operations/formatKey.js";
+import { initializeKeyReading } from "../key-operations/readKey.js";
+
+// Environment imports
+import { updateEnvironmentDisplay } from "../api/environmentDetector.js";
 
 // Application state
 let elements;
 let transponderConfig;
 let erpRestApi;
-let currentSessionPromise = null;
 let currentSessionId = null;
 
 document.addEventListener("DOMContentLoaded", setup);
@@ -60,6 +65,10 @@ export async function setup() {
     }
 }
 
+// ============================================================================
+// Initialization Functions
+// ============================================================================
+
 async function initializeElements() {
     logger.debug("Initializing elements");
     elements = initializeUI();
@@ -87,9 +96,7 @@ async function initializeErpApi() {
     logger.debug("Creating ERP API instance...");
     try {
         erpRestApi = new ErpRestApi();
-        logger.debug("ERP API instance created, setting global...");
         window.erpRestApi = erpRestApi;
-        logger.debug("Global ERP API set, loading configuration list...");
         await erpRestApi.getTransponderConfigurationList(elements.firmenSelect);
         logger.debug("ERP API initialized successfully");
     } catch (error) {
@@ -103,6 +110,10 @@ async function initializeErpApi() {
         updateSessionInfo("action", "ERP API Initialisierung fehlgeschlagen. Bitte überprüfen Sie Ihre Verbindung.");
     }
 }
+
+// ============================================================================
+// UI Management Functions
+// ============================================================================
 
 function clearUI() {
     logger.debug("Clearing UI due to app reset");
@@ -135,6 +146,22 @@ function resetApplication() {
     resetApp();
 }
 
+function handleManualNumberChange() {
+    numberHandler.readFromInput();
+}
+
+function handleError(error) {
+    if (error instanceof DOMException && error.message.includes("Must be handling a user gesture to show a permission request")) {
+        elements.connectReaderButton.style.display = "block";
+    } else {
+        logger.error("Error:", error);
+    }
+}
+
+// ============================================================================
+// Reader Connection Functions
+// ============================================================================
+
 async function handleConnectReader() {
     logger.debug("handleConnectReader called");
     try {
@@ -151,6 +178,10 @@ async function handleConnectReader() {
     }
 }
 
+// ============================================================================
+// Session Management Functions
+// ============================================================================
+
 async function startSession() {
     logger.debug("startSession starting");
     const selectedFirmaId = elements.firmenSelect.value;
@@ -158,6 +189,7 @@ async function startSession() {
         logger.warn("No valid company selected");
         return;
     }
+
     try {
         logger.debug(`Selected Firma ID: ${selectedFirmaId}`);
         transponderConfig = await erpRestApi.getTransponderConfiguration(selectedFirmaId);
@@ -167,16 +199,7 @@ async function startSession() {
         await numberHandler.initialize(transponderConfig);
 
         const requiredKeys = await transponderConfig.getRequiredKeys();
-        updateSessionInfo("reset");
-        updateSessionInfo("status", "Suche");
-        updateSessionInfo("requiredTech", requiredKeys);
-        requiredKeys.forEach((key) =>
-            updateSessionInfo("tag", {
-                type: key,
-                uid: transponderConfig.tags[key]?.uid || "N/A",
-                status: "Suche",
-            })
-        );
+        initializeSessionUI(requiredKeys);
 
         await recurringSession(requiredKeys);
     } catch (error) {
@@ -184,125 +207,47 @@ async function startSession() {
     }
 }
 
+function initializeSessionUI(requiredKeys) {
+    updateSessionInfo("reset");
+    updateSessionInfo("status", "Suche");
+    updateSessionInfo("requiredTech", requiredKeys);
+
+    requiredKeys.forEach((key) =>
+        updateSessionInfo("tag", {
+            type: key,
+            uid: transponderConfig.tags[key]?.uid || "N/A",
+            status: "Suche",
+        })
+    );
+}
+
 async function recurringSession(requiredKeys) {
     currentSessionId = startNewSession();
     logger.debug(`Recurring session ${currentSessionId} starting`);
 
-    // Set up state change listeners for this session
-    let sessionPaused = false;
-    let pauseResolve = null;
-
-    const onFormattingChange = (isFormatting) => {
-        if (isFormatting && !sessionPaused) {
-            logger.debug("Formatting started, pausing main session loop");
-            sessionPaused = true;
-        } else if (!isFormatting && sessionPaused) {
-            logger.debug("Formatting ended, resuming main session loop");
-            sessionPaused = false;
-            if (pauseResolve) {
-                pauseResolve();
-                pauseResolve = null;
-            }
-        }
-    };
-
-    const onReadingChange = (isReading) => {
-        if (isReading && !sessionPaused) {
-            logger.debug("Reading started, pausing main session loop");
-            sessionPaused = true;
-        } else if (!isReading && sessionPaused) {
-            logger.debug("Reading ended, resuming main session loop");
-            sessionPaused = false;
-            if (pauseResolve) {
-                pauseResolve();
-                pauseResolve = null;
-            }
-        }
-    };
-
-    // Add listeners
-    addFormattingChangeListener(onFormattingChange);
-    addReadingChangeListener(onReadingChange);
+    const sessionState = createSessionState();
+    setupSessionStateListeners(sessionState);
 
     while (isSessionValid(currentSessionId)) {
         try {
-            // Check if session should be paused
-            if (getIsFormatting() || getIsReading()) {
-                if (!sessionPaused) {
-                    logger.debug("Formatting or reading mode active, pausing main loop");
-                    sessionPaused = true;
-                }
-
-                // Wait for state to change back
-                await new Promise((resolve) => {
-                    pauseResolve = resolve;
-                });
-                continue;
+            const wasPaused = await handleSessionPause(sessionState);
+            if (wasPaused) {
+                continue; // Skip the rest of the loop iteration if session was paused
             }
 
             numberHandler.readFromInput();
 
             const keyVerified = await verifyKey(transponderConfig, numberHandler);
             if (!keyVerified) {
-                logger.warn("Key verification failed, restarting session");
-                updateSessionInfo("status", "Verifizierung fehlgeschlagen");
-                updateSessionInfo("action", "Schlüsselverifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.");
+                handleKeyVerificationFailure();
                 continue;
             }
 
             updateSessionInfo("number", transponderConfig.getNumber());
-            requiredKeys.forEach((key) => {
-                updateSessionInfo("tag", {
-                    type: key,
-                    uid: transponderConfig.tags[key]?.uid || "N/A",
-                    status: "Erkannt",
-                });
-            });
+            updateDetectedKeys(requiredKeys);
 
-            const { allScriptsExecuted, sessionResult, errors } = await executeScriptsBasedOnConfig(
-                transponderConfig,
-                requiredKeys,
-                erpRestApi
-            );
-
-            if (allScriptsExecuted && sessionResult === "success") {
-                logger.debug("All scripts executed successfully");
-                updateSessionInfo("status", "Abgeschlossen");
-                updateSessionInfo("action", "Alle Operationen erfolgreich abgeschlossen");
-                numberHandler.incrementNumber(elements.numberInput);
-            } else {
-                logger.warn("Some operations failed");
-                updateSessionInfo("status", "Fehlgeschlagen");
-                const errorMessage =
-                    errors.length > 0
-                        ? `Die folgenden Operationen sind fehlgeschlagen:\n${errors.join("\n")}`
-                        : "Einige Operationen sind fehlgeschlagen. Bitte versuchen Sie es erneut.";
-                updateSessionInfo("action", errorMessage);
-            }
-
-            if (elements.ui) {
-                elements.ui.textContent = "Schlüssel wird gesucht";
-            } else {
-                logger.error("UI element not found");
-            }
-
-            updateSessionInfo("reset");
-            updateSessionInfo("status", "Suche");
-            updateSessionInfo("requiredTech", requiredKeys);
-            requiredKeys.forEach((key) =>
-                updateSessionInfo("tag", {
-                    type: key,
-                    uid: transponderConfig.tags[key]?.uid || "N/A",
-                    status: "Suche",
-                })
-            );
-
-            logger.debug("Session restarted");
-            const resultMessage =
-                allScriptsExecuted && sessionResult === "success"
-                    ? `✅ Schlüssel ${transponderConfig.getNumber()} fertig, neuen Schlüssel auf den Leser legen`
-                    : "❌ Schlüssel fehlgeschlagen, bitte versuchen Sie es erneut";
-            updateSessionInfo("action", resultMessage);
+            const scriptResult = await executeSessionScripts(requiredKeys);
+            await handleSessionResult(scriptResult, requiredKeys);
         } catch (error) {
             logger.error("Error in recurring session:", error);
             updateSessionInfo("status", "Fehler");
@@ -314,19 +259,127 @@ async function recurringSession(requiredKeys) {
     logger.debug(`Session ${currentSessionId} ended`);
 }
 
-function handleManualNumberChange() {
-    numberHandler.readFromInput();
+function createSessionState() {
+    return {
+        sessionPaused: false,
+        pauseResolve: null,
+    };
 }
 
-function handleError(error) {
-    if (error instanceof DOMException && error.message.includes("Must be handling a user gesture to show a permission request")) {
-        elements.connectReaderButton.style.display = "block";
-    } else {
-        logger.error("Error:", error);
+function setupSessionStateListeners(sessionState) {
+    const onFormattingChange = (isFormatting) => {
+        handleStateChange(isFormatting, sessionState, "Formatting");
+    };
+
+    const onReadingChange = (isReading) => {
+        handleStateChange(isReading, sessionState, "Reading");
+    };
+
+    addFormattingChangeListener(onFormattingChange);
+    addReadingChangeListener(onReadingChange);
+}
+
+function handleStateChange(isActive, sessionState, operation) {
+    if (isActive && !sessionState.sessionPaused) {
+        logger.debug(`${operation} started, pausing main session loop`);
+        sessionState.sessionPaused = true;
+    } else if (!isActive && sessionState.sessionPaused) {
+        logger.debug(`${operation} ended, resuming main session loop`);
+        sessionState.sessionPaused = false;
+        if (sessionState.pauseResolve) {
+            sessionState.pauseResolve();
+            sessionState.pauseResolve = null;
+        }
     }
 }
 
-// Make global variables available for other modules
+async function handleSessionPause(sessionState) {
+    if (getIsFormatting() || getIsReading()) {
+        if (!sessionState.sessionPaused) {
+            logger.debug("Formatting or reading mode active, pausing main loop");
+            sessionState.sessionPaused = true;
+        }
+
+        await new Promise((resolve) => {
+            sessionState.pauseResolve = resolve;
+        });
+        return true; // Indicate that session was paused
+    }
+    return false; // Indicate that session was not paused
+}
+
+function handleKeyVerificationFailure() {
+    logger.warn("Key verification failed, restarting session");
+    updateSessionInfo("status", "Verifizierung fehlgeschlagen");
+    updateSessionInfo("action", "Schlüsselverifizierung fehlgeschlagen. Bitte versuchen Sie es erneut.");
+}
+
+function updateDetectedKeys(requiredKeys) {
+    requiredKeys.forEach((key) => {
+        updateSessionInfo("tag", {
+            type: key,
+            uid: transponderConfig.tags[key]?.uid || "N/A",
+            status: "Erkannt",
+        });
+    });
+}
+
+async function executeSessionScripts(requiredKeys) {
+    return await executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpRestApi);
+}
+
+async function handleSessionResult(scriptResult, requiredKeys) {
+    const { allScriptsExecuted, sessionResult: result, errors } = scriptResult;
+
+    if (allScriptsExecuted && result === "success") {
+        logger.debug("All scripts executed successfully");
+        updateSessionInfo("status", "Abgeschlossen");
+        updateSessionInfo("action", "Alle Operationen erfolgreich abgeschlossen");
+        numberHandler.incrementNumber(elements.numberInput);
+    } else {
+        logger.warn("Some operations failed");
+        updateSessionInfo("status", "Fehlgeschlagen");
+        const errorMessage =
+            errors.length > 0
+                ? `Die folgenden Operationen sind fehlgeschlagen:\n${errors.join("\n")}`
+                : "Einige Operationen sind fehlgeschlagen. Bitte versuchen Sie es erneut.";
+        updateSessionInfo("action", errorMessage);
+    }
+
+    updateUIForNextSession(requiredKeys, allScriptsExecuted, result);
+}
+
+function updateUIForNextSession(requiredKeys, allScriptsExecuted, sessionResult) {
+    if (elements.ui) {
+        elements.ui.textContent = "Schlüssel wird gesucht";
+    } else {
+        logger.error("UI element not found");
+    }
+
+    updateSessionInfo("reset");
+    updateSessionInfo("status", "Suche");
+    updateSessionInfo("requiredTech", requiredKeys);
+
+    requiredKeys.forEach((key) =>
+        updateSessionInfo("tag", {
+            type: key,
+            uid: transponderConfig.tags[key]?.uid || "N/A",
+            status: "Suche",
+        })
+    );
+
+    logger.debug("Session restarted");
+    const resultMessage =
+        allScriptsExecuted && sessionResult === "success"
+            ? `✅ Schlüssel ${transponderConfig.getNumber()} fertig, neuen Schlüssel auf den Leser legen`
+            : "❌ Schlüssel fehlgeschlagen, bitte versuchen Sie es erneut";
+    updateSessionInfo("action", resultMessage);
+}
+
+// ============================================================================
+// Global Exports
+// ============================================================================
+
 window.transponderConfig = () => transponderConfig;
 window.erpRestApi = () => erpRestApi;
 window.updateSessionInfo = updateSessionInfo;

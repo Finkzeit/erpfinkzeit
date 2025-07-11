@@ -1,16 +1,22 @@
 import { SP_ERROR } from "../constants/constants.js";
-import logger from "../core/logger.js";
+import { hex } from "../utils/hexUtils.js";
 
 export class CommandProtocol {
     #portHandler;
+    #commandQueue = Promise.resolve();
 
     constructor(portHandler) {
         this.#portHandler = portHandler;
     }
 
     async sendCommand(command, paramStr) {
+        this.#commandQueue = this.#commandQueue.then(() => this.#executeCommand(command, paramStr));
+        return this.#commandQueue;
+    }
+
+    async #executeCommand(command, paramStr) {
         // Write command
-        const commandStr = `${this.#hex(command, 4)}${paramStr}\r`;
+        const commandStr = `${hex(command, 4)}${paramStr}\r`;
         this.#portHandler.write(commandStr);
 
         // Read response
@@ -47,10 +53,6 @@ export class CommandProtocol {
                 throw new Error(`Unknown error code: ${errorCode}`);
         }
     }
-
-    #hex(value, length) {
-        return value.toString(16).padStart(length, "0").toUpperCase();
-    }
 }
 
 // Global instance for backward compatibility
@@ -67,27 +69,4 @@ export async function sendCommand(command, paramStr) {
 // Initialize function for backward compatibility
 export async function initCommandProtocol(portHandler) {
     globalCommandProtocol = new CommandProtocol(portHandler);
-}
-
-// Utility functions for backward compatibility
-export function hex(value, length) {
-    if (typeof value !== "number" || isNaN(value)) {
-        throw new TypeError("Value must be a number");
-    }
-    return value.toString(16).padStart(length, "0").toUpperCase();
-}
-
-export function swap16(value) {
-    if (typeof value !== "number" || isNaN(value)) {
-        throw new TypeError("Value must be a number");
-    }
-    const swapped = ((value & 0xff) << 8) | ((value >> 8) & 0xff);
-    return swapped;
-}
-
-export function swap32(value) {
-    if (typeof value !== "number" || isNaN(value)) {
-        throw new TypeError("Value must be a number");
-    }
-    return (((value & 0xff) << 24) | ((value & 0xff00) << 8) | ((value >> 8) & 0xff00) | ((value >> 24) & 0xff)) >>> 0; // Ensure the result is always unsigned
 }

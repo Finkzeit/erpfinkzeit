@@ -1,4 +1,5 @@
-import { sendCommand, hex, swap16, swap32 } from "./commandHandler.js";
+import { sendCommand } from "./commandHandler.js";
+import { hex, swap16, swap32 } from "../utils/hexUtils.js";
 import { SP_CMD, TAG_TYPES, DESF } from "../constants/constants.js";
 import * as api from "./api.js";
 import logger from "../core/logger.js";
@@ -48,15 +49,14 @@ export function createSingleTagMask(tag) {
     return tagMask;
 }
 
-// Command functions
+// Version functions
 function parseVersion(recvStr) {
-    const len = parseByte(0, recvStr); // Adjusted to read the length from the correct position
+    const len = parseByte(0, recvStr);
     if (len * 2 > recvStr.length) {
-        // Multiply by 2 because each byte is represented by 2 hex characters
         return `Error: VersionArrayLength (${recvStr.length}) < ParsedLengthParameter (${len * 2})`;
     }
 
-    return String.fromCharCode.apply(String, parseBytes(2, len, recvStr)); // Adjusted to read the correct number of bytes
+    return String.fromCharCode.apply(String, parseBytes(2, len, recvStr));
 }
 
 export async function getVersionString() {
@@ -64,11 +64,13 @@ export async function getVersionString() {
     return parseVersion(versStr);
 }
 
+// Audio functions
 export async function sendBeep(volume, frequency, onTime, offTime) {
     const paramStr = `${hex(volume, 2)}${hex(swap16(frequency), 4)}${hex(swap16(onTime), 4)}${hex(swap16(offTime), 4)}`;
     await sendCommand(SP_CMD.BEEP, paramStr);
 }
 
+// Tag configuration functions
 export async function setTagTypes(tagTypesLF, tagTypesHF) {
     const paramStr = `${hex(swap32(tagTypesLF), 8)}${hex(swap32(tagTypesHF), 8)}`;
     logger.debug("Set tag types command sent parameter:", paramStr);
@@ -80,7 +82,6 @@ export async function searchTag() {
     try {
         logger.debug("Searching for tag");
         const response = await sendCommand(SP_CMD.SEARCH_TAG, "10");
-
         const recvStr = String(response);
 
         if (recvStr.slice(0, 2) === "00") {
@@ -89,7 +90,6 @@ export async function searchTag() {
         }
 
         const result = recvStr.slice(0, 2) === "01";
-
         const tagTypeByte = parseByte(2, recvStr);
         const idBitCount = parseByte(4, recvStr);
         const uidByteCount = Math.floor(idBitCount / 8);
@@ -127,6 +127,7 @@ export async function getSAK() {
     return parseInt(response.slice(2), 16);
 }
 
+// LED functions
 export function ledInit(leds) {
     sendCommand(SP_CMD.LED_INIT, leds);
 }
@@ -143,6 +144,7 @@ export function ledBlink(leds, timeOn, timeOff) {
     sendCommand(SP_CMD.LED_BLINK, leds + hex(swap16(timeOn), 4) + hex(swap16(timeOff), 4));
 }
 
+// HiTag1S functions
 export async function hitag1S_ReadBlock(blockAddress) {
     const response = await sendCommand(SP_CMD.HITAG_READ_BLOCK, hex(blockAddress, 2));
 
@@ -167,13 +169,8 @@ export async function hitag1S_ReadBlock(blockAddress) {
 }
 
 export async function hitag1S_WriteBlock(blockAddress, data) {
-    // Ensure BlockAddress is a two-digit hexadecimal string
     const blockAddressHex = hex(blockAddress, 2);
-
-    // Convert Uint8Array data to a hexadecimal string
     const dataHex = Array.from(data, (byte) => byte.toString(16).padStart(2, "0")).join("");
-
-    // Construct the command string
     const commandStr = `${blockAddressHex}${dataHex}`;
     const response = await sendCommand(SP_CMD.HITAG_WRITE_BLOCK, commandStr);
 
@@ -191,14 +188,10 @@ export async function hitag1S_WriteBlock(blockAddress, data) {
     };
 }
 
+// Mifare Classic functions
 export async function MifareClassic_Login(key, keyType, sector) {
-    // Convert key to hexadecimal and pad to 12 characters (6 bytes)
     const keyHex = hex(parseInt(key), 12);
-
-    // Ensure sector is a two-digit hexadecimal string
     const sectorHex = hex(parseInt(sector), 2);
-
-    // keyType should already be "00", but we'll ensure it's a string
     const keyTypeHex = keyType.toString();
 
     logger.debug("MifareClassic_Login command sent with parameters:", keyHex, keyTypeHex, sectorHex);
@@ -213,10 +206,8 @@ export async function MifareClassic_ReadBlock(block) {
 }
 
 export async function MifareClassic_WriteBlock(block, data) {
-    // Convert block to hexadecimal and pad to 2 characters
     const blockHex = hex(block, 2);
     logger.debug("Block (hex):", blockHex);
-
     logger.debug("MifareClassic_WriteBlock command sent with parameters:", "Block:", blockHex, "Data:", data);
 
     const paramStr = `${blockHex}${data}`;
@@ -224,6 +215,7 @@ export async function MifareClassic_WriteBlock(block, data) {
     return response === "01";
 }
 
+// DESFire functions
 export async function DESFire_CreateApplication(
     cryptoEnv,
     AID,
@@ -235,7 +227,6 @@ export async function DESFire_CreateApplication(
     numberOfKeys,
     keyType
 ) {
-    // Combine flags into a single byte
     const flags =
         ((changeKeyAccessRights & 0x0f) << 4) |
         ((configurationChangeable & 0x01) << 3) |
@@ -243,7 +234,6 @@ export async function DESFire_CreateApplication(
         ((freeDirectoryList & 0x01) << 1) |
         (allowChangeMasterKey & 0x01);
 
-    // Construct the parameter string
     const paramStr = `${hex(cryptoEnv, 2)}${hex(swap32(AID), 8)}${hex(flags, 2)}${hex(swap32(numberOfKeys), 8)}${hex(swap32(keyType), 8)}`;
 
     logger.debug("DESFire_CreateApplication command sent with parameters:", paramStr);
@@ -258,7 +248,6 @@ export async function DESFire_CreateApplication(
 }
 
 export async function DESFire_SelectApplication(cryptoEnv, AID) {
-    // Construct the parameter string
     const paramStr = `${hex(cryptoEnv, 2)}${hex(swap32(AID), 8)}`;
 
     logger.debug("DESFire_SelectApplication command sent with parameters:", paramStr);
@@ -281,14 +270,13 @@ export async function DESFire_Authenticate(cryptoEnv, keyNoTag, key, keyType, mo
     } else {
         throw new Error("Invalid key type");
     }
-    // Convert parameters to hexadecimal strings
+
     const cryptoEnvHex = hex(cryptoEnv, 2);
     const keyNoTagHex = hex(keyNoTag, 2);
-    const keyHex = hex(keyLen, 2) + key.toString(16).padEnd(keyLen * 2, "0"); // Ensure key is 32 characters (16 bytes)
+    const keyHex = hex(keyLen, 2) + key.toString(16).padEnd(keyLen * 2, "0");
     const keyTypeHex = hex(keyType, 2);
     const modeHex = hex(mode, 2);
 
-    // Construct the parameter string
     logger.debug("kryptenv", cryptoEnvHex, "keynotag", keyNoTagHex, "key", keyHex, "keytype", keyTypeHex, "mode", modeHex);
     const paramStr = `${cryptoEnvHex}${keyNoTagHex}${keyHex}${keyTypeHex}${modeHex}`;
 
@@ -343,14 +331,12 @@ export async function DESFire_ReadData(cryptoEnv, fileNo, offset, length, commSe
     }
 
     let data = response.slice(4);
-
     data = swap32(parseInt(data, 16));
 
     return { success: true, data };
 }
 
 export async function DESFire_WriteData(cryptoEnv, fileNo, offset, data, commSet) {
-    // Construct the parameter string
     const paramStr = `${hex(cryptoEnv, 2)}${hex(fileNo, 2)}${hex(swap16(offset), 4)}${hex(0x04, 2)}${hex(swap32(data), 8)}${hex(
         commSet,
         2
@@ -383,7 +369,6 @@ export async function DESFire_ChangeKeySettings(
     numberOfKeys,
     keyType
 ) {
-    // Combine flags into a single byte
     const flags =
         ((changeKeyAccessRights & 0x0f) << 4) |
         ((configurationChangeable & 0x01) << 3) |
@@ -420,7 +405,6 @@ export async function DESFire_ChangeKey(
     numberOfKeys,
     keyType
 ) {
-    // Determine key length based on key type
     let keyLen;
     if (keyType === DESF.KEYTYPE_3DES) {
         keyLen = DESF.KEYLEN_3DES;
@@ -432,16 +416,13 @@ export async function DESFire_ChangeKey(
         throw new Error("Invalid key type");
     }
 
-    // Function to format key
     const formatKey = (key) => {
         if (typeof key === "string") {
-            // If key is a string, assume it's already in hex format
             if (key.length > keyLen * 2) {
                 throw new Error(`Key is too long. Expected ${keyLen * 2} characters, got ${key.length}`);
             }
             return key.padEnd(keyLen * 2, "0");
         } else if (typeof key === "number") {
-            // If key is a number, convert to hex string
             const hexKey = key.toString(16).padStart(keyLen * 2, "0");
             if (hexKey.length > keyLen * 2) {
                 throw new Error(`Key is too long. Expected ${keyLen * 2} characters, got ${hexKey.length}`);
@@ -452,11 +433,9 @@ export async function DESFire_ChangeKey(
         }
     };
 
-    // Format keys and include the key length byte
     const oldKeyHex = hex(keyLen, 2) + formatKey(oldKey);
     const newKeyHex = hex(keyLen, 2) + formatKey(newKey);
 
-    // Combine flags into a single byte
     const flags =
         ((changeKeyAccessRights & 0x0f) << 4) |
         ((configurationChangeable & 0x01) << 3) |
@@ -464,7 +443,6 @@ export async function DESFire_ChangeKey(
         ((freeDirectoryList & 0x01) << 1) |
         (allowChangeMasterKey & 0x01);
 
-    // Construct the parameter string
     const paramStr = `${hex(cryptoEnv, 2)}${hex(keyNo, 2)}${oldKeyHex}${newKeyHex}${hex(keyVersion, 2)}${hex(flags, 2)}${hex(
         swap32(numberOfKeys),
         8
@@ -483,172 +461,3 @@ export async function DESFire_FormatTag(cryptoEnv) {
     const response = await sendCommand(SP_CMD.DESFIRE_FORMAT_TAG, paramStr);
     return response === "01";
 }
-
-//not needed functions maybe remove later
-/*
-export async function DESFire_GetApplicationIDs(cryptoEnv, MaxAIDCnt) {
-    const paramStr = `${hex(cryptoEnv, 2)}${hex(MaxAIDCnt, 2)}`;
-    const response = await sendCommand(SP_CMD.DESFIRE_GET_APP_IDS, paramStr);
-
-    if (response.length < 2) {
-        throw new Error("Invalid response length");
-    }
-
-    const result = response.slice(0, 2) === "01";
-    if (!result) {
-        return { success: false, AIDs: [] };
-    }
-
-    const AIDs = [];
-    for (let i = 2; i < response.length; i += 8) {
-        if (i + 8 <= response.length) {
-            const AID = swap32(parseInt(response.slice(i, i + 8), 16));
-            AIDs.push(AID);
-        }
-    }
-
-    return { success: true, AIDs };
-}
-
-export async function DESFire_DeleteApplication(cryptoEnv, AID) {
-    // Construct the parameter string
-    const paramStr = `${hex(cryptoEnv, 2)}${hex(swap32(AID), 8)}`;
-
-    logger.debug("DESFire_DeleteApplication command sent with parameters:", paramStr);
-
-    const response = await sendCommand(SP_CMD.DESFIRE_DELETE_APP, paramStr);
-    return response === "01";
-}
-
-export async function DESFire_GetFileIDs(cryptoEnv, maxFileIDCount) {
-    const paramStr = `${hex(cryptoEnv, 2)}${hex(maxFileIDCount, 2)}`;
-    const response = await sendCommand(SP_CMD.DESFIRE_GET_FILE_IDS, paramStr);
-
-    if (response.length < 2) {
-        throw new Error("Invalid response length");
-    }
-
-    const result = response.slice(0, 2) === "01";
-    if (!result) {
-        return { success: false, fileIDs: [] };
-    }
-
-    const fileIDs = [];
-    for (let i = 2; i < response.length; i += 2) {
-        if (i + 2 <= response.length) {
-            const fileID = parseInt(response.slice(i, i + 2), 16);
-            fileIDs.push(fileID);
-        }
-    }
-
-    return { success: true, fileIDs };
-}
-
-export async function DESFire_GetFileSettings(cryptoEnv, fileNo) {
-    const paramStr = `${hex(cryptoEnv, 2)}${hex(fileNo, 2)}`;
-    const response = await sendCommand(SP_CMD.DESFIRE_GET_FILE_SETTINGS, paramStr);
-
-    if (response.length < 2) {
-        throw new Error("Invalid response length");
-    }
-
-    const result = response.slice(0, 2) === "01";
-    if (!result) {
-        return { success: false, fileSettings: null };
-    }
-
-    if (response.length < 42) {
-        // 2 (result) + 40 (20 bytes of file settings)
-        throw new Error("Invalid file settings length");
-    }
-
-    const fileSettings = response.slice(2, 42);
-
-    return { success: true, fileSettings };
-}
-
-export async function DESFire_GetVersion(cryptoEnv) {
-    const paramStr = hex(cryptoEnv, 2);
-    logger.debug("DESFire_GetVersion command sent with parameter:", paramStr);
-
-    const response = await sendCommand(SP_CMD.DESFIRE_GET_VERSION, paramStr);
-
-    if (response.length < 2) {
-        throw new Error("Invalid response length");
-    }
-
-    const result = response.slice(0, 2) === "01";
-    if (!result) {
-        return { success: false, version: null };
-    }
-
-    if (response.length < 70) {
-        // 2 (result) + 68 (34 bytes of version info)
-        throw new Error("Invalid version information length");
-    }
-
-    const versionInfo = response.slice(2, 70);
-
-    return { success: true, version: versionInfo };
-}
-
-export async function DESFire_DeleteFile(cryptoEnv, fileNo) {
-    const paramStr = `${hex(cryptoEnv, 2)}${hex(fileNo, 2)}`;
-    logger.debug("DESFire_DeleteFile command sent with parameters:", paramStr);
-
-    const response = await sendCommand(SP_CMD.DESFIRE_DELETE_FILE, paramStr);
-    return response === "01";
-}
-
-export async function DESFire_GetUID(cryptoEnv, bufferSize) {
-    const paramStr = `${hex(cryptoEnv, 2)}${hex(bufferSize, 2)}`;
-    logger.debug("DESFire_GetUID command sent with parameters:", paramStr);
-
-    const response = await sendCommand(SP_CMD.DESFIRE_GET_UID, paramStr);
-
-    if (response.length < 2) {
-        throw new Error("Invalid response length");
-    }
-
-    const result = response.slice(0, 2) === "01";
-    if (!result) {
-        return { success: false, uid: null };
-    }
-
-    const uid = response.slice(2);
-
-    return { success: true, uid };
-}
-
-export async function DESFire_ReadRecords(cryptoEnv, fileNo, offset, numberOfRecords, recordSize, commSet) {
-    const paramStr = `${hex(cryptoEnv, 2)}${hex(fileNo, 2)}${hex(swap16(offset), 4)}${hex(numberOfRecords, 2)}${hex(recordSize, 2)}${hex(
-        commSet,
-        2
-    )}`;
-    logger.debug("DESFire_ReadRecords command sent with parameters:", paramStr);
-
-    const response = await sendCommand(SP_CMD.DESFIRE_READ_RECORDS, paramStr);
-
-    if (response.length < 2) {
-        throw new Error("Invalid response length");
-    }
-
-    const result = response.slice(0, 2) === "01";
-    if (!result) {
-        return { success: false, data: null };
-    }
-
-    const data = response.slice(2);
-
-    return { success: true, data };
-}
-
-export async function DESFire_WriteRecord(cryptoEnv, fileNo, offset, data, commSet) {
-    const paramStr = `${hex(cryptoEnv, 2)}${hex(fileNo, 2)}${hex(swap16(offset), 4)}${data}${hex(commSet, 2)}`;
-    logger.debug("DESFire_WriteRecord command sent with parameters:", paramStr);
-
-    const response = await sendCommand(SP_CMD.DESFIRE_WRITE_RECORD, paramStr);
-    return response === "01";
-}
-
-*/
