@@ -142,8 +142,8 @@ scheduler_events = {
 fixtures = ["Custom Field"]
 
 # add Jinja environment
-jenv = {
+jinja = {
     "methods": [
-        "has_zsw:finkzeit.finkzeit.utils.has_zsw"
-        ]
+        "finkzeit.finkzeit.utils.has_zsw"
+    ]
 }
