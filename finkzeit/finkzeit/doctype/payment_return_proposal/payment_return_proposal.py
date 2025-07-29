@@ -9,10 +9,12 @@ from frappe import _
 from datetime import datetime, timedelta
 import time
 from erpnextswiss.erpnextswiss.common_functions import get_building_number, get_street_name, get_pincode, get_city, get_primary_address, split_address_to_street_and_building
+from erpnextswiss.erpnextswiss.xml import validate_xml_against_xsd
 import html          # used to escape xml content
 from frappe.utils import cint, get_url_to_form, rounded
 from unidecode import unidecode     # used to remove German/French-type special characters from bank identifieres
 from erpnextswiss.scripts.crm_tools import get_primary_customer_address
+import os
 
 XML_SCHEMA_FILES = {
     'CH': {
