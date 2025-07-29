@@ -14,6 +14,23 @@ from frappe.utils import cint, get_url_to_form, rounded
 from unidecode import unidecode     # used to remove German/French-type special characters from bank identifieres
 from erpnextswiss.scripts.crm_tools import get_primary_customer_address
 
+XML_SCHEMA_FILES = {
+    'CH': {
+        '03':     "apps/erpnextswiss/erpnextswiss/public/xsd/pain.001.001.03.xsd",
+        '05':     "apps/erpnextswiss/erpnextswiss/public/xsd/pain.001.001.05.xsd",
+        '03CH02': "apps/erpnextswiss/erpnextswiss/public/xsd/pain.001.001.03.ch.02.xsd",
+        '09':     "apps/erpnextswiss/erpnextswiss/public/xsd/pain.001.001.09.xsd",
+        '09CH03': "apps/erpnextswiss/erpnextswiss/public/xsd/pain.001.001.09.ch.03.xsd"
+    },
+    'AT': {
+        '03':     "apps/erpnextswiss/erpnextswiss/public/xsd/pain.001.001.03.xsd",
+        '05':     "apps/erpnextswiss/erpnextswiss/public/xsd/pain.001.001.05.xsd",
+        '03CH02': "apps/erpnextswiss/erpnextswiss/public/xsd/pain.001.001.03.ch.02.xsd",
+        '09':     "apps/erpnextswiss/erpnextswiss/public/xsd/pain.001.001.09.xsd",
+        '09CH03': "apps/erpnextswiss/erpnextswiss/public/xsd/pain.001.001.09.ch.03.xsd"
+    }
+}
+
 class PaymentReturnProposal(Document):
     def validate(self):
         # check company settigs
@@ -207,6 +224,13 @@ class PaymentReturnProposal(Document):
         # apply unidecode if enabled
         if cint(settings.get("use_unidecode")) == 1:
             content = unidecode(content)
+        
+        # validate xml
+        if cint(settings.get("validate_xml")) == 1:
+            xml_schema = os.path.join(frappe.utils.get_bench_path(), XML_SCHEMA_FILES[settings.get("banking_region")][settings.get("xml_version")])
+            validated, errors = validate_xml_against_xsd(content, xml_schema)
+            if not validated:
+                frappe.throw("Validation error: {0}".format(errors))
         
         return { 'content': content }
             
