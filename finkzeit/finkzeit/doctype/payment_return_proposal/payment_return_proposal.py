@@ -99,8 +99,9 @@ class PaymentReturnProposal(Document):
     @frappe.whitelist()
     def create_bank_file(self):
         data = {}
-        data['xml_version'] = frappe.get_value("ERPNextSwiss Settings", "ERPNextSwiss Settings", "xml_version")
-        data['xml_region'] = frappe.get_value("ERPNextSwiss Settings", "ERPNextSwiss Settings", "banking_region")
+        settings = frappe.get_doc("ERPNextSwiss Settings", "ERPNextSwiss Settings")
+        data['xml_version'] = settings.get("xml_version")
+        data['xml_region'] = settings.get("banking_region")
         data['msgid'] = "MSG-" + time.strftime("%Y%m%d%H%M%S")                # message ID (unique, SWIFT-characters only)
         data['date'] = time.strftime("%Y-%m-%dT%H:%M:%S")                    # creation date and time ( e.g. 2010-02-15T07:30:00 )
         # number of transactions in the file
@@ -202,6 +203,11 @@ class PaymentReturnProposal(Document):
             content = frappe.render_template('erpnextswiss/erpnextswiss/doctype/payment_proposal/pain-001_single_payment.html', data)
         else:
             content = frappe.render_template('erpnextswiss/erpnextswiss/doctype/payment_proposal/pain-001.html', data)
+                
+        # apply unidecode if enabled
+        if cint(settings.get("use_unidecode")) == 1:
+            content = unidecode(content)
+        
         return { 'content': content }
             
     def add_creditor_info(self, payment):
