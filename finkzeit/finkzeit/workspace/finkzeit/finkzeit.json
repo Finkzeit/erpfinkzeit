@@ -1,0 +1,412 @@
+{
+ "charts": [],
+ "content": "[{\"id\":\"zwgev-fT7N\",\"type\":\"header\",\"data\":{\"text\":\"<span class=\\\"h4\\\">Finkzeit</span>\",\"col\":12}},{\"id\":\"rLSCFu2Ral\",\"type\":\"card\",\"data\":{\"card_name\":\"Sales Dashboard\",\"col\":4}},{\"id\":\"NVjEyKAu23\",\"type\":\"card\",\"data\":{\"card_name\":\"Licences\",\"col\":4}},{\"id\":\"S6dEb33Rtp\",\"type\":\"card\",\"data\":{\"card_name\":\"Transponder\",\"col\":4}},{\"id\":\"mgQZm1pG30\",\"type\":\"card\",\"data\":{\"card_name\":\"Lists\",\"col\":4}},{\"id\":\"8N48T5sDZg\",\"type\":\"card\",\"data\":{\"card_name\":\"Finanzbuchhaltung\",\"col\":4}},{\"id\":\"579VC-6D4B\",\"type\":\"card\",\"data\":{\"card_name\":\"Rechtliches\",\"col\":4}},{\"id\":\"GQQ3Bnlaqg\",\"type\":\"card\",\"data\":{\"card_name\":\"Integration\",\"col\":4}},{\"id\":\"QuKopAjWMK\",\"type\":\"card\",\"data\":{\"card_name\":\"Reports\",\"col\":4}}]",
+ "creation": "2025-07-31 16:56:06.382933",
+ "custom_blocks": [],
+ "docstatus": 0,
+ "doctype": "Workspace",
+ "for_user": "",
+ "hide_custom": 0,
+ "icon": "tick",
+ "idx": 0,
+ "indicator_color": "green",
+ "is_hidden": 0,
+ "label": "Finkzeit",
+ "links": [
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Dashboard",
+   "link_count": 3,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Sales Dashboard",
+   "link_count": 0,
+   "link_to": "sales_dashboard",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Deckungsbeitrag",
+   "link_count": 0,
+   "link_to": "Deckungsbeitrag",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Budget Overhead",
+   "link_count": 0,
+   "link_to": "Budget Overhead",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Licences",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Licence",
+   "link_count": 0,
+   "link_to": "Licence",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Invoice Cycle Log",
+   "link_count": 0,
+   "link_to": "Invoice Cycle Log",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Transponder",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Transponder Configuration",
+   "link_count": 0,
+   "link_to": "Transponder Configuration",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Transponder",
+   "link_count": 0,
+   "link_to": "Transponder",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Lists",
+   "link_count": 5,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Beschriftung",
+   "link_count": 0,
+   "link_to": "Beschriftung",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Seriennummer",
+   "link_count": 0,
+   "link_to": "Seriennummer",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Wartungsvertrag",
+   "link_count": 0,
+   "link_to": "Wartungsvertrag",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Parkordnung",
+   "link_count": 0,
+   "link_to": "Parkordnung",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Preisliste Druck",
+   "link_count": 0,
+   "link_to": "Preisliste Druck",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Finanzbuchhaltung",
+   "link_count": 12,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Kassa",
+   "link_count": 0,
+   "link_to": "Kassa",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Buchhaltungsperiode",
+   "link_count": 0,
+   "link_to": "Buchhaltungsperiode",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Reminder",
+   "link_count": 0,
+   "link_to": "Payment Reminder",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Direct Debit Proposal",
+   "link_count": 0,
+   "link_to": "Direct Debit Proposal",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Proposal",
+   "link_count": 0,
+   "link_to": "Payment Proposal",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Payment Return Proposal",
+   "link_count": 0,
+   "link_to": "Payment Return Proposal",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Bank Wizard",
+   "link_count": 0,
+   "link_to": "bank_wizard",
+   "link_type": "Page",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Customer Credit Overview",
+   "link_count": 0,
+   "link_to": "Customer Credit Overview",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Customer Credit Ledger",
+   "link_count": 0,
+   "link_to": "Customer Credit Ledger",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Customer Credit Balance",
+   "link_count": 0,
+   "link_to": "Customer Credit Balance",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Saldenliste UVA",
+   "link_count": 0,
+   "link_to": "Saldenliste UVA",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 1,
+   "label": "Saldenliste Periode",
+   "link_count": 0,
+   "link_to": "Saldenliste Periode",
+   "link_type": "Report",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Rechtliches",
+   "link_count": 2,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Rechtliches Dokument",
+   "link_count": 0,
+   "link_to": "Rechtliches Dokument",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Dokumententyp",
+   "link_count": 0,
+   "link_to": "Dokumententyp",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Integration",
+   "link_count": 4,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "ZSW",
+   "link_count": 0,
+   "link_to": "ZSW",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "SoftCard File",
+   "link_count": 0,
+   "link_to": "SoftCard File",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Calendar Feed Settings",
+   "link_count": 0,
+   "link_to": "Calendar Feed Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Finkzeit Settings",
+   "link_count": 0,
+   "link_to": "Finkzeit Settings",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Reports",
+   "link_count": 1,
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Card Break"
+  },
+  {
+   "hidden": 0,
+   "is_query_report": 0,
+   "label": "Report",
+   "link_count": 0,
+   "link_to": "Report",
+   "link_type": "DocType",
+   "onboard": 0,
+   "type": "Link"
+  }
+ ],
+ "modified": "2025-07-31 17:16:45.570994",
+ "modified_by": "Administrator",
+ "module": "Finkzeit",
+ "name": "Finkzeit",
+ "number_cards": [],
+ "owner": "Administrator",
+ "parent_page": "",
+ "public": 1,
+ "quick_lists": [],
+ "roles": [],
+ "sequence_id": 41.0,
+ "shortcuts": [],
+ "title": "Finkzeit"
+}
