@@ -27,7 +27,7 @@ def get_credit_account_ledger(customer, date=None):
         "party_type": "Customer",
         "naming_by": ["Selling Settings", "cust_master_name"],
     }
-    columns, data, more, chart = ReceivablePayableReport(filters).run(args)
+    columns, data, more, chart, *_ = ReceivablePayableReport(filters).run(args)
     credits = []
     for d in data:
         if flt(d.get('outstanding')) < 0:
