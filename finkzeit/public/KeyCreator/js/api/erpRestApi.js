@@ -117,7 +117,7 @@ class ErpRestApi {
                     uidParam = `em_uid=${uid}`;
                     break;
                 default:
-                    throw new Error(`Unsupported tag type: ${tagType}`);
+                    throw new Error(`Nicht unterstützter Tag-Typ: ${tagType}`);
             }
 
             const response = await fetch(`${this.baseUrl}get_transponder?${uidParam}`);
@@ -326,7 +326,7 @@ class ErpRestApi {
                     uidParam = `em_uid=${uid}`;
                     break;
                 default:
-                    throw new Error(`Unsupported tag type: ${tagType}`);
+                    throw new Error(`Nicht unterstützter Tag-Typ: ${tagType}`);
             }
 
             const response = await fetch(`${this.baseUrl}get_transponder?${uidParam}`);

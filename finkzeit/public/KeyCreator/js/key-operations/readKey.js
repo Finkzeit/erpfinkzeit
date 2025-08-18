@@ -75,25 +75,35 @@ async function handleReadKey() {
         // Check if any tags are not in ERP and offer config-based reading
         const tagsNotInERP = tagDetails.filter((tag) => !tag.erpInfo);
         if (tagsNotInERP.length > 0) {
-            updateDialogMessage("Einige Tags sind nicht im ERP registriert. Möchten Sie sie mit einer Konfiguration lesen?");
-            const shouldReadWithConfig = await getConfirmation(dialog, true, "Mit Konfiguration lesen");
+            // Check if all tags not in ERP are empty or can't be read (no need for config)
+            const tagsThatNeedConfig = tagsNotInERP.filter((tag) => {
+                const status = tag.technicalInfo?.readStatus;
+                // Only need config if tag has data but no ERP config
+                return status === "success" || status === "no_config";
+            });
 
-            if (shouldReadWithConfig) {
-                await readWithConfig(tagsNotInERP, dialog);
-                return; // Don't show the detailed modal if we did config-based reading
+            if (tagsThatNeedConfig.length === 0) {
+                // All tags not in ERP are empty or can't be read - no need for config-based reading
+                logger.debug("All tags not in ERP are empty or unreadable, skipping config-based reading");
+            } else {
+                // Some tags might have data but no ERP config - offer config-based reading
+                updateDialogMessage("Einige Tags sind nicht im ERP registriert. Möchten Sie sie mit einer Konfiguration lesen?");
+                const shouldReadWithConfig = await getConfirmation(dialog, true, "Mit Konfiguration lesen");
+
+                if (shouldReadWithConfig) {
+                    await readWithConfig(tagsNotInERP, dialog);
+                    return; // Don't show the detailed modal if we did config-based reading
+                }
             }
         }
 
-        // Always show the detailed modal, even for empty tags
-        showDetailedModal(tagDetails, dialog);
+        // Always show the unified detailed modal
+        showUnifiedDetailedModal(tagDetails, dialog);
     } catch (error) {
         logger.error("Error in handleReadKey:", error);
         updateDialogText(dialog, "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
-    } finally {
-        // Ensure reading state is reset in all cases
-        logger.debug("Setting isReading to false");
-        setIsReading(false);
     }
+    // NOTE: setIsReading(false) is now only called when modals are closed
 }
 
 // Utility: exact config/tag type match for combo or single keys
@@ -319,7 +329,7 @@ async function detectTagsForReading(shouldContinueCallback) {
             try {
                 const result = await searchFunction();
                 if (result.Result && !detectedUIDs.has(result.UID)) {
-                    let tagType = result.TagType || "Unknown";
+                    let tagType = result.TagType || "Unbekannt";
                     if (tagType === "MIFARE") {
                         const sakValue = await getSAK(result.UID);
                         tagType = identifyMifareTypeBitwise(sakValue, "detectTagsForReading");
@@ -435,7 +445,7 @@ async function readWithConfig(tagsNotInERP, dialog) {
                     tag: tag,
                     config: selectedConfig,
                     readResult: readResult,
-                    success: readResult !== null,
+                    success: true,
                 });
             } catch (error) {
                 logger.error(`Error reading ${tag.type} (${tag.uid}) with config:`, error);
@@ -444,7 +454,7 @@ async function readWithConfig(tagsNotInERP, dialog) {
                     config: selectedConfig,
                     readResult: null,
                     success: false,
-                    error: error.message,
+                    error: error.message || "Fehler beim Lesen des Tags",
                 });
             }
         }
@@ -488,7 +498,7 @@ async function readWithConfig(tagsNotInERP, dialog) {
             showReadWithConfigResults(readResults, dialog, canAddToERP, suggestedCode);
         } else {
             // Some tags failed - show results but don't offer to add to ERP
-            showReadWithConfigResults(readResults, dialog, false);
+            showReadWithConfigResults(readResults, dialog, false, null);
         }
     } catch (error) {
         logger.error("Error in readWithConfig:", error);
@@ -526,11 +536,16 @@ async function readHitagWithConfig(tag, config) {
     const { readHitag } = await import("../tags/hitag1s.js");
     const decodedResult = await readHitag({ tags: { hitag: { uid: tag.uid } } });
 
-    if (decodedResult === null) return null;
+    if (decodedResult === null) {
+        throw new Error("Tag ist leer");
+    }
+    if (decodedResult === false) {
+        throw new Error("Tag kann nicht gelesen werden (Authentifizierung fehlgeschlagen)");
+    }
 
     return {
         block: config.tags.hitag.number || 0x1c,
-        data: "Decoded successfully",
+        data: "Erfolgreich dekodiert",
         decodedId: decodedResult,
         config: config.tags.hitag,
     };
@@ -549,24 +564,22 @@ async function readMifareClassicWithConfig(tag, config) {
         MifareClassic_Login,
     });
     if (!authenticated) {
-        logger.debug("MIFARE Classic authentication failed");
-        return null;
+        throw new Error("Tag kann nicht gelesen werden (Authentifizierung fehlgeschlagen)");
     }
     if (usedDefaultKey) {
-        return {
-            sector: config.tags.mifareClassic.sector,
-            block: config.tags.mifareClassic.sector * 4 + 1,
-            data: "Tag leer oder nicht konfiguriert",
-            decodedId: "Tag leer oder nicht konfiguriert (Standard-Schlüssel)",
-            config: config.tags.mifareClassic,
-        };
+        throw new Error("Tag ist leer (Standard-Schlüssel verwendet)");
     }
     const decodedResult = await readMifareClassic({ tags: { mifareClassic: { uid: tag.uid, ...config.tags.mifareClassic } } });
-    if (decodedResult === null) return null;
+    if (decodedResult === null) {
+        throw new Error("Tag ist leer");
+    }
+    if (decodedResult === false) {
+        throw new Error("Tag kann nicht gelesen werden (Daten ungültig)");
+    }
     return {
         sector: config.tags.mifareClassic.sector,
         block: config.tags.mifareClassic.sector * 4 + 1,
-        data: "Decoded successfully",
+        data: "Erfolgreich dekodiert",
         decodedId: decodedResult.toString(),
         config: config.tags.mifareClassic,
     };
@@ -633,8 +646,7 @@ async function readMifareDesfireWithConfig(tag, config) {
         !masterKey ||
         !appReadKey
     ) {
-        logger.debug("Missing DESFire configuration parameters");
-        return null;
+        throw new Error("Unvollständige DESFire-Konfiguration");
     }
 
     const result = await authenticateAndReadDesfire({
@@ -650,13 +662,19 @@ async function readMifareDesfireWithConfig(tag, config) {
 
     if (result.error) {
         logger.debug(`Error reading DESFire with config: ${result.error}`);
-        return null;
+        if (result.error.includes("Authentifizierung")) {
+            throw new Error("Tag kann nicht gelesen werden (Authentifizierung fehlgeschlagen)");
+        } else if (result.error.includes("nicht gefunden") || result.error.includes("nicht lesbar")) {
+            throw new Error("Tag ist leer");
+        } else {
+            throw new Error(result.error);
+        }
     }
 
     return {
         appId: appId,
         fileId: fileId,
-        data: "Decoded successfully",
+        data: "Erfolgreich dekodiert",
         decodedId: result.data.toString(),
         config: dfConfig,
     };
@@ -674,19 +692,25 @@ function createOverlayModal({ content, onClose, closeBtnId }) {
     modalElement.innerHTML = content;
     overlay.appendChild(modalElement);
     document.body.appendChild(overlay);
+
     // Add close functionality
     if (closeBtnId) {
-        document.getElementById(closeBtnId).addEventListener("click", () => {
-            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-            if (onClose) setTimeout(onClose, 500);
-        });
+        const closeBtn = document.getElementById(closeBtnId);
+        if (closeBtn) {
+            closeBtn.addEventListener("click", () => {
+                if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+                if (onClose) setTimeout(onClose, 500);
+            });
+        }
     }
+
     overlay.addEventListener("click", (e) => {
         if (e.target === overlay) {
             if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
             if (onClose) setTimeout(onClose, 500);
         }
     });
+
     return { overlay, modalElement };
 }
 
@@ -695,26 +719,31 @@ function showReadWithConfigResults(readResults, dialog, allSuccessful, suggested
     if (dialog.overlay && dialog.overlay.parentNode) {
         dialog.overlay.parentNode.removeChild(dialog.overlay);
     }
-    let modalContent = `
-        <h2>Schlüssel-Übersicht</h2>
-        <div class="tag-details">
-    `;
 
+    // Analyze results for better status display
     const successfulReads = readResults.filter((r) => r.success);
     const failedReads = readResults.filter((r) => !r.success);
 
-    // Show overall result
+    let modalContent = `
+        <h2>Schlüssel-Übersicht (Konfigurations-basiert)</h2>
+    `;
+
+    // Overall status section
+    modalContent += `
+        <div class="overall-status-section" style="margin-bottom: 2em;">
+    `;
+
     if (allSuccessful) {
         modalContent += `
-                <div class="info-section" style="background: #d4edda; border: 1px solid #c3e6cb; padding: 1em; border-radius: 4px; margin-bottom: 1em;">
-                    <h3 style="color: #155724; margin: 0;">✅ Alle Tags erfolgreich gelesen!</h3>
-                    <p style="margin: 0.5em 0 0 0; color: #155724;">Der gesamte Schlüssel kann zum ERP hinzugefügt werden.</p>
-            `;
+            <div class="info-section" style="background: #d4edda; border: 1px solid #c3e6cb; padding: 1em; border-radius: 4px; margin-bottom: 1em;">
+                <h3 style="color: #155724; margin: 0;">✅ Alle Tags erfolgreich gelesen!</h3>
+                <p style="margin: 0.5em 0 0 0; color: #155724;">Der gesamte Schlüssel kann zum ERP hinzugefügt werden.</p>
+        `;
 
         if (suggestedCode) {
             modalContent += `
-                    <p style="margin: 0.5em 0 0 0; color: #155724;"><strong>Vorgeschlagener Code: ${suggestedCode}</strong></p>
-                `;
+                <p style="margin: 0.5em 0 0 0; color: #155724;"><strong>Vorgeschlagener Code: ${suggestedCode}</strong></p>
+            `;
         }
 
         modalContent += `</div>`;
@@ -727,6 +756,10 @@ function showReadWithConfigResults(readResults, dialog, allSuccessful, suggested
         `;
     }
 
+    modalContent += `</div>`;
+
+    modalContent += `<div class="tag-details">`;
+
     if (successfulReads.length > 0) {
         modalContent += `
             <div class="info-section">
@@ -738,8 +771,8 @@ function showReadWithConfigResults(readResults, dialog, allSuccessful, suggested
             const readData = result.readResult;
 
             modalContent += `
-                <div class="tag-section">
-                    <h4>${tag.type} (${tag.uid})</h4>
+                <div class="tag-section" style="border: 2px solid #28a745; border-radius: 8px; padding: 1em; margin-bottom: 1em;">
+                    <h4 style="color: #28a745; margin: 0 0 1em 0;">✅ ${tag.type} (${tag.uid})</h4>
                     <div class="info-grid">
                         <div class="info-section">
                             <h5>Grundinformationen</h5>
@@ -747,6 +780,7 @@ function showReadWithConfigResults(readResults, dialog, allSuccessful, suggested
                                 <tr><td>Typ:</td><td>${tag.type}</td></tr>
                                 <tr><td>UID:</td><td>${tag.uid}</td></tr>
                                 <tr><td>Konfiguration:</td><td>${result.config.customerName}</td></tr>
+                                <tr><td>Status:</td><td style="color: #28a745; font-weight: bold;">Erfolgreich gelesen</td></tr>
                             </table>
                         </div>
                         <div class="info-section">
@@ -770,7 +804,7 @@ function showReadWithConfigResults(readResults, dialog, allSuccessful, suggested
                 modalContent += `<tr><td>File ID:</td><td>${readData.fileId}</td></tr>`;
             }
             if (readData.decodedId !== undefined) {
-                modalContent += `<tr><td>Dekodierte ID:</td><td><strong>${readData.decodedId}</strong></td></tr>`;
+                modalContent += `<tr><td>Dekodierte ID:</td><td><strong style="color: #28a745;">${readData.decodedId}</strong></td></tr>`;
             }
             if (readData.data) {
                 modalContent += `<tr><td>Gelesene Daten:</td><td><code>${readData.data}</code></td></tr>`;
@@ -796,10 +830,25 @@ function showReadWithConfigResults(readResults, dialog, allSuccessful, suggested
         failedReads.forEach((result, index) => {
             const tag = result.tag;
             modalContent += `
-                <div class="tag-section">
-                    <h4>${tag.type} (${tag.uid})</h4>
-                    <p>Konfiguration: ${result.config.customerName}</p>
-                    <p>Fehler: ${result.error || "Unbekannter Fehler"}</p>
+                <div class="tag-section" style="border: 2px solid #dc3545; border-radius: 8px; padding: 1em; margin-bottom: 1em;">
+                    <h4 style="color: #dc3545; margin: 0 0 1em 0;">❌ ${tag.type} (${tag.uid})</h4>
+                    <div class="info-grid">
+                        <div class="info-section">
+                            <h5>Grundinformationen</h5>
+                            <table class="info-table">
+                                <tr><td>Typ:</td><td>${tag.type}</td></tr>
+                                <tr><td>UID:</td><td>${tag.uid}</td></tr>
+                                <tr><td>Konfiguration:</td><td>${result.config.customerName}</td></tr>
+                                <tr><td>Status:</td><td style="color: #dc3545; font-weight: bold;">Fehlgeschlagen</td></tr>
+                            </table>
+                        </div>
+                        <div class="info-section">
+                            <h5>Fehlerdetails</h5>
+                            <table class="info-table">
+                                <tr><td>Fehler:</td><td style="color: #dc3545;">${result.error}</td></tr>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             `;
         });
@@ -825,10 +874,14 @@ function showReadWithConfigResults(readResults, dialog, allSuccessful, suggested
             <button class="btn" id="closeResultsBtn">Schließen</button>
         </div>
     `;
+
     // Use utility for overlay/modal
     const { overlay, modalElement } = createOverlayModal({
         content: modalContent,
-        onClose: () => setIsReading(false),
+        onClose: () => {
+            logger.debug("Setting isReading to false after config results modal close");
+            setIsReading(false);
+        },
         closeBtnId: "closeResultsBtn",
     });
 
@@ -952,7 +1005,7 @@ function showReadWithConfigResults(readResults, dialog, allSuccessful, suggested
         }
         // Set reading to false after closing
         setTimeout(() => {
-            logger.debug("Setting isReading to false after results modal close");
+            logger.debug("Setting isReading to false after config results modal close");
             setIsReading(false);
         }, 500);
     });
@@ -965,7 +1018,7 @@ function showReadWithConfigResults(readResults, dialog, allSuccessful, suggested
             }
             // Set reading to false after closing
             setTimeout(() => {
-                logger.debug("Setting isReading to false after results modal close");
+                logger.debug("Setting isReading to false after config results modal close");
                 setIsReading(false);
             }, 500);
         }
@@ -981,7 +1034,16 @@ async function getTechnicalInfo(tag, transponderData, mergedConfig) {
                 await api.hitag1s();
                 const { readHitag } = await import("../tags/hitag1s.js");
                 const decodedResult = await readHitag({ tags: { hitag: { uid: tag.uid } } });
-                techInfo.decodedId = decodedResult || "Nicht dekodierbar (leer/invalid)";
+                if (decodedResult === null) {
+                    techInfo.decodedId = "Tag ist leer";
+                    techInfo.readStatus = "empty";
+                } else if (decodedResult === false) {
+                    techInfo.decodedId = "Tag kann nicht gelesen werden (Authentifizierung fehlgeschlagen)";
+                    techInfo.readStatus = "auth_failed";
+                } else {
+                    techInfo.decodedId = decodedResult.toString();
+                    techInfo.readStatus = "success";
+                }
                 break;
 
             case "MIFARE_CLASSIC":
@@ -998,15 +1060,26 @@ async function getTechnicalInfo(tag, transponderData, mergedConfig) {
                     MifareClassic_Login,
                 });
                 if (!authenticated) {
-                    techInfo.decodedId = "Authentifizierung fehlgeschlagen";
+                    techInfo.decodedId = "Tag kann nicht gelesen werden (Authentifizierung fehlgeschlagen)";
+                    techInfo.readStatus = "auth_failed";
                     break;
                 }
                 if (usedDefaultKey) {
-                    techInfo.decodedId = "Tag leer oder nicht konfiguriert (Standard-Schlüssel)";
+                    techInfo.decodedId = "Tag ist leer (Standard-Schlüssel verwendet)";
+                    techInfo.readStatus = "empty";
                     break;
                 }
                 const mfDecodedResult = await readMifareClassic({ tags: { mifareClassic: mfConfig } });
-                techInfo.decodedId = mfDecodedResult ? mfDecodedResult.toString() : "Nicht dekodierbar (leer/invalid)";
+                if (mfDecodedResult === null) {
+                    techInfo.decodedId = "Tag ist leer";
+                    techInfo.readStatus = "empty";
+                } else if (mfDecodedResult === false) {
+                    techInfo.decodedId = "Tag kann nicht gelesen werden (Daten ungültig)";
+                    techInfo.readStatus = "invalid_data";
+                } else {
+                    techInfo.decodedId = mfDecodedResult.toString();
+                    techInfo.readStatus = "success";
+                }
                 break;
             case "MIFARE_DESFIRE":
                 logger.debug("Starting DESFire technical info reading...");
@@ -1034,6 +1107,7 @@ async function getTechnicalInfo(tag, transponderData, mergedConfig) {
                         `Missing required config: appId=${appId}, fileId=${fileId}, masterKey=${masterKey}, appReadKey=${appReadKey}`
                     );
                     techInfo.decodedId = "Keine ERP-Konfiguration verfügbar";
+                    techInfo.readStatus = "no_config";
                     break;
                 }
                 logger.debug("All required config found, proceeding with authentication...");
@@ -1049,23 +1123,37 @@ async function getTechnicalInfo(tag, transponderData, mergedConfig) {
                 });
                 if (result.error) {
                     logger.debug(`Error reading DESFire: ${result.error}`);
-                    techInfo.decodedId = result.error;
+                    if (result.error.includes("Authentifizierung")) {
+                        techInfo.decodedId = "Tag kann nicht gelesen werden (Authentifizierung fehlgeschlagen)";
+                        techInfo.readStatus = "auth_failed";
+                    } else if (result.error.includes("nicht gefunden") || result.error.includes("nicht lesbar")) {
+                        techInfo.decodedId = "Tag ist leer";
+                        techInfo.readStatus = "empty";
+                    } else {
+                        techInfo.decodedId = result.error;
+                        techInfo.readStatus = "error";
+                    }
                 } else {
                     techInfo.decodedId = result.data.toString();
+                    techInfo.readStatus = "success";
                     logger.debug(`Successfully read DESFire data: ${techInfo.decodedId}`);
                 }
                 break;
 
             case "DEISTER":
                 // No additional technical info for DEISTER tags
+                techInfo.readStatus = "no_tech_info";
                 break;
 
             case "EM":
                 // No additional technical info for EM tags
+                techInfo.readStatus = "no_tech_info";
                 break;
         }
     } catch (error) {
         logger.warn(`Error getting technical info for ${tag.type}:`, error);
+        techInfo.decodedId = `Fehler beim Lesen: ${error.message}`;
+        techInfo.readStatus = "error";
     }
 
     return techInfo;
@@ -1148,7 +1236,7 @@ function formatTagSpecificConfiguration(config, tagType) {
             if (config.tags?.hitag) {
                 const hitag = config.tags.hitag;
                 const hitagFields = [
-                    { key: "feig_coding", label: "Feig Coding" },
+                    { key: "feig_coding", label: "Feig-Codierung" },
                     { key: "number", label: "Nummer" },
                     { key: "uid", label: "UID" },
                 ];
@@ -1174,10 +1262,10 @@ function formatTagSpecificConfiguration(config, tagType) {
                     { key: "key_a", label: "Key A" },
                     { key: "key_b", label: "Key B" },
                     { key: "sector", label: "Sektor" },
-                    { key: "skip_bytes", label: "Skip Bytes" },
-                    { key: "read_bytes", label: "Read Bytes" },
-                    { key: "app_id", label: "App ID" },
-                    { key: "file_byte", label: "File Byte" },
+                    { key: "skip_bytes", label: "Übersprungene Bytes" },
+                    { key: "read_bytes", label: "Gelesene Bytes" },
+                    { key: "app_id", label: "Anwendungs-ID" },
+                    { key: "file_byte", label: "Datei-Byte" },
                     { key: "number", label: "Nummer" },
                     { key: "uid", label: "UID" },
                 ];
@@ -1198,8 +1286,8 @@ function formatTagSpecificConfiguration(config, tagType) {
             if (config.tags?.mifareDesfire) {
                 const mf = config.tags.mifareDesfire;
                 const mfFields = [
-                    { key: "app_id", label: "App ID" },
-                    { key: "file_id", label: "File ID" },
+                    { key: "app_id", label: "Anwendungs-ID" },
+                    { key: "file_id", label: "Datei-ID" },
                     { key: "key", label: "Key" },
                     { key: "number", label: "Nummer" },
                     { key: "uid", label: "UID" },
@@ -1221,7 +1309,7 @@ function formatTagSpecificConfiguration(config, tagType) {
             if (config.tags?.legic) {
                 const legic = config.tags.legic;
                 const legicFields = [
-                    { key: "app_id", label: "App ID" },
+                    { key: "app_id", label: "Anwendungs-ID" },
                     { key: "number", label: "Nummer" },
                     { key: "uid", label: "UID" },
                 ];
@@ -1286,14 +1374,78 @@ function formatTagSpecificConfiguration(config, tagType) {
     return html;
 }
 
-// Refactor showDetailedModal to use createOverlayModal
-function showDetailedModal(tagDetails, originalDialog) {
+// Unified detailed modal that combines features from both existing modals
+function showUnifiedDetailedModal(tagDetails, originalDialog) {
     if (originalDialog.overlay && originalDialog.overlay.parentNode) {
         originalDialog.overlay.parentNode.removeChild(originalDialog.overlay);
     }
+
+    // Analyze overall status
+    const tagsInERP = tagDetails.filter((tag) => tag.erpInfo);
+    const tagsNotInERP = tagDetails.filter((tag) => !tag.erpInfo);
+    const successfulReads = tagDetails.filter((tag) => tag.technicalInfo?.readStatus === "success");
+    const emptyTags = tagDetails.filter((tag) => tag.technicalInfo?.readStatus === "empty");
+    const authFailedTags = tagDetails.filter((tag) => tag.technicalInfo?.readStatus === "auth_failed");
+    const errorTags = tagDetails.filter((tag) => tag.technicalInfo?.readStatus === "error");
+
     let modalContent = `
         <h2>Schlüssel-Übersicht</h2>
     `;
+
+    // Overall status section
+    modalContent += `
+        <div class="overall-status-section" style="margin-bottom: 2em;">
+    `;
+
+    // ERP Status
+    if (tagsInERP.length > 0) {
+        modalContent += `
+            <div class="info-section" style="background: #d4edda; border: 1px solid #c3e6cb; padding: 1em; border-radius: 4px; margin-bottom: 1em;">
+                <h3 style="color: #155724; margin: 0;">✅ ${tagsInERP.length} Tag(s) im ERP registriert</h3>
+            </div>
+        `;
+    }
+
+    if (tagsNotInERP.length > 0) {
+        modalContent += `
+            <div class="info-section" style="background: #fff3cd; border: 1px solid #ffeaa7; padding: 1em; border-radius: 4px; margin-bottom: 1em;">
+                <h3 style="color: #856404; margin: 0;">⚠️ ${tagsNotInERP.length} Tag(s) nicht im ERP registriert</h3>
+            </div>
+        `;
+    }
+
+    // Reading Status - nur anzeigen wenn es relevante Informationen gibt
+    const hasSuccessfulReads = successfulReads.length > 0;
+    const hasEmptyTags = emptyTags.length > 0;
+    const hasAuthFailedTags = authFailedTags.length > 0;
+    const hasErrorTags = errorTags.length > 0;
+
+    if (hasSuccessfulReads || hasEmptyTags || hasAuthFailedTags || hasErrorTags) {
+        modalContent += `
+            <div class="info-section" style="background: #f8f9fa; border: 1px solid #dee2e6; padding: 1em; border-radius: 4px; margin-bottom: 1em;">
+                <h3 style="color: #495057; margin: 0;">📊 Leseergebnisse</h3>
+        `;
+
+        if (hasSuccessfulReads) {
+            modalContent += `<p style="margin: 0.5em 0 0 0; color: #155724;">✅ ${successfulReads.length} Tag(s) erfolgreich gelesen</p>`;
+        }
+
+        if (hasEmptyTags) {
+            modalContent += `<p style="margin: 0.5em 0 0 0; color: #721c24;">📭 ${emptyTags.length} Tag(s) sind leer</p>`;
+        }
+
+        if (hasAuthFailedTags) {
+            modalContent += `<p style="margin: 0.5em 0 0 0; color: #721c24;">🔒 ${authFailedTags.length} Tag(s) können nicht gelesen werden (Authentifizierung fehlgeschlagen)</p>`;
+        }
+
+        if (hasErrorTags) {
+            modalContent += `<p style="margin: 0.5em 0 0 0; color: #721c24;">❌ ${errorTags.length} Tag(s) mit Lesefehlern</p>`;
+        }
+
+        modalContent += `</div>`;
+    }
+
+    modalContent += `</div>`;
 
     // Show general configuration once if all tags have the same configuration
     const firstConfig = tagDetails[0]?.configuration;
@@ -1309,9 +1461,27 @@ function showDetailedModal(tagDetails, originalDialog) {
     modalContent += `<div class="tag-details">`;
 
     tagDetails.forEach((tag, index) => {
+        // Determine status color based on read status
+        let statusColor = "#28a745"; // Default green
+        let statusIcon = "✅";
+
+        if (tag.technicalInfo?.readStatus === "empty") {
+            statusColor = "#dc3545";
+            statusIcon = "📭";
+        } else if (tag.technicalInfo?.readStatus === "auth_failed") {
+            statusColor = "#dc3545";
+            statusIcon = "🔒";
+        } else if (tag.technicalInfo?.readStatus === "error") {
+            statusColor = "#dc3545";
+            statusIcon = "❌";
+        } else if (tag.technicalInfo?.readStatus === "no_config") {
+            statusColor = "#ffc107";
+            statusIcon = "⚠️";
+        }
+
         modalContent += `
-            <div class="tag-section">
-                <h3>${tag.type} (${tag.uid})</h3>
+            <div class="tag-section" style="border: 2px solid ${statusColor}; border-radius: 8px; padding: 1em; margin-bottom: 1em;">
+                <h3 style="color: ${statusColor}; margin: 0 0 1em 0;">${statusIcon} ${tag.type} (${tag.uid})</h3>
                 
                 <div class="info-grid">
                     <div class="info-section">
@@ -1319,6 +1489,9 @@ function showDetailedModal(tagDetails, originalDialog) {
                         <table class="info-table">
                             <tr><td>Typ:</td><td>${tag.type}</td></tr>
                             <tr><td>UID:</td><td>${tag.uid}</td></tr>
+                            <tr><td>Status:</td><td style="color: ${statusColor}; font-weight: bold;">${getStatusText(
+            tag.technicalInfo?.readStatus
+        )}</td></tr>
                         </table>
                     </div>
         `;
@@ -1354,12 +1527,14 @@ function showDetailedModal(tagDetails, originalDialog) {
 
             if (tag.technicalInfo.decodedId !== undefined) {
                 let color = "#28a745"; // Grün für erfolgreiche Dekodierung
-                if (
-                    tag.technicalInfo.decodedId.includes("Fehler") ||
-                    tag.technicalInfo.decodedId.includes("nicht") ||
-                    tag.technicalInfo.decodedId.includes("leer")
-                ) {
-                    color = "#dc3545"; // Rot für Fehler/leer
+                if (tag.technicalInfo.readStatus === "empty") {
+                    color = "#dc3545"; // Rot für leer
+                } else if (tag.technicalInfo.readStatus === "auth_failed") {
+                    color = "#dc3545"; // Rot für Auth-Fehler
+                } else if (tag.technicalInfo.readStatus === "error") {
+                    color = "#dc3545"; // Rot für Fehler
+                } else if (tag.technicalInfo.readStatus === "no_config") {
+                    color = "#ffc107"; // Gelb für keine Konfiguration
                 }
                 modalContent += `<tr><td>Dekodierte ID:</td><td><strong style="color: ${color};">${tag.technicalInfo.decodedId}</strong></td></tr>`;
             }
@@ -1404,10 +1579,62 @@ function showDetailedModal(tagDetails, originalDialog) {
             <button class="btn" id="closeModalBtn">Schließen</button>
         </div>
     `;
+
     // Use utility for overlay/modal
-    createOverlayModal({
+    const { overlay, modalElement } = createOverlayModal({
         content: modalContent,
-        onClose: () => setIsReading(false),
+        onClose: () => {
+            logger.debug("Setting isReading to false after unified modal close");
+            setIsReading(false);
+        },
         closeBtnId: "closeModalBtn",
     });
+
+    // Add close functionality
+    document.getElementById("closeModalBtn").addEventListener("click", () => {
+        if (overlay.parentNode) {
+            overlay.parentNode.removeChild(overlay);
+        }
+        // Set reading to false after closing
+        setTimeout(() => {
+            logger.debug("Setting isReading to false after unified modal close");
+            setIsReading(false);
+        }, 500);
+    });
+
+    // Close on overlay click
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) {
+            if (overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+            // Set reading to false after closing
+            setTimeout(() => {
+                logger.debug("Setting isReading to false after unified modal close");
+                setIsReading(false);
+            }, 500);
+        }
+    });
+}
+
+// Helper function to get status text
+function getStatusText(readStatus) {
+    switch (readStatus) {
+        case "success":
+            return "Erfolgreich gelesen";
+        case "empty":
+            return "Leer";
+        case "auth_failed":
+            return "Authentifizierung fehlgeschlagen";
+        case "invalid_data":
+            return "Ungültige Daten";
+        case "no_config":
+            return "Keine Konfiguration verfügbar";
+        case "error":
+            return "Fehler beim Lesen";
+        case "no_tech_info":
+            return "Keine technischen Informationen verfügbar";
+        default:
+            return "Unbekannt";
+    }
 }

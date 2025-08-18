@@ -74,7 +74,7 @@ export function updateSessionInfo(type, data) {
         updaters[type]();
         notifyObservers();
     } else {
-        logger.warn(`Unknown update type: ${type}`);
+        logger.warn(`Unbekannter Update-Typ: ${type}`);
     }
 }
 
@@ -93,13 +93,11 @@ function updateProgressDisplay() {
 
 function createCurrentStatusSection() {
     const currentStatus = document.createElement("div");
-    
+
     // Check if number has a value and is not the default
     const hasNumber = sessionInfo.number && sessionInfo.number !== "Nummer nicht gesetzt";
-    const numberStyle = hasNumber 
-        ? 'font-size: 64px; font-weight: bold; color: black; text-align: center;'
-        : '';
-    
+    const numberStyle = hasNumber ? "font-size: 64px; font-weight: bold; color: black; text-align: center;" : "";
+
     currentStatus.innerHTML = `
         <p><strong>Nummer:</strong> ${hasNumber ? `<span style="${numberStyle}">${sessionInfo.number}</span>` : sessionInfo.number}</p>
         <p><strong>Status:</strong> ${sessionInfo.status}</p>
