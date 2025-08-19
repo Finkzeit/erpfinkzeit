@@ -168,6 +168,10 @@ function createSelectModal({ parent, configs, title, message, onClose }) {
         $(select).select2("destroy");
         if (parent) parent.removeChild(modal);
         else document.body.removeChild(modal);
+        // Ensure reading state is reset when canceling
+        setTimeout(() => {
+            setIsReading(false);
+        }, 100);
         onClose(null);
     };
     btnContainer.appendChild(cancelBtn);
@@ -414,18 +418,34 @@ async function readWithConfig(tagsNotInERP, dialog) {
         const allConfigs = await erpRestApi.fetchAllTransponderConfigs();
         logger.debug("Available configs for reading:", allConfigs);
 
+        if (!allConfigs || allConfigs.length === 0) {
+            updateDialogMessage("Keine Konfigurationen verfügbar");
+            setTimeout(() => {
+                setIsReading(false);
+            }, 100);
+            return;
+        }
+
         // Show config selection - no filtering, user selects manually
         const selectedConfigId = await showConfigSelectionInDialog(dialog, allConfigs, "alle Tags");
 
         if (!selectedConfigId) {
-            updateDialogMessage("Keine Konfiguration ausgewählt");
+            updateDialogMessage("Vorgang abgebrochen");
+            // Ensure reading state is reset when no config is selected
+            setTimeout(() => {
+                setIsReading(false);
+            }, 100);
             return;
         }
 
         // Get the selected configuration
         const selectedConfig = await erpRestApi.getTransponderConfiguration(selectedConfigId);
         if (!selectedConfig) {
-            updateDialogMessage("Ausgewählte Konfiguration konnte nicht geladen werden");
+            updateDialogMessage("Konfiguration konnte nicht geladen werden");
+            // Ensure reading state is reset when config loading fails
+            setTimeout(() => {
+                setIsReading(false);
+            }, 100);
             return;
         }
 
@@ -449,12 +469,14 @@ async function readWithConfig(tagsNotInERP, dialog) {
                 });
             } catch (error) {
                 logger.error(`Error reading ${tag.type} (${tag.uid}) with config:`, error);
+                const errorMessage = error.message || "Fehler beim Lesen des Tags";
+                logger.warn(`Failed to read ${tag.type} (${tag.uid}): ${errorMessage}`);
                 readResults.push({
                     tag: tag,
                     config: selectedConfig,
                     readResult: null,
                     success: false,
-                    error: error.message || "Fehler beim Lesen des Tags",
+                    error: errorMessage,
                 });
             }
         }
@@ -498,6 +520,17 @@ async function readWithConfig(tagsNotInERP, dialog) {
             showReadWithConfigResults(readResults, dialog, canAddToERP, suggestedCode);
         } else {
             // Some tags failed - show results but don't offer to add to ERP
+            const failedCount = readResults.filter((r) => !r.success).length;
+            const totalCount = readResults.length;
+
+            if (failedCount === totalCount) {
+                logger.warn("All tags failed to read with selected configuration");
+                updateDialogMessage("Konfiguration passt nicht zu diesem Schlüssel");
+            } else {
+                logger.warn("Some tags failed to read with selected configuration");
+                updateDialogMessage("Konfiguration passt nur teilweise zu diesem Schlüssel");
+            }
+
             showReadWithConfigResults(readResults, dialog, false, null);
         }
     } catch (error) {
@@ -523,7 +556,12 @@ async function readTagWithConfig(tag, config) {
         }
     } catch (error) {
         logger.error(`Error reading ${tag.type} with config:`, error);
-        return null;
+        // Provide simple error messages for user
+        if (error.message && (error.message.includes("Tag ist leer") || error.message.includes("Tag kann nicht gelesen werden"))) {
+            throw new Error(error.message);
+        } else {
+            throw new Error("Tag kann nicht gelesen werden");
+        }
     }
 }
 
@@ -540,7 +578,7 @@ async function readHitagWithConfig(tag, config) {
         throw new Error("Tag ist leer");
     }
     if (decodedResult === false) {
-        throw new Error("Tag kann nicht gelesen werden (Authentifizierung fehlgeschlagen)");
+        throw new Error("Tag kann nicht gelesen werden");
     }
 
     return {
@@ -564,17 +602,17 @@ async function readMifareClassicWithConfig(tag, config) {
         MifareClassic_Login,
     });
     if (!authenticated) {
-        throw new Error("Tag kann nicht gelesen werden (Authentifizierung fehlgeschlagen)");
+        throw new Error("Tag kann nicht gelesen werden");
     }
     if (usedDefaultKey) {
-        throw new Error("Tag ist leer (Standard-Schlüssel verwendet)");
+        throw new Error("Tag ist leer");
     }
     const decodedResult = await readMifareClassic({ tags: { mifareClassic: { uid: tag.uid, ...config.tags.mifareClassic } } });
     if (decodedResult === null) {
         throw new Error("Tag ist leer");
     }
     if (decodedResult === false) {
-        throw new Error("Tag kann nicht gelesen werden (Daten ungültig)");
+        throw new Error("Tag kann nicht gelesen werden");
     }
     return {
         sector: config.tags.mifareClassic.sector,
@@ -663,11 +701,11 @@ async function readMifareDesfireWithConfig(tag, config) {
     if (result.error) {
         logger.debug(`Error reading DESFire with config: ${result.error}`);
         if (result.error.includes("Authentifizierung")) {
-            throw new Error("Tag kann nicht gelesen werden (Authentifizierung fehlgeschlagen)");
+            throw new Error("Tag kann nicht gelesen werden");
         } else if (result.error.includes("nicht gefunden") || result.error.includes("nicht lesbar")) {
             throw new Error("Tag ist leer");
         } else {
-            throw new Error(result.error);
+            throw new Error("Tag kann nicht gelesen werden");
         }
     }
 
@@ -748,12 +786,24 @@ function showReadWithConfigResults(readResults, dialog, allSuccessful, suggested
 
         modalContent += `</div>`;
     } else {
-        modalContent += `
-            <div class="info-section" style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 1em; border-radius: 4px; margin-bottom: 1em;">
-                <h3 style="color: #721c24; margin: 0;">❌ Nicht alle Tags konnten gelesen werden</h3>
-                <p style="margin: 0.5em 0 0 0; color: #721c24;">Der Schlüssel kann nicht zum ERP hinzugefügt werden.</p>
-            </div>
-        `;
+        const failedCount = readResults.filter((r) => !r.success).length;
+        const totalCount = readResults.length;
+
+        if (failedCount === totalCount) {
+            modalContent += `
+                <div class="info-section" style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 1em; border-radius: 4px; margin-bottom: 1em;">
+                    <h3 style="color: #721c24; margin: 0;">❌ Konfiguration passt nicht</h3>
+                    <p style="margin: 0.5em 0 0 0; color: #721c24;">Die ausgewählte Konfiguration passt nicht zu diesem Schlüssel.</p>
+                </div>
+            `;
+        } else {
+            modalContent += `
+                <div class="info-section" style="background: #f8d7da; border: 1px solid #f5c6cb; padding: 1em; border-radius: 4px; margin-bottom: 1em;">
+                    <h3 style="color: #721c24; margin: 0;">❌ Konfiguration passt nur teilweise</h3>
+                    <p style="margin: 0.5em 0 0 0; color: #721c24;">Die ausgewählte Konfiguration passt nur teilweise zu diesem Schlüssel.</p>
+                </div>
+            `;
+        }
     }
 
     modalContent += `</div>`;
