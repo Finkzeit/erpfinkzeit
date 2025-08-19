@@ -162,11 +162,24 @@ function handleError(error) {
 // Reader Connection Functions
 // ============================================================================
 
+function handleConnectionStateChange(isConnected) {
+    if (!elements || !elements.connectReaderButton) {
+        return;
+    }
+
+    if (isConnected) {
+        elements.connectReaderButton.style.display = "none";
+        updateSessionInfo("action", "Leser verbunden");
+    } else {
+        elements.connectReaderButton.style.display = "block";
+        updateSessionInfo("action", "Leser nicht verbunden. Klicken Sie auf 'Leser verbinden', um zu starten.");
+    }
+}
+
 async function handleConnectReader() {
     logger.debug("handleConnectReader called");
     try {
-        await api.startKeyCreator();
-        elements.connectReaderButton.style.display = "none";
+        await api.startKeyCreator(handleConnectionStateChange);
         logger.debug("Key creator started");
 
         const version = await api.getVersion();

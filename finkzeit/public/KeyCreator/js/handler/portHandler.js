@@ -4,15 +4,17 @@ export class SerialPort {
     #port = undefined;
     #usbVendorId = 2520;
     #baudRate = 115200;
+    #onConnectionChange = null;
 
     #encoder = new TextEncoder();
     #decoder = new TextDecoder();
 
-    constructor() {
+    constructor(onConnectionChange = null) {
         if (navigator.serial === undefined) {
             throw new Error("Web Serial API not supported");
         }
 
+        this.#onConnectionChange = onConnectionChange;
         navigator.serial.addEventListener("connect", this.#connect.bind(this));
         navigator.serial.addEventListener("disconnect", this.#disconnect.bind(this));
     }
@@ -132,6 +134,9 @@ export class SerialPort {
     async #connect(event) {
         this.#port = event.target;
         await this.#open();
+        if (this.#onConnectionChange) {
+            this.#onConnectionChange(true);
+        }
         logger.info("Serial port connected:", event);
     }
 
@@ -140,11 +145,17 @@ export class SerialPort {
             throw new Error("Port is undefined");
         }
         await this.#port.open({ baudRate: this.#baudRate });
+        if (this.#onConnectionChange) {
+            this.#onConnectionChange(true);
+        }
         logger.info("Port opened successfully");
     }
 
     #disconnect(event) {
         this.#close();
+        if (this.#onConnectionChange) {
+            this.#onConnectionChange(false);
+        }
         logger.info("Serial port disconnected:", event);
     }
 
@@ -155,6 +166,9 @@ export class SerialPort {
 
         this.#port.close();
         this.#port = undefined;
+        if (this.#onConnectionChange) {
+            this.#onConnectionChange(false);
+        }
         logger.info("Port closed successfully");
     }
 

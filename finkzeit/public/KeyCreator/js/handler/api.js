@@ -5,8 +5,8 @@ import { SerialPort } from "../handler/portHandler.js";
 import logger from "../core/logger.js";
 import { isAppActive } from "../core/state.js";
 
-export async function startKeyCreator() {
-    const serialPort = new SerialPort();
+export async function startKeyCreator(onConnectionChange = null) {
+    const serialPort = new SerialPort(onConnectionChange);
     await serialPort.connect();
     await initCommandProtocol(serialPort);
 }

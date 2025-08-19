@@ -46,6 +46,9 @@ export async function readHitag(transponderConfig) {
     logger.debug("Starting readHitag function");
     updateSessionInfo("action", "Lese Hitag");
 
+    // Add a small delay to ensure the tag is ready for reading
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     const response = await hitag1S_ReadBlock(0x1c);
     if (!response.Result) {
         logger.error("Read operation failed");
@@ -82,6 +85,14 @@ async function writeHitag(transponderConfig) {
     logger.debug("Starting writeHitag function");
     updateSessionInfo("action", "Schreibe auf Hitag");
 
+    // Reset hardware communication to ensure clean state
+    try {
+        await api.hitag1s();
+        logger.debug("Hardware communication reset for HITAG1S");
+    } catch (error) {
+        logger.debug("Hardware reset failed, continuing anyway");
+    }
+
     const currentTagUID = parseBytes(0, 4, transponderConfig.tags.hitag.uid);
     if (typeof currentTagUID === "undefined") {
         logger.error("OutputHitag", "Data cannot be encrypted without UID");
@@ -109,14 +120,40 @@ async function writeHitag(transponderConfig) {
         return false;
     }
 
-    const response = await hitag1S_WriteBlock(0x1c, data);
-    if (response.Result) {
-        const bytesWritten = response.BytesWritten;
-        logger.debug(`Write (${bytesWritten} Bytes) successful`);
-        updateSessionInfo("action", `Erfolgreich ${bytesWritten} Bytes auf Hitag geschrieben`);
+    // Try write operation with retry mechanism
+    let response = null;
+    let retryCount = 0;
+    const maxRetries = 2;
 
-        // Validate the write operation by reading back the data
-        const readResult = await readHitag(transponderConfig);
+    while (retryCount < maxRetries) {
+        response = await hitag1S_WriteBlock(0x1c, data);
+        if (response.Result) {
+            const bytesWritten = response.BytesWritten;
+            logger.debug(`Write (${bytesWritten} Bytes) successful`);
+            updateSessionInfo("action", `Erfolgreich ${bytesWritten} Bytes auf Hitag geschrieben`);
+            break;
+        } else {
+            retryCount++;
+            if (retryCount < maxRetries) {
+                logger.debug(`Write failed, retrying (${retryCount}/${maxRetries})...`);
+                // Reset hardware communication before retry
+                try {
+                    await api.hitag1s();
+                    await new Promise((resolve) => setTimeout(resolve, 200));
+                } catch (error) {
+                    logger.debug("Hardware reset failed during retry");
+                }
+            }
+        }
+    }
+
+    if (response && response.Result) {
+        // Add delay to allow the tag to process the write operation
+        logger.debug("Waiting for tag to process write operation...");
+        await new Promise((resolve) => setTimeout(resolve, 500)); // 500ms delay
+
+        // Validate the write operation by reading back the data with single retry
+        let readResult = await readHitag(transponderConfig);
         if (readResult === transponderConfig.tags.hitag.number.toString(10).padStart(6, "0")) {
             updateSessionInfo("tag", {
                 type: "HITAG",
@@ -129,15 +166,32 @@ async function writeHitag(transponderConfig) {
             );
             return true;
         } else {
-            logger.error("Write verification failed");
-            updateSessionInfo("tag", {
-                type: "HITAG",
-                uid: transponderConfig.tags.hitag.uid,
-                status: "Schreibverifizierung fehlgeschlagen",
-            });
-            updateSessionInfo("action", "Schreibvorgang fehlgeschlagen");
-            return false;
+            // Single retry with additional delay
+            logger.debug("Read verification failed, retrying once...");
+            await new Promise((resolve) => setTimeout(resolve, 300)); // Additional 300ms delay before retry
+            readResult = await readHitag(transponderConfig);
+            if (readResult === transponderConfig.tags.hitag.number.toString(10).padStart(6, "0")) {
+                updateSessionInfo("tag", {
+                    type: "HITAG",
+                    uid: transponderConfig.tags.hitag.uid,
+                    status: "Schreiben verifiziert",
+                });
+                updateSessionInfo(
+                    "action",
+                    `HitagID ${transponderConfig.tags.hitag.number} erfolgreich geschrieben und auf Schlüssel verifiziert`
+                );
+                return true;
+            }
         }
+
+        logger.error("Write verification failed after retry");
+        updateSessionInfo("tag", {
+            type: "HITAG",
+            uid: transponderConfig.tags.hitag.uid,
+            status: "Schreibverifizierung fehlgeschlagen",
+        });
+        updateSessionInfo("action", "Schreibvorgang fehlgeschlagen");
+        return false;
     } else {
         logger.error("Write unsuccessful");
         updateSessionInfo("tag", {
