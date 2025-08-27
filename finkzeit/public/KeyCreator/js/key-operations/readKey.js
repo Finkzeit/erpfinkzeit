@@ -168,10 +168,6 @@ function createSelectModal({ parent, configs, title, message, onClose }) {
         $(select).select2("destroy");
         if (parent) parent.removeChild(modal);
         else document.body.removeChild(modal);
-        // Ensure reading state is reset when canceling
-        setTimeout(() => {
-            setIsReading(false);
-        }, 100);
         onClose(null);
     };
     btnContainer.appendChild(cancelBtn);
