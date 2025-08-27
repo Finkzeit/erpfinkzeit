@@ -1,1 +1,2 @@
 finkzeit.patches.v1_9.add_legal_document_types
+finkzeit.patches.v1_17.move_transponder_customer_to_child_table

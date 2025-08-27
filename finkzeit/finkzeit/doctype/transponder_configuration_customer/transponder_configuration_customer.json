@@ -1,0 +1,55 @@
+{
+ "creation": "2025-08-27 17:34:40.632584",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "customer",
+  "customer_name",
+  "licence",
+  "licence_name"
+ ],
+ "fields": [
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Customer",
+   "options": "Customer"
+  },
+  {
+   "fetch_from": "customer.customer_name",
+   "fieldname": "customer_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Customer name",
+   "read_only": 1
+  },
+  {
+   "fieldname": "licence",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Licence",
+   "options": "Licence"
+  },
+  {
+   "fetch_from": "licence.title",
+   "fieldname": "licence_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Licence name",
+   "read_only": 1
+  }
+ ],
+ "istable": 1,
+ "modified": "2025-08-27 17:37:27.929235",
+ "modified_by": "Administrator",
+ "module": "Finkzeit",
+ "name": "Transponder Configuration Customer",
+ "owner": "Administrator",
+ "permissions": [],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

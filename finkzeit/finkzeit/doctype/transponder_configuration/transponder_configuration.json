@@ -10,12 +10,13 @@
   "form",
   "customer_key",
   "col_info_1",
+  "remarks",
+  "sec_customer",
+  "customers",
   "customer",
   "customer_name",
   "licence",
   "licence_name",
-  "col_info_2",
-  "remarks",
   "sec_tech",
   "ht1",
   "mfcl",
@@ -92,6 +93,7 @@
   {
    "fieldname": "customer",
    "fieldtype": "Link",
+   "hidden": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Customer",
@@ -101,14 +103,11 @@
    "fetch_from": "customer.customer_name",
    "fieldname": "customer_name",
    "fieldtype": "Data",
+   "hidden": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Customer name",
    "read_only": 1
-  },
-  {
-   "fieldname": "col_info_2",
-   "fieldtype": "Column Break"
   },
   {
    "fieldname": "remarks",
@@ -294,6 +293,7 @@
   {
    "fieldname": "licence",
    "fieldtype": "Link",
+   "hidden": 1,
    "label": "Licence",
    "options": "Licence"
   },
@@ -301,6 +301,7 @@
    "fetch_from": "licence.title",
    "fieldname": "licence_name",
    "fieldtype": "Data",
+   "hidden": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Licence name",
@@ -360,9 +361,20 @@
    "fieldtype": "Button",
    "label": "App Read Key",
    "permlevel": 1
+  },
+  {
+   "fieldname": "customers",
+   "fieldtype": "Table",
+   "label": "Customer",
+   "options": "Transponder Configuration Customer"
+  },
+  {
+   "fieldname": "sec_customer",
+   "fieldtype": "Section Break",
+   "label": "Customer"
   }
  ],
- "modified": "2024-05-06 10:19:36.328111",
+ "modified": "2025-08-27 17:44:01.354407",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Transponder Configuration",

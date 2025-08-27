@@ -1,3 +1,4 @@
 frappe
 openpyxl
 icalendar
+tqdm

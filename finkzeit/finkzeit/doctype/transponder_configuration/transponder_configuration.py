@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2023-2024, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2023-2025, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
@@ -34,6 +34,14 @@ class TransponderConfiguration(Document):
     def copy_key(self, key):
         password = get_decrypted_password(self.doctype, self.name, key, False)
         return password
+        
+    def before_save(self):
+        if len(self.customers) > 0:
+            self.customer = self.customers[0].customer
+            self.customer_name = self.customers[0].customer_name
+            self.licence = self.customers[0].licence
+            self.licence_name = self.customers[0].licence_name
+        return
 
 def get_hex_token(n):
     hex_string = "0123456789abcdef"
@@ -59,8 +67,8 @@ Returns a list of configurations
 def get_transponder_config_list(s=None, customer=None, customer_name=None, licence=None):
     if s:
         query_string = """
-            SELECT `name`, `customer`, `customer_name`, `licence_name`
-            FROM `tabTransponder Configuration`
+            SELECT `parent` AS `name`, `customer`, `customer_name`, `licence_name`
+            FROM `tabTransponder Configuration Customer`
             WHERE
                 `customer` LIKE "%{s}%"
                 OR `customer_name` LIKE "%{s}%"
@@ -68,29 +76,29 @@ def get_transponder_config_list(s=None, customer=None, customer_name=None, licen
         """.format(s=s)
     elif customer:
         query_string = """
-            SELECT `name`, `customer`, `customer_name`, `licence_name`
-            FROM `tabTransponder Configuration`
+            SELECT `parent` AS `name`, `customer`, `customer_name`, `licence_name`
+            FROM `tabTransponder Configuration Customer`
             WHERE
                 `customer` LIKE "%{s}%";
         """.format(s=customer)
     elif customer_name:
         query_string = """
-            SELECT `name`, `customer`, `customer_name`, `licence_name`
-            FROM `tabTransponder Configuration`
+            SELECT `parent` AS `name`, `customer`, `customer_name`, `licence_name`
+            FROM `tabTransponder Configuration Customer`
             WHERE
                 `customer_name` LIKE "%{s}%";
         """.format(s=customer_name)
     elif licence:
         query_string = """
-            SELECT `name`, `customer`, `customer_name`, `licence_name`
-            FROM `tabTransponder Configuration`
+            SELECT `parent` AS `name`, `customer`, `customer_name`, `licence_name`
+            FROM `tabTransponder Configuration Customer`
             WHERE
                 `licence_name` LIKE "%{s}%";
         """.format(s=licence)
     else:
         query_string = """
-            SELECT `name`, `customer`, `customer_name`, `licence`
-            FROM `tabTransponder Configuration`
+            SELECT `parent` AS `name`, `customer`, `customer_name`, `licence_name`
+            FROM `tabTransponder Configuration Customer`
             ;
         """
     data = frappe.db.sql(query_string, as_dict=True)
