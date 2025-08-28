@@ -197,15 +197,15 @@ async function handleConnectReader() {
 
 async function startSession() {
     logger.debug("startSession starting");
-    const selectedFirmaId = elements.firmenSelect.value;
-    if (!selectedFirmaId) {
+    const transponderConfigName = elements.firmenSelect.value;
+    if (!transponderConfigName) {
         logger.warn("No valid company selected");
         return;
     }
 
     try {
-        logger.debug(`Selected Firma ID: ${selectedFirmaId}`);
-        transponderConfig = await erpRestApi.getTransponderConfiguration(selectedFirmaId);
+        logger.debug(`Selected Firma ID: ${transponderConfigName}`);
+        transponderConfig = await erpRestApi.getTransponderConfiguration(transponderConfigName);
         logger.debug("Transponder configuration retrieved:", transponderConfig);
 
         numberHandler.reset();

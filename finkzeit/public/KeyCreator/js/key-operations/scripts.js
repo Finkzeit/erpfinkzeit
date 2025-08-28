@@ -96,7 +96,7 @@ async function executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpR
                 em_uid: transponderConfig.tags.em?.uid,
             };
 
-            const response = await erpRestApi.createTransponder(transponderConfig.transponderConfigId, number, uid);
+            const response = await erpRestApi.createTransponder(transponderConfig.getCustomerId(), number, uid);
 
             logger.debug("Response:", response);
             logger.debug("ResponseMessage:", response.message);
@@ -111,18 +111,23 @@ async function executeScriptsBasedOnConfig(transponderConfig, requiredKeys, erpR
 
             if (responseMessage === numberString) {
                 logger.debug("Transponder created successfully");
-                updateSessionInfo("action", `Transponder mit Nummer ${number} erfolgreich erstellt`);
+                updateSessionInfo("action", `Transponder mit Nummer ${number} erfolgreich im ERP erstellt`);
             } else {
                 logger.warn(response.message);
                 if (response.message === "This transponder already exists") {
+                    updateSessionInfo("action", `Transponder mit Nummer ${number} existiert bereits im ERP`);
                     errors.push("Transponder existiert bereits im ERP");
-                } else if (errors.length === 0) {
-                    errors.push(response.message);
+                } else {
+                    updateSessionInfo("action", `Fehler beim Erstellen des Transponders: ${response.message}`);
+                    if (errors.length === 0) {
+                        errors.push(response.message);
+                    }
                 }
                 sessionResult = "failed";
             }
         } catch (error) {
             logger.error("Error creating transponder:", error);
+            updateSessionInfo("action", `Fehler beim Erstellen des Transponders: ${error.message}`);
             if (errors.length === 0) {
                 errors.push(`Fehler beim Erstellen des Transponders: ${error.message}`);
             }

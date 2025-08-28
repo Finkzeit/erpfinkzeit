@@ -94,7 +94,11 @@ export function getConfirmation(dialog, showActionButton, actionButtonText = "Fo
         }
 
         const cancelButton = document.getElementById("cancelBtn");
-        cancelButton.addEventListener("click", () => {
+        // Remove any existing event listeners by cloning the button
+        const newCancelButton = cancelButton.cloneNode(true);
+        cancelButton.parentNode.replaceChild(newCancelButton, cancelButton);
+
+        newCancelButton.addEventListener("click", () => {
             buttonsContainer.innerHTML = "";
             resolve(false);
         });

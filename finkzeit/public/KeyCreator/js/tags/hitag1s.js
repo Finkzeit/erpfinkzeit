@@ -75,7 +75,7 @@ export async function readHitag(transponderConfig) {
         updateSessionInfo("action", `Hitag ID erfolgreich gelesen: ${hitagIdStr}`);
         return hitagIdStr;
     } else {
-        logger.error("Failed to decode Hitag ID");
+        logger.debug("Failed to decode Hitag ID");
         updateSessionInfo("action", "Fehler beim Dekodieren der Hitag ID");
         return null;
     }
@@ -267,14 +267,14 @@ function decodeHitagID(uid, dataBlock) {
     byteSum[0] -= dataBlock[15];
 
     if (byteSum[0] != dataBlock[15]) {
-        logger.error("Checksum validation failed. ByteSum:", byteSum[0], "Checksum:", dataBlock[15]);
+        logger.debug("Checksum validation failed. ByteSum:", byteSum[0], "Checksum:", dataBlock[15]);
         updateSessionInfo("action", "Prüfsummenvalidierung fehlgeschlagen");
         return -1;
     }
 
     let idLength = dataBlock[0] / 8;
     if (idLength > 12) {
-        logger.error("ID Length exceeds 12 bytes. Exiting decodeHitagID function with error.");
+        logger.debug("ID Length exceeds 12 bytes. Exiting decodeHitagID function with error.");
         updateSessionInfo("action", "Fehler: ID-Länge überschreitet 12 Bytes");
         return -1;
     }

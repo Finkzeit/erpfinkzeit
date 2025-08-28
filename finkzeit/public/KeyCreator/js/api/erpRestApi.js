@@ -63,10 +63,15 @@ class ErpRestApi {
             }
 
             const data = await response.json();
-            data.message.forEach((firma) => {
+
+            // Sort companies alphabetically by customer name
+            data.message.sort((a, b) => a.customer_name.localeCompare(b.customer_name));
+
+            data.message.forEach((transponderConfig) => {
                 const option = document.createElement("option");
-                option.value = firma.name;
-                option.textContent = firma.customer_name;
+                option.value = transponderConfig.customer;
+                option.textContent =
+                    transponderConfig.customer_name + (transponderConfig.licence_name ? " - " + transponderConfig.licence_name : "");
                 firmenSelect.appendChild(option);
             });
         } catch (error) {
@@ -78,15 +83,49 @@ class ErpRestApi {
         }
     }
 
-    async getTransponderConfiguration(transponderConfigId) {
+    async getTransponderConfiguration(customerId) {
         try {
-            const response = await fetch(`${this.baseUrl}get_transponder_config?config=${transponderConfigId}`);
+            // Get the customer-specific config
+            const filteredResponse = await fetch(`${this.baseUrl}get_transponder_config_list?customer=${customerId}`);
+            if (!filteredResponse.ok) {
+                logger.warn(`Failed to get filtered config list: HTTP status ${filteredResponse.status}`);
+                throw new Error(`HTTP status ${filteredResponse.status}`);
+            }
+
+            const filteredData = await filteredResponse.json();
+            if (!filteredData.message || filteredData.message.length === 0) {
+                logger.warn(`No configuration found for customer ID: ${customerId}`);
+                throw new Error(`No configuration found for customer ID: ${customerId}`);
+            }
+
+            const customerInfo = filteredData.message[0];
+            logger.debug(`Customer config for ${customerId}:`, customerInfo);
+
+            // Get the full configuration using the config name
+            const response = await fetch(`${this.baseUrl}get_transponder_config?config=${customerInfo.name}`);
             if (!response.ok) {
                 logger.warn(`Failed to get transponder configuration: HTTP status ${response.status}`);
                 throw new Error(`HTTP status ${response.status}`);
             }
+
             const transponderConfigData = await response.json();
-            return new TransponderConfig(transponderConfigData.message);
+            logger.debug(`Full transponder config data:`, transponderConfigData);
+
+            // Merge customer info with the full config
+            const finalConfig = {
+                ...transponderConfigData.message,
+                customer: customerInfo.customer,
+                customer_name: customerInfo.customer_name,
+                licence: customerInfo.licence,
+                licence_name: customerInfo.licence_name,
+            };
+            logger.debug(`Merged config with customer info:`, finalConfig);
+
+            const transponderConfig = new TransponderConfig(finalConfig);
+            transponderConfig.customerName = customerInfo.customer_name;
+            logger.debug(`Set customer name to: ${customerInfo.customer_name}`);
+
+            return transponderConfig;
         } catch (error) {
             logger.error("Error fetching transponder configuration:", error);
             updateSessionInfo("action", `Fehler beim Abrufen der Transponderkonfiguration: ${error.message}`);
@@ -196,8 +235,24 @@ class ErpRestApi {
         }
     }
 
-    async createTransponder(transponderConfigId, number, uid = {}) {
+    async createTransponder(customerId, number, uid = {}) {
         try {
+            // Get the config name for the customer ID
+            const filteredResponse = await fetch(`${this.baseUrl}get_transponder_config_list?customer=${customerId}`);
+            if (!filteredResponse.ok) {
+                logger.warn(`Failed to get config for customer ID: HTTP status ${filteredResponse.status}`);
+                throw new Error(`HTTP status ${filteredResponse.status}`);
+            }
+
+            const filteredData = await filteredResponse.json();
+            if (!filteredData.message || filteredData.message.length === 0) {
+                logger.warn(`No configuration found for customer ID: ${customerId}`);
+                throw new Error(`No configuration found for customer ID: ${customerId}`);
+            }
+
+            const configName = filteredData.message[0].name;
+            logger.debug(`Using config name ${configName} for customer ${customerId}`);
+
             // Check if any of the UIDs already exist
             const existingUids = [];
 
@@ -238,7 +293,7 @@ class ErpRestApi {
             }
 
             const params = new URLSearchParams({
-                config: transponderConfigId,
+                config: configName,
                 code: number,
             });
 
@@ -355,8 +410,10 @@ class ErpRestApi {
 class TransponderConfig {
     constructor(data) {
         this.transponderConfigId = data.name;
-        this.form = data.form;
+        this.configName = data.name;
         this.customerName = data.customer_name;
+        this.customerId = data.customer;
+        this.form = data.form;
         this.tags = {};
 
         if (data.legic === 1) this.tags.legic = { number: 0, uid: "" };
@@ -427,6 +484,10 @@ class TransponderConfig {
             }
         }
         return null;
+    }
+
+    getCustomerId() {
+        return this.customerId;
     }
 }
 
