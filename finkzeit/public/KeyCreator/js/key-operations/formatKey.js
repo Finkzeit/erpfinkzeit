@@ -417,11 +417,11 @@ async function mifareClassicScript(config, transponderData) {
 
     try {
         const erpRestApi = window.erpRestApi;
-        if (erpRestApi && transponderData && transponderData.transponder_configuration) {
-            logger.debug("Getting ERP configuration:", transponderData.transponder_configuration);
+        if (erpRestApi && transponderData && transponderData.customer) {
+            logger.debug("Getting ERP configuration for customer:", transponderData.customer);
             updateDialogMessage("Hole Schlüsselkonfiguration aus ERP...");
 
-            erpConfig = await erpRestApi.getTransponderConfiguration(transponderData.transponder_configuration);
+            erpConfig = await erpRestApi.getTransponderConfiguration(transponderData.customer);
             if (erpConfig && erpConfig.tags && erpConfig.tags.mifareClassic) {
                 const mfConfig = erpConfig.tags.mifareClassic;
                 targetSector = mfConfig.sector;
@@ -624,14 +624,14 @@ async function mifareDesfireScript(config, transponderData) {
 
         // Get ERP configuration if available
         let erpConfig = null;
-        if (transponderData && transponderData.transponder_configuration) {
+        if (transponderData && transponderData.customer) {
             try {
                 const erpRestApi = window.erpRestApi;
                 if (erpRestApi) {
-                    logger.debug("Getting ERP configuration for formatting:", transponderData.transponder_configuration);
+                    logger.debug("Getting ERP configuration for formatting:", transponderData.customer);
                     updateDialogMessage("Hole ERP-Konfiguration für Formatierung...");
 
-                    erpConfig = await erpRestApi.getTransponderConfiguration(transponderData.transponder_configuration);
+                    erpConfig = await erpRestApi.getTransponderConfiguration(transponderData.customer);
                     if (erpConfig && erpConfig.tags && erpConfig.tags.mifareDesfire) {
                         logger.debug("ERP configuration found for DESFire formatting");
                         updateDialogMessage("ERP-Konfiguration für DESFire-Formatierung gefunden");
@@ -1141,8 +1141,9 @@ async function showConfigSelectionModal(configs, tagType, isFallback = false) {
         select.style.margin = "1em 0";
         configs.forEach((cfg) => {
             const option = document.createElement("option");
-            option.value = cfg.name;
-            option.textContent = cfg.customer_name;
+            // Use customer ID as the unique identifier instead of config name
+            option.value = cfg.customer;
+            option.textContent = cfg.customer_name + " (" + cfg.name + ")";
             select.appendChild(option);
         });
         modalBox.appendChild(select);

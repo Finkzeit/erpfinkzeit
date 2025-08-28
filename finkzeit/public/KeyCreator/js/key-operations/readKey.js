@@ -152,8 +152,9 @@ function createSelectModal({ parent, configs, title, message, onClose }) {
     select.style.margin = "1em 0";
     configs.forEach((cfg) => {
         const option = document.createElement("option");
-        option.value = cfg.name;
-        option.textContent = cfg.customer_name;
+        // Use customer ID as the unique identifier instead of config name
+        option.value = cfg.customer;
+        option.textContent = cfg.customer_name + " (" + cfg.name + ")";
         select.appendChild(option);
     });
     modalBox.appendChild(select);
@@ -378,9 +379,9 @@ async function readTagDetails(tag, dialog) {
             if (transponderData) {
                 details.erpInfo = transponderData;
                 // Get configuration if available
-                if (transponderData.transponder_configuration) {
+                if (transponderData.customer) {
                     updateDialogMessage(`Lade Konfiguration für ${tag.uid}...`);
-                    const config = await erpRestApi.getTransponderConfiguration(transponderData.transponder_configuration);
+                    const config = await erpRestApi.getTransponderConfiguration(transponderData.customer);
                     details.configuration = config;
                 }
             }
@@ -447,6 +448,14 @@ async function readWithConfig(tagsNotInERP, dialog) {
 
         // Store the selected config ID for later use
         selectedConfig.selectedConfigId = selectedConfigId;
+
+        // Debug: Log the selected config details
+        logger.debug(`Selected config details:`, {
+            customerName: selectedConfig.customerName,
+            customerId: selectedConfig.getCustomerId(),
+            configName: selectedConfig.configName,
+            selectedConfigId: selectedConfigId,
+        });
 
         // Try to read all tags with the selected configuration
         updateDialogMessage("Lese alle Tags mit ausgewählter Konfiguration...");
@@ -977,19 +986,16 @@ function showReadWithConfigResults(readResults, dialog, allSuccessful, suggested
                     }
                 });
 
-                // Get the configuration ID
-                const configId =
-                    successfulReads[0].config.selectedConfigId ||
-                    successfulReads[0].config.name ||
-                    successfulReads[0].config.transponderConfigId;
+                // Get the customer ID from the configuration
+                const customerId = successfulReads[0].config.getCustomerId();
 
                 logger.debug("Configuration object:", successfulReads[0].config);
-                logger.debug("Creating transponder with configId:", configId);
+                logger.debug("Creating transponder with customerId:", customerId);
                 logger.debug("Creating transponder with number:", transponderNumber.trim());
                 logger.debug("Creating transponder with UIDs:", uid);
 
                 // Use createTransponder with correct parameters
-                const result = await erpRestApi.createTransponder(configId, transponderNumber.trim(), uid);
+                const result = await erpRestApi.createTransponder(customerId, transponderNumber.trim(), uid);
 
                 if (result && result.status) {
                     // Show success message in the modal instead of alert
@@ -1208,11 +1214,11 @@ async function getTechnicalInfo(tag, transponderData, mergedConfig) {
 // Utility: Fetch and merge ERP config for a tag
 async function getMergedTagConfig(tag, transponderData) {
     let mergedConfig = { uid: tag.uid };
-    if (transponderData && transponderData.transponder_configuration) {
+    if (transponderData && transponderData.customer) {
         try {
             const erpRestApi = window.erpRestApi;
             if (erpRestApi) {
-                const config = await erpRestApi.getTransponderConfiguration(transponderData.transponder_configuration);
+                const config = await erpRestApi.getTransponderConfiguration(transponderData.customer);
                 if (config && config.tags) {
                     // Map tag types to ERP config keys
                     let configKey;
@@ -1255,7 +1261,7 @@ function formatGeneralConfiguration(config) {
     let html = "";
 
     const generalFields = [
-        { key: "transponderConfigId", label: "Konfigurations-ID" },
+        { key: "configName", label: "Konfigurations-ID" },
         { key: "form", label: "Form" },
         { key: "customerName", label: "Kunde" },
     ];
@@ -1495,7 +1501,7 @@ function showUnifiedDetailedModal(tagDetails, originalDialog) {
 
     // Show general configuration once if all tags have the same configuration
     const firstConfig = tagDetails[0]?.configuration;
-    if (firstConfig && tagDetails.every((tag) => tag.configuration?.transponderConfigId === firstConfig.transponderConfigId)) {
+    if (firstConfig && tagDetails.every((tag) => tag.configuration?.configName === firstConfig.configName)) {
         modalContent += `
             <div class="general-config-section">
                 <h3>Allgemeine Konfiguration</h3>
