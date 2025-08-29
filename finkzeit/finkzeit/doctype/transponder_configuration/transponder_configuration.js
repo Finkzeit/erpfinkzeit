@@ -4,25 +4,27 @@
 const PW_FIELDS = ['project_pw', 'wavenet_pw', 'lock_pw', 'key_a', 'key_b', 'master_key', 'app_master_key', 'app_read_key'];
 // filters
 cur_frm.fields_dict.customers.grid.get_field('customer').get_query = function(doc, cdt, cdn) {
-     return {
-         filters: {
-             "disabled": 0
-         }
-     }
+    return {
+        'filters': {
+            'disabled': 0
+        }
+    }
 }
 cur_frm.fields_dict['item'].get_query = function(doc) {
-     return {
-         filters: {
-             "disabled": 0
-         }
-     }
+    return {
+        'filters': {
+            'disabled': 0
+        }
+    }
 }
 cur_frm.fields_dict.customers.grid.get_field('licence').get_query = function(doc, cdt, cdn) {
-     return {
-         filters: {
-             "customer": locals[cdt][cdn].customer
-         }
-     }
+    let d = locals[cdt][cdn];
+    return {
+        'query': 'finkzeit.finkzeit.filters.licences_by_customer',
+        'filters': {            
+            'customer': d.customer
+        }
+    }
 }
     
 frappe.ui.form.on('Transponder Configuration', {
