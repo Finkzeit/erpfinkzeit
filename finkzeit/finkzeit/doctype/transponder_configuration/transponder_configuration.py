@@ -7,6 +7,7 @@ import frappe
 from frappe.model.document import Document
 from random import choice
 from frappe.utils.password import get_decrypted_password
+from frappe import _
 
 class TransponderConfiguration(Document):
     # create each key if not already set
@@ -41,6 +42,27 @@ class TransponderConfiguration(Document):
             self.customer_name = self.customers[0].customer_name
             self.licence = self.customers[0].licence
             self.licence_name = self.customers[0].licence_name
+        return
+
+    def validate(self):
+        validate_unique_customer(self)
+        return
+
+    def validate_unique_customer(self):
+        if self.customers:
+            for customer in self.customers:
+                other_transponder_configurations = frappe.db.sql("""
+                        SELECT `parent`
+                        FROM `tabTransponder Configuration Customer`
+                        WHERE `customer` = %{customer}s
+                        AND `parent` != %{trspcnf}s
+                        ;
+                    """,
+                    {'customer': customer.customer, 'trspcnf': self.name},
+                    as_dict=True
+                )
+                if len(other_transponder_configurations) > 0:
+                    frappe.throw( _("The customer {0} is already linked to transponder configuration {1}.").format(customer.customer, other_transponder_configurations[0]['parent']))
         return
 
 def get_hex_token(n):
@@ -111,22 +133,37 @@ Get a configuration file
  /api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.get_transponder_config?config=TK-00001
 """
 @frappe.whitelist()
-def get_transponder_config(config):
-    if frappe.db.exists("Transponder Configuration", config):
+def get_transponder_config(config=None, customer=None):
+    if config and frappe.db.exists("Transponder Configuration", config):
         doc = frappe.get_doc("Transponder Configuration", config)
-        # expand passwords
-        doc.project_pw = get_decrypted_password("Transponder Configuration", config, "project_pw", False)
-        doc.wavenet_pw = get_decrypted_password("Transponder Configuration", config, "wavenet_pw", False)
-        doc.lock_pw = get_decrypted_password("Transponder Configuration", config, "lock_pw", False)
-        doc.key_a = get_decrypted_password("Transponder Configuration", config, "key_a", False)
-        doc.key_b = get_decrypted_password("Transponder Configuration", config, "key_b", False)
-        doc.master_key = get_decrypted_password("Transponder Configuration", config, "master_key", False)
-        doc.app_master_key = get_decrypted_password("Transponder Configuration", config, "app_master_key", False)
-        doc.app_read_key = get_decrypted_password("Transponder Configuration", config, "app_read_key", False)
-
-        return doc
+    elif customer:
+        doc_id = frappe.db.sql("""
+            SELECT `parent`
+                FROM `tabTransponder Configuration Customer`
+                WHERE `customer` = %{customer}s
+                ;
+            """,
+            {'customer': customer.customer},
+            as_dict=True
+        )
+        if len(doc_id) > 0:
+            doc = frappe.get_doc("Transponder Configuration", doc_id[0]['parent'])
+        else:
+            return "No transponder configuration found for customer"
     else:
-        return "Not found"
+        return "Missing parameters or not found"
+
+    # expand passwords
+    doc.project_pw = get_decrypted_password("Transponder Configuration", config, "project_pw", False)
+    doc.wavenet_pw = get_decrypted_password("Transponder Configuration", config, "wavenet_pw", False)
+    doc.lock_pw = get_decrypted_password("Transponder Configuration", config, "lock_pw", False)
+    doc.key_a = get_decrypted_password("Transponder Configuration", config, "key_a", False)
+    doc.key_b = get_decrypted_password("Transponder Configuration", config, "key_b", False)
+    doc.master_key = get_decrypted_password("Transponder Configuration", config, "master_key", False)
+    doc.app_master_key = get_decrypted_password("Transponder Configuration", config, "app_master_key", False)
+    doc.app_read_key = get_decrypted_password("Transponder Configuration", config, "app_read_key", False)
+
+    return doc
         
 """
 Create a new transponder record
