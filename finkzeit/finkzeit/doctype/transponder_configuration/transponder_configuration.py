@@ -170,6 +170,7 @@ Create a new transponder record
 
 Provide details as
 -config:    Transponder Config name (TK-00001)
+-customer:  Customer code (K-12345) (alternative instead of the config parameter)
 -code:      Transponder Code (123456)
 -hitag_uid: HITAG UID (optional)
 -mfcl_uid:  MIFARE Classic UID (optional)
@@ -179,9 +180,18 @@ Provide details as
 -em_uid:    EM UID (optional)
 
  /api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.create_transponder?config=TK-00001&code=123456
+ /api/method/finkzeit.finkzeit.doctype.transponder_configuration.transponder_configuration.create_transponder?customer=K-12345&code=123456
 """
 @frappe.whitelist()
-def create_transponder(config, code, hitag_uid=None, mfcl_uid=None, mfdf_uid=None, legic_uid=None, deister_uid=None, em_uid=None, test_key=0):
+def create_transponder(code, config=None, customer=None, hitag_uid=None, mfcl_uid=None, mfdf_uid=None, legic_uid=None, deister_uid=None, em_uid=None, test_key=0):
+    if not customer and not config:
+        return "Please provide either a customer (customer) or a transponder configuration (config)"
+    if not config and customer:
+        config_doc = get_transponder_config(customer)
+        if type(config_doc) == str:
+            return config_doc           # failed to get a transponder configuration, pass on error
+        else:
+            config = config_doc.name
     if frappe.db.exists("Transponder Configuration", config):
         conf = frappe.get_doc("Transponder Configuration", config)
         if not frappe.db.exists("Transponder", code):
