@@ -45,7 +45,7 @@ class TransponderConfiguration(Document):
         return
 
     def validate(self):
-        validate_unique_customer(self)
+        self.validate_unique_customer()
         return
 
     def validate_unique_customer(self):
