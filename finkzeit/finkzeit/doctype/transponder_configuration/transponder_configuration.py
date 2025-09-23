@@ -54,8 +54,8 @@ class TransponderConfiguration(Document):
                 other_transponder_configurations = frappe.db.sql("""
                         SELECT `parent`
                         FROM `tabTransponder Configuration Customer`
-                        WHERE `customer` = %{customer}s
-                        AND `parent` != %{trspcnf}s
+                        WHERE `customer` = %(customer)s
+                        AND `parent` != %(trspcnf)s
                         ;
                     """,
                     {'customer': customer.customer, 'trspcnf': self.name},
@@ -140,7 +140,7 @@ def get_transponder_config(config=None, customer=None):
         doc_id = frappe.db.sql("""
             SELECT `parent`
                 FROM `tabTransponder Configuration Customer`
-                WHERE `customer` = %{customer}s
+                WHERE `customer` = %(customer)s
                 ;
             """,
             {'customer': customer.customer},
