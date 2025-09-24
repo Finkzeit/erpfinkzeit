@@ -100,21 +100,24 @@ class ErpRestApi {
                 throw new Error(`No configuration found for customer ID: ${customerId}`);
             }
 
-            const transponderConfig = new TransponderConfig(transponderConfigData.message);
+            // Find the correct customer from the customers array
+            const correctCustomer = transponderConfigData.message.customers?.find((c) => c.customer === customerId);
 
-            // Set customer information from the response
-            if (transponderConfigData.message.customer) {
-                transponderConfig.customerId = transponderConfigData.message.customer;
-            }
-            if (transponderConfigData.message.customer_name) {
-                transponderConfig.customerName = transponderConfigData.message.customer_name;
-            }
-            if (transponderConfigData.message.licence) {
-                transponderConfig.licence = transponderConfigData.message.licence;
-            }
-            if (transponderConfigData.message.licence_name) {
-                transponderConfig.licenceName = transponderConfigData.message.licence_name;
-            }
+            // Merge customer info with the full config
+            const finalConfig = {
+                ...transponderConfigData.message,
+                customer: correctCustomer?.customer || customerId,
+                customer_name: correctCustomer?.customer_name || transponderConfigData.message.customer_name,
+                licence: correctCustomer?.licence || transponderConfigData.message.licence,
+                licence_name: correctCustomer?.licence_name || transponderConfigData.message.licence_name,
+            };
+            logger.debug(`Merged config with customer info:`, finalConfig);
+
+            const transponderConfig = new TransponderConfig(finalConfig);
+            transponderConfig.customerName = finalConfig.customer_name;
+            transponderConfig.customerId = finalConfig.customer;
+            transponderConfig.licence = finalConfig.licence;
+            transponderConfig.licenceName = finalConfig.licence_name;
 
             return transponderConfig;
         } catch (error) {
