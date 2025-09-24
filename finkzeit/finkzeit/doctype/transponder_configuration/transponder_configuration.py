@@ -204,7 +204,7 @@ def create_transponder(code, config=None, customer=None, hitag_uid=None, mfcl_ui
         else:
             config = config_doc.name
         # prepare correct licence
-        licence = config_doc.get_licence(customer)
+        licence = config_doc.get_licence(customer=customer)
 
     if frappe.db.exists("Transponder Configuration", config):
         conf = frappe.get_doc("Transponder Configuration", config)
