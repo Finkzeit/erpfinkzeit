@@ -143,7 +143,7 @@ def get_transponder_config(config=None, customer=None):
                 WHERE `customer` = %(customer)s
                 ;
             """,
-            {'customer': customer.customer},
+            {'customer': customer},
             as_dict=True
         )
         if len(doc_id) > 0:
