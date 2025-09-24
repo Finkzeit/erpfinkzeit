@@ -198,13 +198,13 @@ def create_transponder(code, config=None, customer=None, hitag_uid=None, mfcl_ui
     if not customer and not config:
         return "Please provide either a customer (customer) or a transponder configuration (config)"
     if not config and customer:
-        config_doc = get_transponder_config(customer)
+        config_doc = get_transponder_config(customer=customer)
         if type(config_doc) == str:
             return config_doc           # failed to get a transponder configuration, pass on error
         else:
             config = config_doc.name
         # prepare correct licence
-        licence = config_doc.get_licence(customer=customer)
+        licence = config_doc.get_licence(customer)
 
     if frappe.db.exists("Transponder Configuration", config):
         conf = frappe.get_doc("Transponder Configuration", config)
