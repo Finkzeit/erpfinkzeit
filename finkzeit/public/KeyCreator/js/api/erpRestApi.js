@@ -85,45 +85,36 @@ class ErpRestApi {
 
     async getTransponderConfiguration(customerId) {
         try {
-            // Get the customer-specific config
-            const filteredResponse = await fetch(`${this.baseUrl}get_transponder_config_list?customer=${customerId}`);
-            if (!filteredResponse.ok) {
-                logger.warn(`Failed to get filtered config list: HTTP status ${filteredResponse.status}`);
-                throw new Error(`HTTP status ${filteredResponse.status}`);
-            }
-
-            const filteredData = await filteredResponse.json();
-            if (!filteredData.message || filteredData.message.length === 0) {
-                logger.warn(`No configuration found for customer ID: ${customerId}`);
-                throw new Error(`No configuration found for customer ID: ${customerId}`);
-            }
-
-            const customerInfo = filteredData.message[0];
-            logger.debug(`Customer config for ${customerId}:`, customerInfo);
-
-            // Get the full configuration using the config name
-            const response = await fetch(`${this.baseUrl}get_transponder_config?config=${customerInfo.name}`);
+            // Use the new backend API with customer parameter directly
+            const response = await fetch(`${this.baseUrl}get_transponder_config?customer=${customerId}`);
             if (!response.ok) {
                 logger.warn(`Failed to get transponder configuration: HTTP status ${response.status}`);
                 throw new Error(`HTTP status ${response.status}`);
             }
 
             const transponderConfigData = await response.json();
-            logger.debug(`Full transponder config data:`, transponderConfigData);
+            logger.debug(`Transponder config data for customer ${customerId}:`, transponderConfigData);
 
-            // Merge customer info with the full config
-            const finalConfig = {
-                ...transponderConfigData.message,
-                customer: customerInfo.customer,
-                customer_name: customerInfo.customer_name,
-                licence: customerInfo.licence,
-                licence_name: customerInfo.licence_name,
-            };
-            logger.debug(`Merged config with customer info:`, finalConfig);
+            if (!transponderConfigData.message) {
+                logger.warn(`No configuration found for customer ID: ${customerId}`);
+                throw new Error(`No configuration found for customer ID: ${customerId}`);
+            }
 
-            const transponderConfig = new TransponderConfig(finalConfig);
-            transponderConfig.customerName = customerInfo.customer_name;
-            logger.debug(`Set customer name to: ${customerInfo.customer_name}`);
+            const transponderConfig = new TransponderConfig(transponderConfigData.message);
+
+            // Set customer information from the response
+            if (transponderConfigData.message.customer) {
+                transponderConfig.customerId = transponderConfigData.message.customer;
+            }
+            if (transponderConfigData.message.customer_name) {
+                transponderConfig.customerName = transponderConfigData.message.customer_name;
+            }
+            if (transponderConfigData.message.licence) {
+                transponderConfig.licence = transponderConfigData.message.licence;
+            }
+            if (transponderConfigData.message.licence_name) {
+                transponderConfig.licenceName = transponderConfigData.message.licence_name;
+            }
 
             return transponderConfig;
         } catch (error) {
@@ -237,22 +228,6 @@ class ErpRestApi {
 
     async createTransponder(customerId, number, uid = {}) {
         try {
-            // Get the config name for the customer ID
-            const filteredResponse = await fetch(`${this.baseUrl}get_transponder_config_list?customer=${customerId}`);
-            if (!filteredResponse.ok) {
-                logger.warn(`Failed to get config for customer ID: HTTP status ${filteredResponse.status}`);
-                throw new Error(`HTTP status ${filteredResponse.status}`);
-            }
-
-            const filteredData = await filteredResponse.json();
-            if (!filteredData.message || filteredData.message.length === 0) {
-                logger.warn(`No configuration found for customer ID: ${customerId}`);
-                throw new Error(`No configuration found for customer ID: ${customerId}`);
-            }
-
-            const configName = filteredData.message[0].name;
-            logger.debug(`Using config name ${configName} for customer ${customerId}`);
-
             // Check if any of the UIDs already exist
             const existingUids = [];
 
@@ -292,8 +267,9 @@ class ErpRestApi {
                 return { status: false, message };
             }
 
+            // Use the new backend API with customer parameter directly
             const params = new URLSearchParams({
-                config: configName,
+                customer: customerId,
                 code: number,
             });
 
