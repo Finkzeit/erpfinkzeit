@@ -42,7 +42,6 @@
    "reqd": 1
   },
   {
-   "fetch_from": "transponder_configuration.customer",
    "fieldname": "customer",
    "fieldtype": "Link",
    "in_list_view": 1,
@@ -52,7 +51,7 @@
    "read_only": 1
   },
   {
-   "fetch_from": "transponder_configuration.customer_name",
+   "fetch_from": "customer.customer_name",
    "fieldname": "customer_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -61,7 +60,6 @@
    "read_only": 1
   },
   {
-   "fetch_from": "transponder_configuration.licence",
    "fieldname": "licence",
    "fieldtype": "Link",
    "in_list_view": 0,
@@ -84,7 +82,7 @@
    "fieldtype": "Column Break"
   },
   {
-   "fetch_from": "transponder_configuration.licence_name",
+   "fetch_from": "licence.licence_name",
    "fieldname": "licence_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -144,7 +142,7 @@
    "read_only": 0
   }
  ],
- "modified": "2025-07-01 16:30:24.986888",
+ "modified": "2025-09-24 15:24:24.986888",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Transponder",

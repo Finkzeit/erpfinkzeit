@@ -65,6 +65,16 @@ class TransponderConfiguration(Document):
                     frappe.throw( _("The customer {0} is already linked to transponder configuration {1}.").format(customer.customer, other_transponder_configurations[0]['parent']))
         return
 
+    """
+    Find the licence for a specific customer inside this config
+    """
+    def get_licence(self, customer):
+        if self.customers:
+            for c in self.customers:
+                if  c.customer == customer and c.licence:
+                    return licence
+        return self.licence
+
 def get_hex_token(n):
     hex_string = "0123456789abcdef"
     token = "".join([choice(hex_string) for x in range(n)])
@@ -184,6 +194,7 @@ Provide details as
 """
 @frappe.whitelist()
 def create_transponder(code, config=None, customer=None, hitag_uid=None, mfcl_uid=None, mfdf_uid=None, legic_uid=None, deister_uid=None, em_uid=None, test_key=0):
+    licence = None
     if not customer and not config:
         return "Please provide either a customer (customer) or a transponder configuration (config)"
     if not config and customer:
@@ -192,6 +203,9 @@ def create_transponder(code, config=None, customer=None, hitag_uid=None, mfcl_ui
             return config_doc           # failed to get a transponder configuration, pass on error
         else:
             config = config_doc.name
+        # prepare correct licence
+        licence = config_doc.get_licence(customer)
+
     if frappe.db.exists("Transponder Configuration", config):
         conf = frappe.get_doc("Transponder Configuration", config)
         if not frappe.db.exists("Transponder", code):
@@ -205,7 +219,9 @@ def create_transponder(code, config=None, customer=None, hitag_uid=None, mfcl_ui
                 'legic_uid': legic_uid,
                 'deister_uid': deister_uid,
                 'em_uid': em_uid,
-                'test_key': 1 if test_key else 0
+                'test_key': 1 if test_key else 0,
+                'customer': customer if customer else conf.customer,
+                'licence': licence if licence else conf.licence
             })
             new_transponder.insert(ignore_permissions=True)
             frappe.db.commit()
