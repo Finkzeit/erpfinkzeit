@@ -345,7 +345,7 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
     #else:
     #    maintenance_contract = False
     # fetch license information
-    licence = frappe.get_all("Licence", filters={'customer': customer, 'enabled': 1}, fields=['title', 'retailer'])
+    licence = frappe.get_all("Licence", filters={'customer': customer}, fields=['title', 'retailer'])
     if len(licence) > 0:
         licence_name = licence[0]['title']
         # check if retail customer / commission
