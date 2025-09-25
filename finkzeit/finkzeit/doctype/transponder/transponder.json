@@ -82,7 +82,7 @@
    "fieldtype": "Column Break"
   },
   {
-   "fetch_from": "licence.licence_name",
+   "fetch_from": "licence.title",
    "fieldname": "licence_name",
    "fieldtype": "Data",
    "in_list_view": 1,
@@ -142,7 +142,7 @@
    "read_only": 0
   }
  ],
- "modified": "2025-09-24 15:24:24.986888",
+ "modified": "2025-09-25 09:12:24.986888",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Transponder",
