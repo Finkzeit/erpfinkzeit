@@ -72,7 +72,7 @@ class TransponderConfiguration(Document):
         if self.customers:
             for c in self.customers:
                 if  c.customer == customer and c.licence:
-                    return licence
+                    return c.licence
         return self.licence
 
 def get_hex_token(n):
