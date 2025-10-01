@@ -164,14 +164,14 @@ def get_transponder_config(config=None, customer=None):
         return "Missing parameters or not found"
 
     # expand passwords
-    doc.project_pw = get_decrypted_password("Transponder Configuration", config, "project_pw", False)
-    doc.wavenet_pw = get_decrypted_password("Transponder Configuration", config, "wavenet_pw", False)
-    doc.lock_pw = get_decrypted_password("Transponder Configuration", config, "lock_pw", False)
-    doc.key_a = get_decrypted_password("Transponder Configuration", config, "key_a", False)
-    doc.key_b = get_decrypted_password("Transponder Configuration", config, "key_b", False)
-    doc.master_key = get_decrypted_password("Transponder Configuration", config, "master_key", False)
-    doc.app_master_key = get_decrypted_password("Transponder Configuration", config, "app_master_key", False)
-    doc.app_read_key = get_decrypted_password("Transponder Configuration", config, "app_read_key", False)
+    doc.project_pw = get_decrypted_password("Transponder Configuration", doc.name, "project_pw", False)
+    doc.wavenet_pw = get_decrypted_password("Transponder Configuration", doc.name, "wavenet_pw", False)
+    doc.lock_pw = get_decrypted_password("Transponder Configuration", doc.name, "lock_pw", False)
+    doc.key_a = get_decrypted_password("Transponder Configuration", doc.name, "key_a", False)
+    doc.key_b = get_decrypted_password("Transponder Configuration", doc.name, "key_b", False)
+    doc.master_key = get_decrypted_password("Transponder Configuration", doc.name, "master_key", False)
+    doc.app_master_key = get_decrypted_password("Transponder Configuration", doc.name, "app_master_key", False)
+    doc.app_read_key = get_decrypted_password("Transponder Configuration", doc.name, "app_read_key", False)
 
     return doc
         
