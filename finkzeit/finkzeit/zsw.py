@@ -345,12 +345,12 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
     #else:
     #    maintenance_contract = False
     # fetch license information
-    licence = frappe.get_all("Licence", filters={'customer': customer}, fields=['title', 'retailer'])
+    licence = frappe.get_all("Licence", filters={'customer': customer}, fields=['title', 'retailer', 'customer'])
     if len(licence) > 0:
         licence_name = licence[0]['title']
         # check if retail customer / commission
-        if licence[0]['retailer']:
-            active = False          # disable retail customers
+        if licence[0]['retailer'] and licence[0]['retailer'] != licence[0]['customer']:
+            active = False          # disable retail end-customers
     else:
         licence_name = None
     # create link information (for cost center groups)
