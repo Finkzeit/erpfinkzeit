@@ -56,7 +56,7 @@ def get_data(from_date, to_date, report_type, exclude_closing=False):
                   THEN `debit` ELSE 0 END) AS `soll`,
               SUM(CASE WHEN `posting_date` BETWEEN %(from_date)s AND %(to_date)s 
                     {exclude_condition}
-                  THEN `credit` ELSE 0 END) AS `haben`,
+                  THEN `credit` ELSE 0 END) AS `haben`
           FROM `tabGL Entry`
           GROUP BY `account`
       )
@@ -67,7 +67,7 @@ def get_data(from_date, to_date, report_type, exclude_closing=False):
           IFNULL(`gl`.`anfang`, 0) AS `anfang`,
           IFNULL(`gl`.`soll`, 0) AS `soll`,
           IFNULL(`gl`.`haben`, 0) AS `haben`,
-          (IFNULL(`gl`.`anfang`, 0) + IFNULL(`gl`.`soll`, 0) - IFNULL(`gl`.`haben`, 0)) AS `schluss`,
+          (IFNULL(`gl`.`anfang`, 0) + IFNULL(`gl`.`soll`, 0) - IFNULL(`gl`.`haben`, 0)) AS `schluss`
       FROM `tabAccount` AS `acc`
       LEFT JOIN `gl` ON `gl`.`account` = `acc`.`name`
       WHERE `acc`.`is_group` = 0
