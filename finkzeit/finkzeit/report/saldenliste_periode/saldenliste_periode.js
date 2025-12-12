@@ -23,6 +23,11 @@ frappe.query_reports["Saldenliste Periode"] = {
             "label": __("Type"),
             "fieldtype": "Select",
             "options": "\nBalance Sheet\nProfit and Loss"
+        },
+        {
+            "fieldname":"exclude_closing",
+            "label": __("Ohne Abschluss"),
+            "fieldtype": "Check"
         }
 	]
 }

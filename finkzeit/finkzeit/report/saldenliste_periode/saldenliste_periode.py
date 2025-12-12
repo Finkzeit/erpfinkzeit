@@ -24,61 +24,64 @@ def execute(filters=None):
     if filters.report_type:
         report_type = filters.report_type
         
-    data = get_data(from_date, to_date, report_type)
+    data = get_data(from_date, to_date, report_type, exclude_closing=filters.get('exclude_closing'))
 
     return columns, data
 
 def get_columns():
     return [
-        {"label": _("Nr"), "fieldname": "Kontonummer", "fieldtype": "Data", "width": 50},
-        {"label": _("Konto"), "fieldname": "Konto", "fieldtype": "Link", "options": "Account", "width": 200},
-        {"label": _("Anfangssaldo"), "fieldname": "Anfangssaldo", "fieldtype": "Currency", "width": 100},
-        {"label": _("Soll"), "fieldname": "Soll", "fieldtype": "Currency", "width": 100},
-        {"label": _("Haben"), "fieldname": "Haben", "fieldtype": "Currency", "width": 100},
-        {"label": _("Schlusssaldo"), "fieldname": "Schlusssaldo", "fieldtype": "Currency", "width": 100},
-        {"label": _("Typ"), "fieldname": "Typ", "fieldtype": "Data", "width": 150},
+        {"label": _("Nr"), "fieldname": "kontonummer", "fieldtype": "Data", "width": 50},
+        {"label": _("Konto"), "fieldname": "konto", "fieldtype": "Link", "options": "Account", "width": 200},
+        {"label": _("Anfangssaldo"), "fieldname": "anfang", "fieldtype": "Currency", "width": 100},
+        {"label": _("Soll"), "fieldname": "soll", "fieldtype": "Currency", "width": 100},
+        {"label": _("Haben"), "fieldname": "haben", "fieldtype": "Currency", "width": 100},
+        {"label": _("Schlusssaldo"), "fieldname": "schluss", "fieldtype": "Currency", "width": 100},
+        {"label": _("Typ"), "fieldname": "typ", "fieldtype": "Data", "width": 150}
     ]
     
 @frappe.whitelist()
-def get_data(from_date, to_date, report_type):   
+def get_data(from_date, to_date, report_type, exclude_closing=False):
+    if exclude_closing:
+        exclude_condition = """ AND voucher_type != 'Period Closing Voucher' """
+    else:
+        exclude_condition = ""
     # prepare query
     sql_query = """
-       SELECT *, (`raw`.`Anfangssaldo` + `raw`.`Soll` - `raw`.`Haben`) AS `Schlusssaldo` 
-       FROM
-       (SELECT 
-          `tabAccount`.`account_number` AS `Kontonummer`,
-          `tabAccount`.`name` AS `Konto`, 
-          IFNULL((SELECT 
-             ROUND((SUM(`t1`.`debit`) - SUM(`t1`.`credit`)), 2)
-           FROM `tabGL Entry` AS `t1`
-           WHERE 
-             `t1`.`posting_date` < '{from_date}'
-            AND `t1`.`account` = `tabAccount`.`name`
-          ), 0) AS `Anfangssaldo`,
-          IFNULL((SELECT 
-             ROUND((SUM(`t3`.`debit`)), 2)
-           FROM `tabGL Entry` AS `t3`
-           WHERE 
-             `t3`.`posting_date` <= '{to_date}'
-             AND `t3`.`posting_date` >= '{from_date}'
-            AND `t3`.`account` = `tabAccount`.`name`
-          ), 0) AS `Soll`,
-          IFNULL((SELECT 
-             ROUND((SUM(`t4`.`credit`)), 2)
-           FROM `tabGL Entry` AS `t4`
-           WHERE 
-             `t4`.`posting_date` <= '{to_date}'
-             AND `t4`.`posting_date` >= '{from_date}'
-            AND `t4`.`account` = `tabAccount`.`name`
-          ), 0) AS `Haben`,
-          `tabAccount`.`report_type` AS `Typ`
-       FROM `tabAccount`
-       WHERE 
-         `tabAccount`.`is_group` = 0
-         AND `tabAccount`.`report_type` LIKE '{report_type}'
-       ) AS `raw`
-       /* WHERE (`raw`.`Anfangssaldo` + `raw`.`Soll` - `raw`.`Haben`) != 0 */;""".format(from_date=from_date, to_date=to_date, report_type=report_type)
+       WITH `gl` AS (
+          SELECT
+              `account`,
+              SUM(CASE WHEN `posting_date` < %(from_date)s THEN `debit` - `credit` ELSE 0 END) AS `anfang`,
+              SUM(CASE WHEN `posting_date` BETWEEN %(from_date)s AND %(to_date)s 
+                    {exclude_condition}
+                  THEN `debit` ELSE 0 END) AS `soll`,
+              SUM(CASE WHEN `posting_date` BETWEEN %(from_date)s AND %(to_date)s 
+                    {exclude_condition}
+                  THEN `credit` ELSE 0 END) AS `haben`,
+          FROM `tabGL Entry`
+          GROUP BY `account`
+      )
+      SELECT
+          `acc`.`account_number` AS `kontonummer`,
+          `acc`.`name` AS `konto`,
+          `acc`.`report_type` AS `typ`,
+          IFNULL(`gl`.`anfang`, 0) AS `anfang`,
+          IFNULL(`gl`.`soll`, 0) AS `soll`,
+          IFNULL(`gl`.`haben`, 0) AS `haben`,
+          (IFNULL(`gl`.`anfang`, 0) + IFNULL(`gl`.`soll`, 0) - IFNULL(`gl`.`haben`, 0)) AS `schluss`,
+      FROM `tabAccount` AS `acc`
+      LEFT JOIN `gl` ON `gl`.`account` = `acc`.`name`
+      WHERE `acc`.`is_group` = 0
+        AND `acc`.`report_type` LIKE %(report_type)s
+      ORDER BY `acc`.`account_number`;""".format(exclude_condition=exclude_condition)
  
     # run query
-    data = frappe.db.sql(sql_query, as_dict = True)
+    data = frappe.db.sql(
+        sql_query, 
+        {
+            'from_date': from_date,
+            'to_date': to_date, 
+            'report_type': report_type
+        },
+        as_dict = True
+    )
     return data
