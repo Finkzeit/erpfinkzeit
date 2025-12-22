@@ -680,7 +680,7 @@ async function authenticateAndReadDesfire({
     } catch {}
     if (!appAuthResult) return { error: "Anwendungs-Schlüssel Authentifizierung fehlgeschlagen" };
     // 4. Read from the configured file
-    const readResult = await DESFire_ReadData(DESF.CRYPTO_ENV0, fileId, 0x00, 0x04, DESF.COMMSET_PLAIN);
+    const readResult = await DESFire_ReadData(DESF.CRYPTO_ENV0, fileId, 0x00, 0x04, DESF.COMMSET_FULLY_ENC);
     if (!readResult || !readResult.success) return { error: "Datei nicht lesbar" };
     return { data: readResult.data };
 }
