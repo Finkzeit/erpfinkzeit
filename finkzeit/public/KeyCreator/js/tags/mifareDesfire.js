@@ -283,7 +283,7 @@ async function changeApplicationReadKey(transponderConfig, keySettings, numberOf
 async function createDataFile(transponderConfig) {
     const fileNo = transponderConfig.tags.mifareDesfire.file_byte;
     const fileType = DESF.FILETYPE_STDDATAFILE;
-    const commSet = DESF.COMMSET_PLAIN;
+    const commSet = DESF.COMMSET_FULLY_ENC;
     const accessRights = 0x1000;
     const fileSize = 0x04;
 
@@ -305,7 +305,7 @@ async function writeToFile(transponderConfig) {
     const data = transponderConfig.tags.mifareDesfire.number;
     const fileNo = transponderConfig.tags.mifareDesfire.file_byte;
     const offset = 0x00;
-    const commSet = DESF.COMMSET_PLAIN;
+    const commSet = DESF.COMMSET_FULLY_ENC;
 
     const writeToFileResult = await protocolHandler.DESFire_WriteData(CRYPTO_ENV, fileNo, offset, data, commSet);
     if (!writeToFileResult) {
@@ -334,7 +334,7 @@ async function readAndVerifyFile(transponderConfig) {
     const fileNo = transponderConfig.tags.mifareDesfire.file_byte;
     const offset = 0x00;
     const length = 0x04;
-    const commSet = DESF.COMMSET_PLAIN;
+    const commSet = DESF.COMMSET_FULLY_ENC;
     const readAndVerifyFileResult = await protocolHandler.DESFire_ReadData(CRYPTO_ENV, fileNo, offset, length, commSet);
     logger.debug("Read and Verified File Result:", readAndVerifyFileResult);
     if (!readAndVerifyFileResult.success || readAndVerifyFileResult.data !== transponderConfig.tags.mifareDesfire.number) {
@@ -371,7 +371,7 @@ export async function readMifareDesfire(transponderConfig) {
                                     fileNo,
                                     0x00,
                                     0x04,
-                                    DESF.COMMSET_PLAIN
+                                    DESF.COMMSET_FULLY_ENC
                                 );
                                 if (readResult.success) {
                                     logger.debug(`Read data from file ${fileNo}: ${readResult.data}`);
