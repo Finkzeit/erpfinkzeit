@@ -7,6 +7,7 @@ import { setIsFormatting } from "../core/state.js";
 import { clearKeys } from "./verifyKey.js";
 import { updateSessionInfo } from "../ui/ui.js";
 import { showDialog, updateDialogText, updateDialogMessage, updateCountdownText, getConfirmation } from "../utils/dialogUtils.js";
+import { getLastManuallySelectedConfigId, setLastManuallySelectedConfigId } from "./readKey.js";
 
 const CRYPTO_ENV = DESF.CRYPTO_ENV0;
 
@@ -1148,6 +1149,16 @@ async function showConfigSelectionModal(configs, tagType, isFallback = false) {
         });
         modalBox.appendChild(select);
 
+        // Preselect last manually selected config if available
+        const lastSelectedConfigId = getLastManuallySelectedConfigId();
+        if (lastSelectedConfigId) {
+            const matchingOption = Array.from(select.options).find(opt => opt.value === lastSelectedConfigId);
+            if (matchingOption) {
+                select.value = lastSelectedConfigId;
+                logger.debug(`Preselected last used config: ${lastSelectedConfigId}`);
+            }
+        }
+
         const btnContainer = document.createElement("div");
         btnContainer.style.textAlign = "right";
         btnContainer.style.marginTop = "1em";
@@ -1165,6 +1176,8 @@ async function showConfigSelectionModal(configs, tagType, isFallback = false) {
         okBtn.textContent = "Übernehmen";
         okBtn.onclick = () => {
             const selected = select.value;
+            // Save the selection for next time
+            setLastManuallySelectedConfigId(selected);
             $(select).select2("destroy");
             document.body.removeChild(modal);
             resolve(selected);

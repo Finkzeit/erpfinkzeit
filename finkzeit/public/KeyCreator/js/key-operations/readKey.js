@@ -9,6 +9,18 @@ import { showDialog, updateDialogText, updateDialogMessage, getConfirmation } fr
 
 let shouldContinueSearch = true;
 
+// Session-based storage for last manually selected config (survives until page reload)
+let lastManuallySelectedConfigId = null;
+
+export function getLastManuallySelectedConfigId() {
+    return lastManuallySelectedConfigId;
+}
+
+export function setLastManuallySelectedConfigId(configId) {
+    lastManuallySelectedConfigId = configId;
+    logger.debug(`Last manually selected config saved: ${configId}`);
+}
+
 export function initializeKeyReading() {
     logger.debug("Initializing key reading");
     const readKeyButton = document.getElementById("readKeyButton");
@@ -159,6 +171,15 @@ function createSelectModal({ parent, configs, title, message, onClose }) {
     });
     modalBox.appendChild(select);
 
+    // Preselect last manually selected config if available
+    if (lastManuallySelectedConfigId) {
+        const matchingOption = Array.from(select.options).find(opt => opt.value === lastManuallySelectedConfigId);
+        if (matchingOption) {
+            select.value = lastManuallySelectedConfigId;
+            logger.debug(`Preselected last used config: ${lastManuallySelectedConfigId}`);
+        }
+    }
+
     const btnContainer = document.createElement("div");
     btnContainer.style.textAlign = "right";
     btnContainer.style.marginTop = "1em";
@@ -177,6 +198,8 @@ function createSelectModal({ parent, configs, title, message, onClose }) {
     okBtn.textContent = "Übernehmen";
     okBtn.onclick = () => {
         const selected = select.value;
+        // Save the selection for next time
+        setLastManuallySelectedConfigId(selected);
         $(select).select2("destroy");
         if (parent) parent.removeChild(modal);
         else document.body.removeChild(modal);
@@ -1138,13 +1161,53 @@ async function getTechnicalInfo(tag, transponderData, mergedConfig) {
                 await api.mifare();
                 const { DESFire_Authenticate, DESFire_SelectApplication, DESFire_ReadData } = await import("../handler/protocolHandler.js");
                 const { DESF } = await import("../constants/constants.js");
-                // Use the passed mergedConfig instead of fetching again
+
+                // Step 1: First try Zero-Key authentication to check if tag is empty/new
+                logger.debug("Trying Zero-Key authentication first...");
+                const zeroKey = 0x00000000000000000000000000000000;
+                let zeroKeyAuth = false;
+
+                // Try Zero-Key with 3DES (factory default for new DESFire tags)
+                try {
+                    const auth3DES = await DESFire_Authenticate(DESF.CRYPTO_ENV0, 0x00, zeroKey, DESF.KEYTYPE_3DES, DESF.AUTHMODE_EV1);
+                    if (auth3DES) {
+                        zeroKeyAuth = true;
+                        logger.debug("Zero-Key authentication successful with 3DES - tag is empty/new");
+                    }
+                } catch (e) {
+                    logger.debug(`Zero-Key 3DES auth failed: ${e.message}`);
+                }
+
+                // If 3DES didn't work, try Zero-Key with AES
+                if (!zeroKeyAuth) {
+                    try {
+                        const authAES = await DESFire_Authenticate(DESF.CRYPTO_ENV0, 0x00, zeroKey, DESF.KEYTYPE_AES, DESF.AUTHMODE_EV1);
+                        if (authAES) {
+                            zeroKeyAuth = true;
+                            logger.debug("Zero-Key authentication successful with AES - tag is empty/new");
+                        }
+                    } catch (e) {
+                        logger.debug(`Zero-Key AES auth failed: ${e.message}`);
+                    }
+                }
+
+                // If Zero-Key worked, tag is empty - no need to check ERP config
+                if (zeroKeyAuth) {
+                    techInfo.decodedId = "Tag ist leer (nicht konfiguriert)";
+                    techInfo.readStatus = "empty";
+                    logger.debug("Tag confirmed as empty via Zero-Key authentication");
+                    break;
+                }
+
+                // Step 2: Zero-Key failed, tag has been configured - try with ERP config
+                logger.debug("Zero-Key failed, trying with ERP configuration...");
                 let dfConfig = mergedConfig || { uid: tag.uid };
                 const appId = dfConfig.app_id;
                 const fileId = dfConfig.file_byte;
                 const masterKey = dfConfig.master_key;
                 const appReadKey = dfConfig.app_read_key;
                 logger.debug(`DESFire ERP config: appId=${appId}, fileId=${fileId}, masterKey=${masterKey}, appReadKey=${appReadKey}`);
+                
                 if (
                     appId === undefined ||
                     appId === null ||
@@ -1158,10 +1221,12 @@ async function getTechnicalInfo(tag, transponderData, mergedConfig) {
                     logger.debug(
                         `Missing required config: appId=${appId}, fileId=${fileId}, masterKey=${masterKey}, appReadKey=${appReadKey}`
                     );
-                    techInfo.decodedId = "Keine ERP-Konfiguration verfügbar";
+                    // Tag is not empty (Zero-Key failed) but we don't have the config to read it
+                    techInfo.decodedId = "Tag ist konfiguriert, aber keine passende ERP-Konfiguration verfügbar";
                     techInfo.readStatus = "no_config";
                     break;
                 }
+                
                 logger.debug("All required config found, proceeding with authentication...");
                 const result = await authenticateAndReadDesfire({
                     DESFire_Authenticate,
