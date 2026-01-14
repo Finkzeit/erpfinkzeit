@@ -12,6 +12,7 @@ import {
     removeReadingChangeListener,
 } from "../core/state.js";
 import { identifyMifareType } from "../utils/mifareUtils.js";
+import { isLegacyModeActive } from "../ui/legacyMode.js";
 
 let detectedKeys = {};
 let wrongKeys = {};
@@ -175,7 +176,17 @@ async function requiredKeySet(transponderConfig) {
     logger.debug("[verifyKey] Required keys:", requiredKeySet);
     logger.debug("[verifyKey] Detected keys:", detectedKeySet);
 
-    if (requiredKeySet.size === detectedKeySet.size && [...requiredKeySet].every((key) => detectedKeySet.has(key))) {
+    // Check if all required keys are present in detected keys (subset check)
+    const allRequiredFound = [...requiredKeySet].every((key) => detectedKeySet.has(key));
+    const exactMatch = requiredKeySet.size === detectedKeySet.size;
+    const legacyMode = isLegacyModeActive();
+
+    if (allRequiredFound && (exactMatch || legacyMode)) {
+        if (!exactMatch && legacyMode) {
+            const extraKeys = [...detectedKeySet].filter((k) => !requiredKeySet.has(k));
+            logger.info(`[verifyKey] Legacy Mode: ignoring extra keys: ${extraKeys.join(", ")}`);
+            updateSessionInfo("action", `Legacy-Modus: ${extraKeys.join(", ")} wird ignoriert`);
+        }
         logger.info("[verifyKey] All required keys have been detected.");
         updateSessionInfo("status", "Alle erforderlichen Schlüssel erkannt");
         Object.assign(correctKeys, detectedKeys);
@@ -183,8 +194,15 @@ async function requiredKeySet(transponderConfig) {
         return true;
     } else {
         const detectedKeyTypes = [...detectedKeySet].join(", ");
-        updateSessionInfo("action", `Falscher Schlüssel erkannt: ${detectedKeyTypes}`);
-        updateSessionInfo("action", `Benötigte Technik: ${[...requiredKeySet].join(", ")}`);
+        if (!allRequiredFound) {
+            const missingKeys = [...requiredKeySet].filter((k) => !detectedKeySet.has(k));
+            updateSessionInfo("action", `Fehlende Technik: ${missingKeys.join(", ")}`);
+        }
+        if (!exactMatch && !legacyMode) {
+            updateSessionInfo("action", `Falscher Schlüssel erkannt: ${detectedKeyTypes}`);
+            updateSessionInfo("action", `Benötigte Technik: ${[...requiredKeySet].join(", ")}`);
+            updateSessionInfo("action", `Tipp: Legacy-Modus aktivieren um extra Technologien zu ignorieren`);
+        }
         logger.warn("[verifyKey] Required keys not fully detected. Restarting process...");
         Object.assign(wrongKeys, detectedKeys);
         detectedKeys = {};

@@ -19,6 +19,7 @@ import numberHandler from "../handler/numberHandler.js";
 // UI imports
 import { initializeUI, addEventListeners, updateSessionInfo } from "../ui/ui.js";
 import { initializeTestMode } from "../ui/testMode.js";
+import { initializeLegacyMode } from "../ui/legacyMode.js";
 import { initializeMuteToggle } from "../ui/muteHandler.js";
 
 // Key operation imports
@@ -90,6 +91,10 @@ async function setupTestMode() {
     logger.debug("Initializing test mode functionality");
     initializeTestMode();
     logger.debug("Test mode button initialized and enabled");
+    
+    logger.debug("Initializing legacy mode functionality");
+    initializeLegacyMode();
+    logger.debug("Legacy mode button initialized and enabled");
 }
 
 async function initializeErpApi() {
