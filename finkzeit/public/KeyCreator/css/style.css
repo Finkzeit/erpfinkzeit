@@ -207,6 +207,30 @@ button:disabled {
     box-shadow: none;
 }
 
+.legacy-mode-btn {
+    font-size: 14px;
+    padding: 8px 16px;
+    margin: 0;
+    background-color: transparent;
+    border: 1px solid var(--border-color);
+    color: inherit;
+    font-weight: normal;
+    transition: border-color 0.3s ease;
+    width: auto;
+    min-width: 120px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.legacy-mode-btn:hover {
+    border-color: var(--border-color-hover);
+    background-color: transparent;
+    transform: none;
+    box-shadow: none;
+}
+
 .mute-btn {
     font-size: 14px;
     padding: 8px 16px;
@@ -532,7 +556,7 @@ button:disabled {
     justify-content: space-between;
     align-items: center;
     width: 100%;
-    max-width: 800px;
+    max-width: 950px;
     background-color: white;
     padding: 16px 32px;
     border-radius: 20px 20px 0 0;
