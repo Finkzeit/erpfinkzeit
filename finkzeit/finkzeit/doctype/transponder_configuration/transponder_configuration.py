@@ -7,7 +7,9 @@ import frappe
 from frappe.model.document import Document
 from random import choice
 from frappe.utils.password import get_decrypted_password
+from frappe.utils import cint
 from frappe import _
+import struct
 
 class TransponderConfiguration(Document):
     # create each key if not already set
@@ -35,6 +37,26 @@ class TransponderConfiguration(Document):
     def copy_key(self, key):
         password = get_decrypted_password(self.doctype, self.name, key, False)
         return password
+
+    # build the reader configurations (security blobs for RFID readers) as hex strings
+    # returns a dict {'mfcl': hex, 'mfdf': hex} with one entry per enabled technology
+    @frappe.whitelist()
+    def get_reader_config(self):
+        if self.is_new():
+            frappe.throw(_("Please save the configuration first"))
+        values = {
+            'mfcl': self.mfcl,
+            'mfdf': self.mfdf,
+            'sector': self.sector,
+            'skip_bytes': self.skip_bytes,
+            'read_bytes': self.read_bytes,
+            'key_a': get_decrypted_password(self.doctype, self.name, "key_a", False) if self.mfcl else None,
+            'app_id': self.app_id,
+            'file_byte': self.file_byte,
+            'app_read_key': get_decrypted_password(self.doctype, self.name, "app_read_key", False) if self.mfdf else None
+        }
+        blobs = build_reader_configs(values)
+        return {tech: reader_config_to_hex(blob) for tech, blob in blobs.items()}
         
     def before_save(self):
         if len(self.customers) > 0:
@@ -79,6 +101,98 @@ def get_hex_token(n):
     hex_string = "0123456789abcdef"
     token = "".join([choice(hex_string) for x in range(n)])
     return token
+
+"""
+Reader configuration (security blob for RFID readers)
+
+One fixed 33 byte structure per technology (MIFARE Classic / MIFARE DESFire),
+see reader_config_format.md next to this file.
+"""
+READER_CONFIG_VERSION = 1
+READER_TECH_MFCL = 0x01
+READER_TECH_MFDF = 0x02
+READER_KEY_SIZE = 24            # key field, left aligned, zero padded (6 byte Classic, 16/24 byte DESFire)
+MFDF_SKIP_BYTES = 0             # offset of the number within the DESFire file (KeyCreator writes at 0)
+MFDF_READ_BYTES = 4             # length of the number in the DESFire file (KeyCreator writes 4 bytes)
+MFDF_KEY_NO = 1                 # application key used for reading (app_read_key)
+MFDF_KEY_TYPE_AES = 2           # DESF.KEYTYPE_AES in KeyCreator
+READER_CONFIG_STRUCT = "<BBBB24s3sBB"   # little-endian, 33 bytes
+READER_CONFIG_SIZE = struct.calcsize(READER_CONFIG_STRUCT)
+
+def _parse_hex_key(value, hex_len, label):
+    value = (value or "").strip()
+    if not value:
+        frappe.throw(_("{0} is not set. Please create the keys first.").format(label))
+    try:
+        key = bytes.fromhex(value)
+    except ValueError:
+        key = None
+    if key is None or len(value) != hex_len:
+        frappe.throw(_("{0} must be exactly {1} hex characters").format(label, hex_len))
+    return key
+
+def _check_range(value, low, high, label):
+    value = cint(value)
+    if value < low or value > high:
+        frappe.throw(_("{0} must be between {1} and {2}").format(label, low, high))
+    return value
+
+def _pad_key(key):
+    return key + bytes(READER_KEY_SIZE - len(key))
+
+"""
+Build the binary reader configuration for one technology from plain values
+-tech:   'mfcl' or 'mfdf'
+-values: dict with sector, skip_bytes, read_bytes, key_a (12 hex) for mfcl,
+         app_id, file_byte, app_read_key (32 hex) for mfdf
+Returns bytes (READER_CONFIG_SIZE)
+"""
+def build_reader_config(tech, values):
+    if tech == 'mfcl':
+        version_flags = (READER_CONFIG_VERSION << 4) | READER_TECH_MFCL
+        block = _check_range(values.get('sector'), 0, 39, _("Sector"))
+        skip_bytes = _check_range(values.get('skip_bytes'), 0, 47, _("Skip bytes"))
+        read_bytes = _check_range(values.get('read_bytes'), 1, 4, _("Read bytes"))
+        if skip_bytes + read_bytes > 48:
+            frappe.throw(_("Skip bytes plus read bytes must not exceed 48"))
+        key = _parse_hex_key(values.get('key_a'), 12, _("Key A"))
+        aid = bytes(3)
+        key_no = 0
+        key_type = 0
+    elif tech == 'mfdf':
+        version_flags = (READER_CONFIG_VERSION << 4) | READER_TECH_MFDF
+        block = _check_range(values.get('file_byte'), 0, 31, _("File"))
+        skip_bytes = MFDF_SKIP_BYTES
+        read_bytes = MFDF_READ_BYTES
+        key = _parse_hex_key(values.get('app_read_key'), 32, _("App Read Key"))
+        app_id = _check_range(values.get('app_id'), 1, 0xFFFFFF, _("App ID"))
+        aid = app_id.to_bytes(3, 'little')
+        key_no = MFDF_KEY_NO
+        key_type = MFDF_KEY_TYPE_AES
+    else:
+        frappe.throw(_("Unknown technology {0}").format(tech))
+
+    return struct.pack(READER_CONFIG_STRUCT,
+        version_flags, block, skip_bytes, read_bytes, _pad_key(key),
+        aid, key_no, key_type)
+
+"""
+Build the reader configurations for all enabled technologies
+-values: dict with mfcl, mfdf plus the values listed in build_reader_config
+Returns dict {'mfcl': bytes, 'mfdf': bytes} (only enabled technologies)
+"""
+def build_reader_configs(values):
+    blobs = {}
+    if values.get('mfcl'):
+        blobs['mfcl'] = build_reader_config('mfcl', values)
+    if values.get('mfdf'):
+        blobs['mfdf'] = build_reader_config('mfdf', values)
+    if not blobs:
+        frappe.throw(_("No MIFARE technology enabled"))
+    return blobs
+
+def reader_config_to_hex(blob):
+    return blob.hex().upper()
 
 """
 API

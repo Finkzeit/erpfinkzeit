@@ -66,6 +66,11 @@ frappe.ui.form.on('Transponder Configuration', {
         frm.add_custom_button(__("Keys erzeugen"), function() {
             create_keys(frm);
         });
+        if ((!frm.doc.__islocal) && (frm.doc.mfcl || frm.doc.mfdf)) {
+            frm.add_custom_button(__("Leser-Konfiguration kopieren"), function() {
+                copy_reader_config(frm);
+            });
+        }
         // reset descriptions (in case these were set while entering)
         for (var i = 0; i < PW_FIELDS.length; i++) {
             cur_frm.set_df_property(PW_FIELDS[i], 'description', null);
@@ -196,6 +201,35 @@ function copy_key(frm, key) {
         'callback': function(response) {
             navigator.clipboard.writeText(response.message).then(function() {
                 frappe.show_alert("Key in der Zwischenablage");
+              }, function() {
+                 frappe.show_alert("Kein Zugriff auf Zwischenablage");
+            });
+        }
+    });
+}
+
+function copy_reader_config(frm) {
+    frappe.call({
+        'method': 'get_reader_config',
+        'doc': frm.doc,
+        'callback': function(response) {
+            var blobs = response.message;
+            if (!blobs) {
+                return;
+            }
+            var labels = {'mfcl': "MIFARE Classic", 'mfdf': "MIFARE DESFire"};
+            var html = "";
+            var lines = [];
+            for (var tech in blobs) {
+                html += '<b>' + labels[tech] + '</b><pre style="white-space: pre-wrap; word-break: break-all;">' + blobs[tech] + '</pre>';
+                lines.push(blobs[tech]);
+            }
+            frappe.msgprint({
+                'title': __("Leser-Konfiguration"),
+                'message': html
+            });
+            navigator.clipboard.writeText(lines.join("\n")).then(function() {
+                frappe.show_alert("Leser-Konfiguration in der Zwischenablage");
               }, function() {
                  frappe.show_alert("Kein Zugriff auf Zwischenablage");
             });
