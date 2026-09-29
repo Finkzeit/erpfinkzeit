@@ -373,6 +373,10 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
         kst_code = 198
     else:
         kst_code = 13
+    # level text: short name (if set) takes precedence over the full customer name
+    level_text = "{0}, {1}".format(short_name or customer_name, city or "-")
+    # result returned to the caller (e.g. client script)
+    result = {'success': False, 'action': None, 'zsw_reference': zsw_reference, 'text': level_text, 'error': None}
     s = getSession()
     # create or update customer
     wsTsNow = client.service.getTime(s)
@@ -385,11 +389,9 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
     if wsLevelEArray:
         # customer exists --> update
         print("Customer found, update")
+        result['action'] = "update"
         wsLevelEArray[0]["action"] = 3
-        if short_name:
-            wsLevelEArray[0]["wsLevel"]["text"] = "{0}, {1}".format(short_name, city or "-")
-        else:
-            wsLevelEArray[0]["wsLevel"]["text"] = "{0}, {1}".format(customer_name, city or "-")
+        wsLevelEArray[0]["wsLevel"]["text"] = level_text
         wsLevelEArray[0]["wsLevel"]["active"] = active
         # make sure extension key exists
         if not wsLevelEArray[0]["extensions"]:
@@ -417,14 +419,17 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
         print("{0}".format(contentDict))
         try:
             client.service.updateLevelsE(session, {'WSExtensibleLevel': [contentDict]})
+            result['success'] = True
         except Exception as err:
+            result['error'] = "{0}".format(err)
             frappe.log_error("{0} on {1}".format(err, contentDict), "ZSW create_update customer error")
     else:
         print("Customer not found")
-        wsLevelEArray = { 'WSExtensibleLevel' : 
+        result['action'] = "create"
+        wsLevelEArray = { 'WSExtensibleLevel' :
           [{
             'action': 1,
-            'wsLevel': { 'active': active, 'levelID': get_zsw_level("Customer"), 'code': zsw_reference, 'text': customer_name },
+            'wsLevel': { 'active': active, 'levelID': get_zsw_level("Customer"), 'code': zsw_reference, 'text': level_text },
             'extensions': { 'WSExtension': [   ]}
           }]
         }
@@ -442,7 +447,12 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
         #     createOrUpdateWSExtension(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_wartungsvertrag", maintenance_contract)
         if "p_projektverantwortlicher" in available_properties:
             createOrUpdateWSExtension_link(wsLevelEArray['WSExtensibleLevel'][0]["extensions"]["WSExtension"], "p_projektverantwortlicher", zsw_technician, 2, 0, False)
-        client.service.createLevelsE(session, wsLevelEArray)
+        try:
+            client.service.createLevelsE(session, wsLevelEArray)
+            result['success'] = True
+        except Exception as err:
+            result['error'] = "{0}".format(err)
+            frappe.log_error("{0} on {1}".format(err, wsLevelEArray), "ZSW create_update customer error")
 
     # add link (or ignore if it exists already)
     try:
@@ -453,7 +463,7 @@ def create_update_customer(customer, customer_name, active, kst=None, tenant="AT
             err, session, kst_code, link), "ZSW update customer" )
     # close connection
     disconnect()
-    return
+    return result
 
 def create_update_item(item_code, item_name, active, target):
     if active == 1 or active == "1":
@@ -576,7 +586,8 @@ def compress_level_e(level_e_array):
 """ interaction mechanisms """
 @frappe.whitelist()
 def update_customer(customer, customer_name, kst="Main", zsw_reference=None, active=True, tenant="AT", technician=None, short_name=None):
-    create_update_customer(
+    # returns a dict: {'success': bool, 'action': 'create'|'update', 'zsw_reference': str, 'text': str, 'error': str|None}
+    return create_update_customer(
         customer=customer,
         customer_name=customer_name,
         active=active,
@@ -585,7 +596,6 @@ def update_customer(customer, customer_name, kst="Main", zsw_reference=None, act
         technician=technician,
         short_name=short_name
     )
-    return
 
 @frappe.whitelist()
 def update_project(sales_order, customer, customer_name, tenant="AT", technician=None, active=True):
