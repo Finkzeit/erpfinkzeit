@@ -4,7 +4,7 @@ Die Doc-Methode `get_reader_config` von *Transponder Configuration* liefert die 
 Sicherheitsinformationen, die ein RFID-Leser braucht, um die vom KeyCreator beschriebenen
 Transponder zu lesen. Pro aktiver Technologie (MIFARE Classic, MIFARE DESFire) entsteht ein
 eigener Blob mit identischer Struktur. Im Formular erzeugt der Button
-**Leser-Konfiguration kopieren** die Werte, zeigt sie an und legt sie in die Zwischenablage
+**Leser-Konfiguration kopieren** die Werte und legt sie in die Zwischenablage, ohne sie anzuzeigen
 (mehrere Blobs zeilenweise).
 
 Rückgabe der Doc-Methode: `{"mfcl": "<hex>", "mfdf": "<hex>"}`, nur aktive Technologien.

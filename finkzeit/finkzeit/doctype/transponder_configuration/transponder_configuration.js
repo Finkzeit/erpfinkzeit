@@ -217,17 +217,10 @@ function copy_reader_config(frm) {
             if (!blobs) {
                 return;
             }
-            var labels = {'mfcl': "MIFARE Classic", 'mfdf': "MIFARE DESFire"};
-            var html = "";
             var lines = [];
             for (var tech in blobs) {
-                html += '<b>' + labels[tech] + '</b><pre style="white-space: pre-wrap; word-break: break-all;">' + blobs[tech] + '</pre>';
                 lines.push(blobs[tech]);
             }
-            frappe.msgprint({
-                'title': __("Leser-Konfiguration"),
-                'message': html
-            });
             navigator.clipboard.writeText(lines.join("\n")).then(function() {
                 frappe.show_alert("Leser-Konfiguration in der Zwischenablage");
               }, function() {
