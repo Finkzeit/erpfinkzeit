@@ -10,6 +10,7 @@ from frappe.utils.password import get_decrypted_password
 from frappe.utils import cint
 from frappe import _
 import struct
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 class TransponderConfiguration(Document):
     # create each key if not already set
@@ -40,6 +41,7 @@ class TransponderConfiguration(Document):
 
     # build the reader configurations (security blobs for RFID readers) as hex strings
     # returns a dict {'mfcl': hex, 'mfdf': hex} with one entry per enabled technology
+    # the key field is AES encrypted with the KEK from site_config.json (reader_config_kek)
     @frappe.whitelist()
     def get_reader_config(self):
         if self.is_new():
@@ -55,7 +57,7 @@ class TransponderConfiguration(Document):
             'file_byte': self.file_byte,
             'app_read_key': get_decrypted_password(self.doctype, self.name, "app_read_key", False) if self.mfdf else None
         }
-        blobs = build_reader_configs(values)
+        blobs = build_reader_configs(values, get_reader_kek())
         return {tech: reader_config_to_hex(blob) for tech, blob in blobs.items()}
         
     def before_save(self):
@@ -105,18 +107,23 @@ def get_hex_token(n):
 """
 Reader configuration (security blob for RFID readers)
 
-One fixed 33 byte structure per technology (MIFARE Classic / MIFARE DESFire),
-see reader_config_format.md next to this file.
+One fixed 41 byte structure per technology (MIFARE Classic / MIFARE DESFire),
+the key field is AES-128-CBC encrypted (IV = 0) with a global key encryption key (KEK)
+from site_config.json (reader_config_kek, 32 hex characters).
+See reader_config_format.md next to this file.
 """
 READER_CONFIG_VERSION = 1
 READER_TECH_MFCL = 0x01
 READER_TECH_MFDF = 0x02
-READER_KEY_SIZE = 24            # key field, left aligned, zero padded (6 byte Classic, 16/24 byte DESFire)
+READER_KEY_SIZE = 32            # key field (plain): left aligned, zero padded (6 byte Classic, 16/24 byte DESFire)
+READER_KEK_SIZE = 16            # AES-128
+READER_IV = bytes(16)           # fixed IV, known on both sides
+READER_KEK_CONF = "reader_config_kek"
 MFDF_SKIP_BYTES = 0             # offset of the number within the DESFire file (KeyCreator writes at 0)
 MFDF_READ_BYTES = 4             # length of the number in the DESFire file (KeyCreator writes 4 bytes)
 MFDF_KEY_NO = 1                 # application key used for reading (app_read_key)
 MFDF_KEY_TYPE_AES = 2           # DESF.KEYTYPE_AES in KeyCreator
-READER_CONFIG_STRUCT = "<BBBB24s3sBB"   # little-endian, 33 bytes
+READER_CONFIG_STRUCT = "<BBBB3sBB32s"   # little-endian, 41 bytes
 READER_CONFIG_SIZE = struct.calcsize(READER_CONFIG_STRUCT)
 
 def _parse_hex_key(value, hex_len, label):
@@ -137,17 +144,45 @@ def _check_range(value, low, high, label):
         frappe.throw(_("{0} must be between {1} and {2}").format(label, low, high))
     return value
 
-def _pad_key(key):
-    return key + bytes(READER_KEY_SIZE - len(key))
+"""
+Read the key encryption key from site_config.json
+Returns 16 bytes
+"""
+def get_reader_kek():
+    kek_hex = frappe.conf.get(READER_KEK_CONF)
+    if not kek_hex:
+        frappe.throw(_("{0} is not configured in site_config.json").format(READER_KEK_CONF))
+    try:
+        kek = bytes.fromhex(kek_hex)
+    except ValueError:
+        kek = None
+    if kek is None or len(kek) != READER_KEK_SIZE:
+        frappe.throw(_("{0} in site_config.json must be exactly {1} hex characters").format(READER_KEK_CONF, 2 * READER_KEK_SIZE))
+    return kek
+
+"""
+Encrypt the key field: pad the key with zeros to READER_KEY_SIZE and
+encrypt with AES-128-CBC, IV = 0 (no PKCS#7, the key length follows from the key type)
+Returns READER_KEY_SIZE bytes
+"""
+def encrypt_reader_key(key, kek):
+    if not kek or len(kek) != READER_KEK_SIZE:
+        frappe.throw(_("Key encryption key must be exactly {0} bytes").format(READER_KEK_SIZE))
+    if len(key) > READER_KEY_SIZE:
+        frappe.throw(_("Key exceeds {0} bytes").format(READER_KEY_SIZE))
+    plain = key + bytes(READER_KEY_SIZE - len(key))
+    encryptor = Cipher(algorithms.AES(kek), modes.CBC(READER_IV)).encryptor()
+    return encryptor.update(plain) + encryptor.finalize()
 
 """
 Build the binary reader configuration for one technology from plain values
 -tech:   'mfcl' or 'mfdf'
 -values: dict with sector, skip_bytes, read_bytes, key_a (12 hex) for mfcl,
          app_id, file_byte, app_read_key (32 hex) for mfdf
+-kek:    16 byte key encryption key
 Returns bytes (READER_CONFIG_SIZE)
 """
-def build_reader_config(tech, values):
+def build_reader_config(tech, values, kek):
     if tech == 'mfcl':
         version_flags = (READER_CONFIG_VERSION << 4) | READER_TECH_MFCL
         block = _check_range(values.get('sector'), 0, 39, _("Sector"))
@@ -173,20 +208,22 @@ def build_reader_config(tech, values):
         frappe.throw(_("Unknown technology {0}").format(tech))
 
     return struct.pack(READER_CONFIG_STRUCT,
-        version_flags, block, skip_bytes, read_bytes, _pad_key(key),
-        aid, key_no, key_type)
+        version_flags, block, skip_bytes, read_bytes,
+        aid, key_no, key_type,
+        encrypt_reader_key(key, kek))
 
 """
 Build the reader configurations for all enabled technologies
 -values: dict with mfcl, mfdf plus the values listed in build_reader_config
+-kek:    16 byte key encryption key
 Returns dict {'mfcl': bytes, 'mfdf': bytes} (only enabled technologies)
 """
-def build_reader_configs(values):
+def build_reader_configs(values, kek):
     blobs = {}
     if values.get('mfcl'):
-        blobs['mfcl'] = build_reader_config('mfcl', values)
+        blobs['mfcl'] = build_reader_config('mfcl', values, kek)
     if values.get('mfdf'):
-        blobs['mfdf'] = build_reader_config('mfdf', values)
+        blobs['mfdf'] = build_reader_config('mfdf', values, kek)
     if not blobs:
         frappe.throw(_("No MIFARE technology enabled"))
     return blobs
