@@ -43,7 +43,7 @@ def get_data(from_date, to_date, report_type):
     accno_017 = ["4005"]
     accno_022 = ["4020", "4220", "4452", "4843", "4844", "4850", "4851", "7810"]
     accno_029 = ["4840", "4841", "4842", "4845", "4846"]
-    accno_000 = ["4200", "4250", "4290", "4450", "4455", "4500", "4501", "7811"] + accno_022 + accno_029 + accno_011 + accno_017
+    accno_000 = ["4290", "4450", "4455", "4500", "4501", "7811"] + accno_022 + accno_029 + accno_011 + accno_017
     accno_all = accno_xxx + accno_000
     
     # prepare query
