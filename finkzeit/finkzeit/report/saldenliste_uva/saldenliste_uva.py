@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2025, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2019-2026, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 
 from __future__ import unicode_literals
@@ -39,9 +39,11 @@ def execute(filters=None):
 def get_data(from_date, to_date, report_type):   
     #prepare account number lists
     accno_xxx = ["2500", "2505", "2510", "3510", "3511", "3512"]
+    accno_011 = ["4000"]
+    accno_017 = ["4005"]
     accno_022 = ["4020", "4220", "4452", "4843", "4844", "4850", "4851", "7810"]
     accno_029 = ["4840", "4841", "4842", "4845", "4846"]
-    accno_000 = ["4000", "4005", "4200", "4250", "4290", "4450", "4455", "4500", "4501", "7811"] + accno_022 + accno_029
+    accno_000 = ["4200", "4250", "4290", "4450", "4455", "4500", "4501", "7811"] + accno_022 + accno_029 + accno_011 + accno_017
     accno_all = accno_xxx + accno_000
     
     # prepare query
@@ -70,6 +72,10 @@ def get_data(from_date, to_date, report_type):
         keys = []
         if d.kontonummer in accno_000:
             keys.append("000")
+        if d.kontonummer in accno_011:
+            keys.append("011")
+        if d.kontonummer in accno_017:
+            keys.append("017")
         if d.kontonummer in accno_022:
             keys.append("022")
         if d.kontonummer in accno_029:
@@ -77,16 +83,22 @@ def get_data(from_date, to_date, report_type):
         d['kz'] = ", ".join(keys)
     
     # extend summary lines
-    vat_keys = {'000': 0.0, '022': 0.0, '029': 0.0}
+    vat_keys = {'000': 0.0, '011': 0.0, '017': 0.0, '022': 0.0, '029': 0.0}
     for i in range(len(data)):
         if data[i]['kontonummer'] in accno_000:
             vat_keys['000'] += data[i]['periodensaldo']
+        if data[i]['kontonummer'] in accno_011:
+            vat_keys['011'] += data[i]['periodensaldo']
+        if data[i]['kontonummer'] in accno_017:
+            vat_keys['017'] += data[i]['periodensaldo']
         if data[i]['kontonummer'] in accno_022:
             vat_keys['022'] += data[i]['periodensaldo']
         if data[i]['kontonummer'] in accno_029:
             vat_keys['029'] += data[i]['periodensaldo']
     data.append({'kontonummer': '', 'konto': '', 'soll': None, 'haben': None, 'periodensaldo': None, 'typ': '', 'kz': None})
     data.append({'kontonummer': '[000]', 'konto': '', 'soll': None, 'haben': None, 'periodensaldo': vat_keys['000'], 'typ': '', 'kz': "000"})
+    data.append({'kontonummer': '[011]', 'konto': '', 'soll': None, 'haben': None, 'periodensaldo': vat_keys['011'], 'typ': '', 'kz': "011"})
+    data.append({'kontonummer': '[017]', 'konto': '', 'soll': None, 'haben': None, 'periodensaldo': vat_keys['017'], 'typ': '', 'kz': "017"})
     data.append({'kontonummer': '[022]', 'konto': '', 'soll': None, 'haben': None, 'periodensaldo': vat_keys['022'], 'typ': '', 'kz': "022"})
     data.append({'kontonummer': '[029]', 'konto': '', 'soll': None, 'haben': None, 'periodensaldo': vat_keys['029'], 'typ': '', 'kz': "029"})
     
