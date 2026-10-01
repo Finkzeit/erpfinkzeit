@@ -9,7 +9,9 @@
   "credit_item",
   "section_contracts",
   "default_increase_text",
-  "contract_item"
+  "contract_item",
+  "sex_tax",
+  "tax_matrix"
  ],
  "fields": [
   {
@@ -44,10 +46,21 @@
    "fieldtype": "Link",
    "label": "Credit Item",
    "options": "Item"
+  },
+  {
+   "fieldname": "sex_tax",
+   "fieldtype": "Section Break",
+   "label": "Tax Matrix"
+  },
+  {
+   "fieldname": "tax_matrix",
+   "fieldtype": "Table",
+   "label": "Tax Matrix",
+   "options": "Finkzeit Settings Account"
   }
  ],
  "issingle": 1,
- "modified": "2024-02-22 16:59:43.807594",
+ "modified": "2026-10-01 09:38:56.936276",
  "modified_by": "Administrator",
  "module": "Finkzeit",
  "name": "Finkzeit Settings",

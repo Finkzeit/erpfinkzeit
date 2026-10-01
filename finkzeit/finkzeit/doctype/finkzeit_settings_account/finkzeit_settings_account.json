@@ -1,0 +1,48 @@
+{
+ "creation": "2026-10-01 09:38:07.258640",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "taxes_and_charges",
+  "steuerregion",
+  "income_account"
+ ],
+ "fields": [
+  {
+   "fieldname": "taxes_and_charges",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Taxes and Charges",
+   "options": "Sales Taxes and Charges Template",
+   "reqd": 1
+  },
+  {
+   "fieldname": "steuerregion",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Steuerregion",
+   "options": "*\nAT\nEU\nDRL",
+   "reqd": 1
+  },
+  {
+   "fieldname": "income_account",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Income Account",
+   "options": "Account",
+   "reqd": 1
+  }
+ ],
+ "istable": 1,
+ "modified": "2026-10-01 09:47:54.457587",
+ "modified_by": "Administrator",
+ "module": "Finkzeit",
+ "name": "Finkzeit Settings Account",
+ "owner": "Administrator",
+ "permissions": [],
+ "quick_entry": 1,
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}
