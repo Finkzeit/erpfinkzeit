@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (c) 2018-2025, Fink Zeitsysteme/libracore and contributors
+# Copyright (c) 2018-2026, Fink Zeitsysteme/libracore and contributors
 # For license information, please see license.txt
 #
 
@@ -901,7 +901,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                     discount=100,
                                     kst=kst,
                                     income_account=income_account,
-                                    warehouse=warehouse))
+                                    warehouse=warehouse,
+                                    is_free_item=1))
                             elif invoice_type == "J":
                                 # remote, normal
                                 do_invoice_remote = True
@@ -912,7 +913,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                     discount=discount,
                                     kst=kst,
                                     income_account=income_account,
-                                    warehouse=warehouse))
+                                    warehouse=warehouse,
+                                    is_free_item=0))
                         elif service_type == "T03":
                             if invoice_type in ["V", "J"]:
                                 # onsite, normal
@@ -923,7 +925,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                     discount=0,
                                     kst=kst,
                                     income_account=income_account,
-                                    warehouse=warehouse))
+                                    warehouse=warehouse,
+                                    is_free_item=0))
                             elif invoice_type == "N":
                                 # onsite, free of charge
                                 items_onsite.append(get_item(
@@ -933,7 +936,8 @@ def create_invoices(tenant="AT", from_date=None, to_date=None, kst_filter=None, 
                                     discount=100,
                                     kst=kst,
                                     income_account=income_account,
-                                    warehouse=warehouse))
+                                    warehouse=warehouse,
+                                    is_free_item=1))
 
                         # add material items
                         if (len(item_code) > 0) and (len(item_code) == len(qty)):
@@ -1181,7 +1185,7 @@ def create_generic_invoices(from_date=None, to_date=None, with_time=False):
     return
 
 # parse to sales invoice item structure
-def get_item(item_code, description, qty, discount, kst, income_account, warehouse, against_sales_order=None, date="2000-01-01"):
+def get_item(item_code, description, qty, discount, kst, income_account, warehouse, against_sales_order=None, date="2000-01-01", is_free_item=0):
     return {
         'item_code': item_code,
         'description': description,
@@ -1192,7 +1196,8 @@ def get_item(item_code, description, qty, discount, kst, income_account, warehou
         'income_account': income_account,
         'warehouse': warehouse,
         'against_sales_order': against_sales_order,
-        'date': date
+        'date': date,
+        'is_free_item': is_free_item
     }
 
 def get_short_item(item_code, qty, kst, income_account, warehouse, against_sales_order=None, date="2000-01-01"):
