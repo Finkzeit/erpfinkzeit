@@ -107,14 +107,21 @@ def get_hex_token(n):
 """
 Reader configuration (security blob for RFID readers)
 
-One fixed 41 byte structure per technology (MIFARE Classic / MIFARE DESFire),
+One fixed 40 byte structure per technology (MIFARE Classic / MIFARE DESFire),
 the key field is AES-128-CBC encrypted (IV = 0) with a global key encryption key (KEK)
 from site_config.json (reader_config_kek, 32 hex characters).
 See reader_config_format.md next to this file.
 """
 READER_CONFIG_VERSION = 1
-READER_TECH_MFCL = 0x01
-READER_TECH_MFDF = 0x02
+# technology (incl. key type) in the low nibble of byte 0, values 7..15 are reserved
+READER_TECH_FEIG = 1
+READER_TECH_MFCL = 2
+READER_TECH_ULTRALIGHT = 3
+READER_TECH_MFDF_AES = 4
+READER_TECH_MFDF_3DES = 5
+READER_TECH_MFDF_3K3DES = 6
+MFCL_KEY_NO_A = 0               # Classic: authenticate with Key A
+MFCL_KEY_NO_B = 1               # Classic: authenticate with Key B (not used by KeyCreator)
 READER_KEY_SIZE = 32            # key field (plain): left aligned, zero padded (6 byte Classic, 16/24 byte DESFire)
 READER_KEK_SIZE = 16            # AES-128
 READER_IV = bytes(16)           # fixed IV, known on both sides
@@ -122,8 +129,7 @@ READER_KEK_CONF = "reader_config_kek"
 MFDF_SKIP_BYTES = 0             # offset of the number within the DESFire file (KeyCreator writes at 0)
 MFDF_READ_BYTES = 4             # length of the number in the DESFire file (KeyCreator writes 4 bytes)
 MFDF_KEY_NO = 1                 # application key used for reading (app_read_key)
-MFDF_KEY_TYPE_AES = 2           # DESF.KEYTYPE_AES in KeyCreator
-READER_CONFIG_STRUCT = "<BBBB3sBB32s"   # little-endian, 41 bytes
+READER_CONFIG_STRUCT = "<BBBB3sB32s"    # little-endian, 40 bytes
 READER_CONFIG_SIZE = struct.calcsize(READER_CONFIG_STRUCT)
 
 def _parse_hex_key(value, hex_len, label):
@@ -184,7 +190,7 @@ Returns bytes (READER_CONFIG_SIZE)
 """
 def build_reader_config(tech, values, kek):
     if tech == 'mfcl':
-        version_flags = (READER_CONFIG_VERSION << 4) | READER_TECH_MFCL
+        version_tech = (READER_CONFIG_VERSION << 4) | READER_TECH_MFCL
         block = _check_range(values.get('sector'), 0, 39, _("Sector"))
         skip_bytes = _check_range(values.get('skip_bytes'), 0, 47, _("Skip bytes"))
         read_bytes = _check_range(values.get('read_bytes'), 1, 4, _("Read bytes"))
@@ -192,10 +198,9 @@ def build_reader_config(tech, values, kek):
             frappe.throw(_("Skip bytes plus read bytes must not exceed 48"))
         key = _parse_hex_key(values.get('key_a'), 12, _("Key A"))
         aid = bytes(3)
-        key_no = 0
-        key_type = 0
+        key_no = MFCL_KEY_NO_A
     elif tech == 'mfdf':
-        version_flags = (READER_CONFIG_VERSION << 4) | READER_TECH_MFDF
+        version_tech = (READER_CONFIG_VERSION << 4) | READER_TECH_MFDF_AES
         block = _check_range(values.get('file_byte'), 0, 31, _("File"))
         skip_bytes = MFDF_SKIP_BYTES
         read_bytes = MFDF_READ_BYTES
@@ -203,13 +208,12 @@ def build_reader_config(tech, values, kek):
         app_id = _check_range(values.get('app_id'), 1, 0xFFFFFF, _("App ID"))
         aid = app_id.to_bytes(3, 'little')
         key_no = MFDF_KEY_NO
-        key_type = MFDF_KEY_TYPE_AES
     else:
         frappe.throw(_("Unknown technology {0}").format(tech))
 
     return struct.pack(READER_CONFIG_STRUCT,
-        version_flags, block, skip_bytes, read_bytes,
-        aid, key_no, key_type,
+        version_tech, block, skip_bytes, read_bytes,
+        aid, key_no,
         encrypt_reader_key(key, kek))
 
 """

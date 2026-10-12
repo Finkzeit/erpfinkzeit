@@ -9,25 +9,38 @@ Werte und legt sie in die Zwischenablage, ohne sie anzuzeigen (mehrere Blobs zei
 
 Rückgabe der Doc-Methode: `{"mfcl": "<hex>", "mfdf": "<hex>"}`, nur aktive Technologien.
 
-Ein Blob: 41 Byte als 82 Hex-Zeichen (Großbuchstaben, kein Trennzeichen).
+Ein Blob: 40 Byte als 80 Hex-Zeichen (Großbuchstaben, kein Trennzeichen).
+
+## Technologie (unteres Nibble von Byte 0)
+
+Technologie und Key-Typ sind gemeinsam kodiert. Byte 0 = `(Version << 4) | Technologie`.
+
+| Wert | Technologie    | Key-Feld (Klartext vor Padding) |
+|-----:|----------------|---------------------------------|
+| 1    | Feig           | reserviert, wird nicht erzeugt |
+| 2    | MIFARE Classic | 6 Byte, Key A oder Key B je nach `key_no` |
+| 3    | Ultralight     | reserviert, wird nicht erzeugt |
+| 4    | DESFire AES    | 16 Byte |
+| 5    | DESFire 3DES   | 16 Byte, wird derzeit nicht erzeugt |
+| 6    | DESFire 3K3DES | 24 Byte, wird derzeit nicht erzeugt |
+| 7–15 | frei           | |
 
 ## Struktur (Mehrbyte-Werte little-endian)
 
-| Off | Len | Feld          | Classic | DESFire |
-|----:|----:|---------------|---------|---------|
-| 0   | 1   | version_flags | `0x11`: Bit 7..4 = Version 1, Bit 0 = MFCL | `0x12`: Bit 7..4 = Version 1, Bit 1 = MFDF |
-| 1   | 1   | block         | `sector` | `file_byte` (Nummer der Standard-Datei) |
-| 2   | 1   | skip_bytes    | `skip_bytes`, Byte-Offset der Nummer im Sektor (Block = skip>>4, Byte im Block = skip&15) | 0, Offset der Nummer in der Datei |
-| 3   | 1   | read_bytes    | `read_bytes`, Länge der Nummer (1..4) | 4, Länge der Nummer |
-| 4   | 3   | aid           | 0 | `app_id`, 24 Bit little-endian |
-| 7   | 1   | key_no        | 0 | 1, Applikations-Key für das Lesen |
-| 8   | 1   | key_type      | 0 | 2 = AES-128 (0 = 3DES 16 Byte, 1 = 3K3DES 24 Byte, 2 = AES 16 Byte) |
-| 9   | 32  | key_enc       | `key_a` verschlüsselt, siehe unten | `app_read_key` verschlüsselt, siehe unten |
+| Off | Len | Feld         | Classic | DESFire AES |
+|----:|----:|--------------|---------|-------------|
+| 0   | 1   | version_tech | `0x12`: Version 1, Technologie 2 | `0x14`: Version 1, Technologie 4 |
+| 1   | 1   | block        | `sector` | `file_byte` (Nummer der Standard-Datei) |
+| 2   | 1   | skip_bytes   | `skip_bytes`, Byte-Offset der Nummer im Sektor (Block = skip>>4, Byte im Block = skip&15) | 0, Offset der Nummer in der Datei |
+| 3   | 1   | read_bytes   | `read_bytes`, Länge der Nummer (1..4) | 4, Länge der Nummer |
+| 4   | 3   | aid          | 0 | `app_id`, 24 Bit little-endian |
+| 7   | 1   | key_no       | 0 = Key A, 1 = Key B (derzeit immer 0, der KeyCreator schreibt Key A) | 1, Applikations-Key für das Lesen |
+| 8   | 32  | key_enc      | `key_a` verschlüsselt, siehe unten | `app_read_key` verschlüsselt, siehe unten |
 
 ## Verschlüsselung des Key-Felds
 
-- Klartext-Block: 32 Byte, Key linksbündig ab Byte 0 (Classic 6 Byte, 3DES 16, 3K3DES 24,
-  AES 16), Rest `0x00`. Kein PKCS#7, die gültige Key-Länge ergibt sich aus Technologie bzw. `key_type`.
+- Klartext-Block: 32 Byte, Key linksbündig ab Byte 0 (Classic 6 Byte, DESFire AES 16,
+  3DES 16, 3K3DES 24), Rest `0x00`. Kein PKCS#7, die gültige Key-Länge ergibt sich aus der Technologie.
 - Algorithmus: **AES-128-CBC**, IV = 16 × `0x00` (fest, nicht im Blob).
 - Schlüssel: globaler Transportschlüssel (KEK, 16 Byte). Serverseitig in `site_config.json`
   als `reader_config_kek` (32 Hex-Zeichen), leserseitig in der Firmware. Der KEK ist nie Teil des Blobs.
@@ -49,13 +62,13 @@ Nur für Tests, dieser KEK darf nie produktiv verwendet werden: KEK `00010203040
 Classic, Sektor 1, Offset 0, 4 Byte, Key A `0102030405A6`:
 
 ```
-1101000400000000009849BDBF7F680958F602D50A4C5A2B161C28C8FA9B53C14B2C06B58384354939
+12010004000000009849BDBF7F680958F602D50A4C5A2B161C28C8FA9B53C14B2C06B58384354939
 ```
 
 DESFire, AID `0xABCD`, Datei 1, Read Key `000102030405060708090A0B0C0D0E0F`:
 
 ```
-12010004CDAB0001020A940BB5416EF045F1C39458C653EA5AAEE71EA541D7AE4BEB60BECC593FB663
+14010004CDAB00010A940BB5416EF045F1C39458C653EA5AAEE71EA541D7AE4BEB60BECC593FB663
 ```
 
 ## Nummer auf der Karte
@@ -63,11 +76,12 @@ DESFire, AID `0xABCD`, Datei 1, Read Key `000102030405060708090A0B0C0D0E0F`:
 Der KeyCreator schreibt die Transpondernummer auf beiden Technologien als **uint32
 little-endian** (niederwertigstes Byte zuerst):
 
-- Classic: mit dem entschlüsselten Key (Key A) auf Sektor `block` authentifizieren, Block
-  `(block << 2) + (skip_bytes >> 4)` lesen, ab Byte `skip_bytes & 15` genau `read_bytes` Byte.
-- DESFire: Applikation `aid` wählen, mit Key `key_no` (`key_type`, entschlüsselter Key)
-  authentifizieren, Datei `block` ab Offset `skip_bytes` mit `read_bytes` Byte lesen
-  (Datei ist fully enciphered angelegt).
+- Classic: mit dem entschlüsselten Key als Key A (`key_no` 0) bzw. Key B (`key_no` 1) auf
+  Sektor `block` authentifizieren, Block `(block << 2) + (skip_bytes >> 4)` lesen, ab Byte
+  `skip_bytes & 15` genau `read_bytes` Byte.
+- DESFire: Applikation `aid` wählen, mit Key `key_no` (Key-Typ aus der Technologie,
+  entschlüsselter Key) authentifizieren, Datei `block` ab Offset `skip_bytes` mit
+  `read_bytes` Byte lesen (Datei ist fully enciphered angelegt).
 
 ## C-Referenz
 
@@ -76,26 +90,30 @@ little-endian** (niederwertigstes Byte zuerst):
 #include <string.h>
 #include "aes.h"   /* z.B. tiny-AES-c mit CBC=1, AES128 */
 
-#define FZ_RC_SIZE          41
+#define FZ_RC_SIZE          40
 #define FZ_RC_VERSION(b)    ((b) >> 4)
-#define FZ_RC_IS_MFCL(b)    (((b) & 0x01) != 0)
-#define FZ_RC_IS_MFDF(b)    (((b) & 0x02) != 0)
+#define FZ_RC_TECH(b)       ((b) & 0x0F)
 
-#define FZ_RC_KEYTYPE_3DES    0
-#define FZ_RC_KEYTYPE_3K3DES  1
-#define FZ_RC_KEYTYPE_AES     2
+#define FZ_RC_TECH_FEIG         1
+#define FZ_RC_TECH_MFCL         2
+#define FZ_RC_TECH_ULTRALIGHT   3
+#define FZ_RC_TECH_MFDF_AES     4
+#define FZ_RC_TECH_MFDF_3DES    5
+#define FZ_RC_TECH_MFDF_3K3DES  6
+
+#define FZ_RC_MFCL_KEY_A    0
+#define FZ_RC_MFCL_KEY_B    1
 
 #pragma pack(push, 1)
 typedef struct {
-    uint8_t version_flags;  /* high nibble version (1), low nibble technology */
+    uint8_t version_tech;   /* high nibble version (1), low nibble FZ_RC_TECH_* */
     uint8_t block;          /* Classic: sector, DESFire: file number */
     uint8_t skip_bytes;     /* offset of the number */
     uint8_t read_bytes;     /* length of the number, 1..4 */
     uint8_t aid[3];         /* DESFire only, little-endian */
-    uint8_t key_no;         /* DESFire only */
-    uint8_t key_type;       /* DESFire only, FZ_RC_KEYTYPE_* */
+    uint8_t key_no;         /* Classic: FZ_RC_MFCL_KEY_*, DESFire: application key number */
     uint8_t key_enc[32];    /* AES-128-CBC(KEK, IV = 0), key left aligned, zero padded */
-} fz_reader_config_v1_t;   /* sizeof == 41 */
+} fz_reader_config_v1_t;   /* sizeof == 40 */
 #pragma pack(pop)
 
 /* decrypt key_enc in place into key_out (32 bytes); kek is the 16 byte transport key */

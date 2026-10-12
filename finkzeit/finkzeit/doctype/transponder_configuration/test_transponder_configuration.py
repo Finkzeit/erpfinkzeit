@@ -33,39 +33,38 @@ def desfire_values():
 
 def decrypt_key_field(blob):
     decryptor = Cipher(algorithms.AES(KEK), modes.CBC(bytes(16))).decryptor()
-    return decryptor.update(blob[9:41]) + decryptor.finalize()
+    return decryptor.update(blob[8:40]) + decryptor.finalize()
 
 class TestTransponderConfiguration(unittest.TestCase):
     def test_size(self):
-        self.assertEqual(READER_CONFIG_SIZE, 41)
-        self.assertEqual(len(build_reader_config('mfcl', classic_values(), KEK)), 41)
-        self.assertEqual(len(build_reader_config('mfdf', desfire_values(), KEK)), 41)
+        self.assertEqual(READER_CONFIG_SIZE, 40)
+        self.assertEqual(len(build_reader_config('mfcl', classic_values(), KEK)), 40)
+        self.assertEqual(len(build_reader_config('mfdf', desfire_values(), KEK)), 40)
 
     def test_classic(self):
         blob = build_reader_config('mfcl', classic_values(), KEK)
-        self.assertEqual(blob[0], 0x11)
+        self.assertEqual(blob[0], 0x12)     # version 1, technology 2 = Classic
         self.assertEqual(blob[1], 1)        # sector
         self.assertEqual(blob[2], 4)        # skip
         self.assertEqual(blob[3], 4)        # read
-        # aid, key_no, key_type unused
-        self.assertEqual(blob[4:9], bytes(5))
+        self.assertEqual(blob[4:7], bytes(3))   # aid unused
+        self.assertEqual(blob[7], 0)        # key no 0 = Key A
         # encrypted key field at the end
-        self.assertEqual(blob[9:41], KEY_A_ENC)
+        self.assertEqual(blob[8:40], KEY_A_ENC)
         plain = decrypt_key_field(blob)
         self.assertEqual(plain[0:6], bytes.fromhex(KEY_A))
         self.assertEqual(plain[6:32], bytes(26))
 
     def test_desfire(self):
         blob = build_reader_config('mfdf', desfire_values(), KEK)
-        self.assertEqual(blob[0], 0x12)
+        self.assertEqual(blob[0], 0x14)     # version 1, technology 4 = DESFire AES
         self.assertEqual(blob[1], 1)        # file no
         self.assertEqual(blob[2], 0)        # skip
         self.assertEqual(blob[3], 4)        # read
         # AID little-endian
         self.assertEqual(blob[4:7], bytes([0x56, 0x34, 0x12]))
         self.assertEqual(blob[7], 1)        # key no
-        self.assertEqual(blob[8], 2)        # AES
-        self.assertEqual(blob[9:41], READ_KEY_ENC)
+        self.assertEqual(blob[8:40], READ_KEY_ENC)
         plain = decrypt_key_field(blob)
         self.assertEqual(plain[0:16], bytes.fromhex(READ_KEY))
         self.assertEqual(plain[16:32], bytes(16))
@@ -110,8 +109,8 @@ class TestTransponderConfiguration(unittest.TestCase):
         values['mfdf'] = 1
         blobs = build_reader_configs(values, KEK)
         self.assertEqual(set(blobs.keys()), {'mfcl', 'mfdf'})
-        self.assertEqual(blobs['mfcl'][0], 0x11)
-        self.assertEqual(blobs['mfdf'][0], 0x12)
+        self.assertEqual(blobs['mfcl'][0], 0x12)
+        self.assertEqual(blobs['mfdf'][0], 0x14)
 
     def test_configs_single(self):
         self.assertEqual(list(build_reader_configs(classic_values(), KEK).keys()), ['mfcl'])
@@ -120,7 +119,7 @@ class TestTransponderConfiguration(unittest.TestCase):
     def test_hex_output(self):
         blob = build_reader_config('mfdf', desfire_values(), KEK)
         hex_str = reader_config_to_hex(blob)
-        self.assertEqual(len(hex_str), 82)
+        self.assertEqual(len(hex_str), 80)
         self.assertEqual(hex_str, hex_str.upper())
         self.assertEqual(bytes.fromhex(hex_str), blob)
 
