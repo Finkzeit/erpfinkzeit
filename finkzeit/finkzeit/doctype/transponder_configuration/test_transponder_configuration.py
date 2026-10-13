@@ -61,8 +61,8 @@ class TestTransponderConfiguration(unittest.TestCase):
         self.assertEqual(blob[1], 1)        # file no
         self.assertEqual(blob[2], 0)        # skip
         self.assertEqual(blob[3], 4)        # read
-        # AID little-endian
-        self.assertEqual(blob[4:7], bytes([0x56, 0x34, 0x12]))
+        # AID big-endian (most significant byte first)
+        self.assertEqual(blob[4:7], bytes([0x12, 0x34, 0x56]))
         self.assertEqual(blob[7], 1)        # key no
         self.assertEqual(blob[8:40], READ_KEY_ENC)
         plain = decrypt_key_field(blob)

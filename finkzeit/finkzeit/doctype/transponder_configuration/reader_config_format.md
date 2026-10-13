@@ -25,7 +25,7 @@ Technologie und Key-Typ sind gemeinsam kodiert. Byte 0 = `(Version << 4) | Techn
 | 6    | DESFire 3K3DES | 24 Byte, wird derzeit nicht erzeugt |
 | 7–15 | frei           | |
 
-## Struktur (Mehrbyte-Werte little-endian)
+## Struktur (Mehrbyte-Werte little-endian, ausser `aid`)
 
 | Off | Len | Feld         | Classic | DESFire AES |
 |----:|----:|--------------|---------|-------------|
@@ -33,7 +33,7 @@ Technologie und Key-Typ sind gemeinsam kodiert. Byte 0 = `(Version << 4) | Techn
 | 1   | 1   | block        | `sector` | `file_byte` (Nummer der Standard-Datei) |
 | 2   | 1   | skip_bytes   | `skip_bytes`, Byte-Offset der Nummer im Sektor (Block = skip>>4, Byte im Block = skip&15) | 0, Offset der Nummer in der Datei |
 | 3   | 1   | read_bytes   | `read_bytes`, Länge der Nummer (1..4) | 4, Länge der Nummer |
-| 4   | 3   | aid          | 0 | `app_id`, 24 Bit little-endian |
+| 4   | 3   | aid          | 0 | `app_id`, 24 Bit big-endian (höchstwertiges Byte zuerst) |
 | 7   | 1   | key_no       | 0 = Key A, 1 = Key B (derzeit immer 0, der KeyCreator schreibt Key A) | 1, Applikations-Key für das Lesen |
 | 8   | 32  | key_enc      | `key_a` verschlüsselt, siehe unten | `app_read_key` verschlüsselt, siehe unten |
 
@@ -68,7 +68,7 @@ Classic, Sektor 1, Offset 0, 4 Byte, Key A `0102030405A6`:
 DESFire, AID `0xABCD`, Datei 1, Read Key `000102030405060708090A0B0C0D0E0F`:
 
 ```
-14010004CDAB00010A940BB5416EF045F1C39458C653EA5AAEE71EA541D7AE4BEB60BECC593FB663
+1401000400ABCD010A940BB5416EF045F1C39458C653EA5AAEE71EA541D7AE4BEB60BECC593FB663
 ```
 
 ## Nummer auf der Karte
@@ -110,7 +110,7 @@ typedef struct {
     uint8_t block;          /* Classic: sector, DESFire: file number */
     uint8_t skip_bytes;     /* offset of the number */
     uint8_t read_bytes;     /* length of the number, 1..4 */
-    uint8_t aid[3];         /* DESFire only, little-endian */
+    uint8_t aid[3];         /* DESFire only, big-endian */
     uint8_t key_no;         /* Classic: FZ_RC_MFCL_KEY_*, DESFire: application key number */
     uint8_t key_enc[32];    /* AES-128-CBC(KEK, IV = 0), key left aligned, zero padded */
 } fz_reader_config_v1_t;   /* sizeof == 40 */
@@ -128,9 +128,9 @@ static void fz_rc_decrypt_key(const fz_reader_config_v1_t *c, const uint8_t *kek
 
 static uint32_t fz_rc_aid(const fz_reader_config_v1_t *c)
 {
-    return (uint32_t)c->aid[0]
+    return ((uint32_t)c->aid[0] << 16)
          | ((uint32_t)c->aid[1] << 8)
-         | ((uint32_t)c->aid[2] << 16);
+         | (uint32_t)c->aid[2];
 }
 
 /* number as stored on the card (little-endian, 1..4 bytes) */

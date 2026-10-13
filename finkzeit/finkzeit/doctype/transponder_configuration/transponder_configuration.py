@@ -206,7 +206,7 @@ def build_reader_config(tech, values, kek):
         read_bytes = MFDF_READ_BYTES
         key = _parse_hex_key(values.get('app_read_key'), 32, _("App Read Key"))
         app_id = _check_range(values.get('app_id'), 1, 0xFFFFFF, _("App ID"))
-        aid = app_id.to_bytes(3, 'little')
+        aid = app_id.to_bytes(3, 'big')
         key_no = MFDF_KEY_NO
     else:
         frappe.throw(_("Unknown technology {0}").format(tech))
